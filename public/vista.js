@@ -32,8 +32,8 @@ document.body.insertAdjacentHTML("afterbegin",`
           <th class="w-ap">Apellido Paterno</th><th class="w-ap">Apellido Materno</th><th class="w-nom">Nombres</th>
           <th class="w-sexo">Sexo</th><th class="w-fn">Fecha de Nacimiento</th><th class="w-peso">PESO (kg)</th><th class="w-peso">TALLA (m)</th>
           <th class="w-imc">IMC</th><th class="w-edad">Edad</th><th class="w-full">Apellidos y Nombres</th>
-          <th class="w-od">OD</th><th class="w-od">OI</th><th class="w-ao">ANTECEDENTES OFTALMOLÓGICOS</th>
-          <th class="w-ag">ANTECEDENTES GENERALES</th><th class="w-obs">OBSERVACIÓN</th><th style="width:40px"></th>
+          <th class="w-od">OD</th><th class="w-od">OI</th><th class="w-ao" title="Antecedentes oftalmológicos">ANT. OFT.</th>
+          <th class="w-ag" title="Antecedentes generales">ANT. GEN.</th><th class="w-obs">OBSERVACIÓN</th><th style="width:40px"></th>
         </tr>
       </thead>
       <tbody id="tbodyDatos"></tbody>
