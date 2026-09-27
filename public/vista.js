@@ -257,37 +257,36 @@ document.body.insertAdjacentHTML("afterbegin",`
         <td class="b c" style="border-top-width:2px;border-right-width:2px">CODIGO CIE - 10</td>
       </tr>
       <tr class="r4">
-        <td style="border-left-width:2px"><input class="f" data-f="dx1_txt" list="dxLista" placeholder="" autocomplete="off"></td>
+        <td style="border-left-width:2px"><input class="f" data-f="dx1_txt" placeholder="" autocomplete="off"></td>
         <td class="c" style=""><span class="chk dxsel" data-f="dx1_p" title="Presuntivo">P</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx1_d" title="Definitivo">D</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx1_r" title="Repetido">R</span></td>
         <td class="c" style=""><input class="f" data-f="dx1_v1" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx1_v2" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx1_v3" style="text-align:center"></td>
         <td style="border-right-width:2px"><input class="f" data-f="dx1_cie"></td>
       </tr>
       <tr class="r4">
-        <td style="border-left-width:2px"><input class="f" data-f="dx2_txt" list="dxLista" placeholder="" autocomplete="off"></td>
+        <td style="border-left-width:2px"><input class="f" data-f="dx2_txt" placeholder="" autocomplete="off"></td>
         <td class="c" style=""><span class="chk dxsel" data-f="dx2_p" title="Presuntivo">P</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx2_d" title="Definitivo">D</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx2_r" title="Repetido">R</span></td>
         <td class="c" style=""><input class="f" data-f="dx2_v1" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx2_v2" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx2_v3" style="text-align:center"></td>
         <td style="border-right-width:2px"><input class="f" data-f="dx2_cie"></td>
       </tr>
       <tr class="r4">
-        <td style="border-left-width:2px"><input class="f" data-f="dx3_txt" list="dxLista" placeholder="" autocomplete="off"></td>
+        <td style="border-left-width:2px"><input class="f" data-f="dx3_txt" placeholder="" autocomplete="off"></td>
         <td class="c" style=""><span class="chk dxsel" data-f="dx3_p" title="Presuntivo">P</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx3_d" title="Definitivo">D</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx3_r" title="Repetido">R</span></td>
         <td class="c" style=""><input class="f" data-f="dx3_v1" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx3_v2" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx3_v3" style="text-align:center"></td>
         <td style="border-right-width:2px"><input class="f" data-f="dx3_cie"></td>
       </tr>
       <tr class="r4">
-        <td style="border-left-width:2px"><input class="f" data-f="dx4_txt" list="dxLista" placeholder="" autocomplete="off"></td>
+        <td style="border-left-width:2px"><input class="f" data-f="dx4_txt" placeholder="" autocomplete="off"></td>
         <td class="c" style=""><span class="chk dxsel" data-f="dx4_p" title="Presuntivo">P</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx4_d" title="Definitivo">D</span></td><td class="c" style=""><span class="chk dxsel" data-f="dx4_r" title="Repetido">R</span></td>
         <td class="c" style=""><input class="f" data-f="dx4_v1" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx4_v2" style="text-align:center"></td><td class="c" style=""><input class="f" data-f="dx4_v3" style="text-align:center"></td>
         <td style="border-right-width:2px"><input class="f" data-f="dx4_cie"></td>
       </tr>
       <tr class="r4">
-        <td style="border-left-width:2px;border-bottom-width:2px"><input class="f" data-f="dx5_txt" list="dxLista" placeholder="" autocomplete="off"></td>
+        <td style="border-left-width:2px;border-bottom-width:2px"><input class="f" data-f="dx5_txt" placeholder="" autocomplete="off"></td>
         <td class="c" style="border-bottom-width:2px"><span class="chk dxsel" data-f="dx5_p" title="Presuntivo">P</span></td><td class="c" style="border-bottom-width:2px"><span class="chk dxsel" data-f="dx5_d" title="Definitivo">D</span></td><td class="c" style="border-bottom-width:2px"><span class="chk dxsel" data-f="dx5_r" title="Repetido">R</span></td>
         <td class="c" style="border-bottom-width:2px"><input class="f" data-f="dx5_v1" style="text-align:center"></td><td class="c" style="border-bottom-width:2px"><input class="f" data-f="dx5_v2" style="text-align:center"></td><td class="c" style="border-bottom-width:2px"><input class="f" data-f="dx5_v3" style="text-align:center"></td>
         <td style="border-right-width:2px;border-bottom-width:2px"><input class="f" data-f="dx5_cie"></td>
       </tr>
     </table>
-    <datalist id="dxLista"><option value="Examen de los ojos y de la visión"><option value="Determinación de la agudeza visual"><option value="Trastorno de la refracción"><option value="Consejería en salud ocular"></datalist>
 
     <!-- IV. PLAN / V. EXÁMENES -->
     <div class="sp"></div>
