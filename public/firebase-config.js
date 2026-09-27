@@ -1,13 +1,11 @@
-/* Configuración de Firebase.
-   Pegue aquí los datos de su proyecto (Consola Firebase → Configuración del proyecto → Tus apps → Web).
-   Mientras apiKey empiece con "PEGAR", la app funciona solo con guardado local en el navegador. */
+/* Configuración de Firebase (Consola Firebase → Configuración del proyecto → Tus apps → Web). */
 window.FIREBASE_CONFIG = {
-  apiKey: "PEGAR_API_KEY",
-  authDomain: "PEGAR_PROYECTO.firebaseapp.com",
-  projectId: "PEGAR_PROYECTO",
-  storageBucket: "PEGAR_PROYECTO.appspot.com",
-  messagingSenderId: "PEGAR_SENDER_ID",
-  appId: "PEGAR_APP_ID"
+  apiKey: "AIzaSyB2_U6wjfY3mn4QwNOgzd4NM8547YJXD7I",
+  authDomain: "medicion-ocular.firebaseapp.com",
+  projectId: "medicion-ocular",
+  storageBucket: "medicion-ocular.firebasestorage.app",
+  messagingSenderId: "49978129209",
+  appId: "1:49978129209:web:8d83a34a1ce3658ad446e8"
 };
 /* requiereLogin: true = pide correo y contraseña (Authentication → Email/Password). */
 window.APP_CONFIG = { requiereLogin: true };
