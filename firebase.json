@@ -1,10 +1,32 @@
 {
   "hosting": {
     "public": "public",
-    "ignore": ["firebase.json", "**/node_modules/**"],
+    "ignore": [
+      "firebase.json",
+      "**/node_modules/**"
+    ],
     "headers": [
-      { "source": "**/*.@(js|html|json)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
-      { "source": "/sw.js", "headers": [{ "key": "Service-Worker-Allowed", "value": "/" }] }
+      {
+        "source": "**/*.@(js|html|json)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Service-Worker-Allowed",
+            "value": "/"
+          }
+        ]
+      }
+    ],
+    "predeploy": [
+      "node -e \"require('fs').writeFileSync('public/version.json',JSON.stringify({v:Date.now(),fecha:new Date().toISOString()}))\""
     ]
   },
   "firestore": {

@@ -159,3 +159,8 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .sheet .fecha-wrap input.f{flex:1;min-width:0}
 .sheet .cal{flex:none;border:0;background:transparent;font-size:9pt;line-height:1;padding:0 2px;cursor:pointer;color:#1e88e5}.sheet .cal:hover{color:#0d47a1}
 .sheet .cal-oculto{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+/* Aviso de nueva versión */
+.actualizar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:150;display:flex;align-items:center;gap:12px;max-width:calc(100% - 24px);background:#1a2b3c;color:#fff;padding:12px 14px 12px 16px;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);font-family:Inter,Arial,Helvetica,sans-serif;font-size:14px;animation:subir .3s ease-out}
+.actualizar button{border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;background:#1e88e5;color:#fff;cursor:pointer;white-space:nowrap}.actualizar button:hover{background:#1565c0}
+.actualizar .luego{background:transparent;padding:4px 6px;color:#b0bec5;font-weight:normal}.actualizar .luego:hover{color:#fff;background:transparent}
+@keyframes subir{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
