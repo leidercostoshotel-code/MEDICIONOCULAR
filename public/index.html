@@ -5,7 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hoja de Evaluación de Procedimientos en Salud Ocular – Niñas y Niños</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase: la configuración está en firebase-config.js y la sincronización en firebase-sync.js -->
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
 <style>
+/* ======================= FIREBASE / ACCESO ======================= */
+.syncStatus{margin-left:auto;font-size:12px;color:#cfd8dc;align-self:center;white-space:nowrap}.syncStatus.ok{color:#8ef58e}.syncStatus.off{color:#ffd54f}.syncStatus.err{color:#ff8a80}
+.salir{margin-left:8px;background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;padding:4px 10px;font-size:12px}
+#login{position:fixed;inset:0;background:#263238;z-index:99;display:flex;align-items:center;justify-content:center}
+#login form{background:#fff;padding:24px;border-radius:8px;width:300px;display:flex;flex-direction:column;gap:10px}#login h2{margin:0 0 6px;font-size:18px}#login input{padding:8px;border:1px solid #bbb;border-radius:4px;font-size:14px}#lgErr{color:#c62828;font-size:12px;min-height:14px}
 /* ======================= GENERAL ======================= */
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#e9ecef;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#000}
@@ -123,6 +133,8 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
   <div class="tabs">
     <button id="tabDatos" class="active" onclick="showView('datos')">DATOS</button>
     <button id="tabEval" onclick="showView('evaluacion')">EVALUACIÓN OCULAR</button>
+    <span id="syncStatus" class="syncStatus"></span>
+    <button id="btnSalir" class="salir" onclick="Sync.cerrarSesion()" style="display:none">Salir</button>
   </div>
 </div>
 
@@ -444,6 +456,9 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
   </div>
 </div>
 
+<div id="login" style="display:none">
+  <form onsubmit="Sync.entrar(event)"><h2>Acceso</h2><input id="lgEmail" type="email" placeholder="Correo" required autocomplete="username"><input id="lgPass" type="password" placeholder="Contraseña" required autocomplete="current-password"><button class="btn primary">Entrar</button><div id="lgErr"></div></form>
+</div>
 <div id="msg"></div>
 
 <script>
@@ -472,8 +487,9 @@ function calcEdad(fn){const d=parseFecha(fn);if(!d)return "";const h=new Date();
 function calcIMC(p,t){const P=num(p),T=num(t);if(P==null||T==null||T<=0)return "";return (P/(T*T)).toFixed(2);}
 function calcNombre(r){return [r.ap,r.am,r.nom].map(x=>String(x||"").trim()).filter(Boolean).join(" ");}
 function hoy(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
-function nuevoRegistro(){return {n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",peso:"",talla:"",od:"",oi:"",ao:"",ag:"",obs:""};}
-function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o[k]=r[k];}o.n=parseInt(o.n);if(isNaN(o.n))o.n="";o.dni=String(o.dni||"").replace(/\D/g,"");return o;}
+function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function nuevoRegistro(){return {id:uid(),n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",peso:"",talla:"",od:"",oi:"",ao:"",ag:"",obs:""};}
+function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o[k]=r[k];}o.id=String(o.id||uid());o.n=parseInt(o.n);if(isNaN(o.n))o.n="";o.dni=String(o.dni||"").replace(/\D/g,"");return o;}
 
 /* ======================= PERSISTENCIA ======================= */
 function cargar(){
@@ -481,8 +497,8 @@ function cargar(){
   if(!pacientes.length)pacientes=DATA_INICIAL.map(normalizar);
   try{evaluaciones=JSON.parse(localStorage.getItem(LS_EVAL))||{};}catch(e){evaluaciones={};}
 }
-function guardarPacientes(){try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){msg("No se pudo guardar en el navegador");}}
-function guardarEvaluaciones(){try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){msg("No se pudo guardar en el navegador");}}
+function guardarPacientes(){try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync)Sync.programarPacientes();}
+function guardarEvaluaciones(){try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync)Sync.programarEvaluaciones();}
 
 /* ======================= VISTAS ======================= */
 function showView(v){
@@ -502,7 +518,7 @@ function renderDatos(){
     return s.includes(q);
   });
   const html=rows.map(({r,i})=>`
-  <tr data-i="${i}">
+  <tr data-i="${i}" data-id="${esc(r.id)}">
     <td class="num"><input class="w-num" data-k="n" value="${esc(r.n)}" style="text-align:center;font-weight:bold"></td>
     <td><input data-k="hc" value="${esc(r.hc)}"></td>
     <td><input data-k="dni" value="${esc(r.dni)}" maxlength="8" inputmode="numeric" class="${r.dni&&r.dni.length!==8?'invalid':''}"></td>
@@ -700,5 +716,6 @@ document.addEventListener('keydown',e=>{
 /* ======================= INICIO ======================= */
 cargar();renderDatos();escribirForm(null);
 </script>
+<script src="firebase-sync.js"></script>
 </body>
 </html>
