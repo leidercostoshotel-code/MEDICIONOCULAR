@@ -234,6 +234,7 @@ document.body.insertAdjacentHTML("afterbegin",`
   </div>
 
   <div class="pagina">
+    <div class="sec" style="margin:0 0 2mm 1mm">III. EXAMEN OCULAR EXTERNO (continuación)</div>
     <table class="grid sym">
       <colgroup><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:32mm"><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:59.5mm"><col style="width:77.5mm"></colgroup>
       <tr style="font-size:7pt">
