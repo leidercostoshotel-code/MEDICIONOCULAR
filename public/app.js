@@ -363,3 +363,6 @@ document.addEventListener('keydown',e=>{
 
 /* ======================= INICIO ======================= */
 cargar();renderDatos();escribirForm(null);
+
+/* ======================= APP INSTALABLE (PWA) ======================= */
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));

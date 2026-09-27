@@ -57,3 +57,24 @@ Opción B, automático desde GitHub:
 - Colección `evaluaciones`: un documento por N° de paciente con los campos de la hoja.
 - Si no hay internet, se guarda en el navegador y se sube al reconectar.
 - La primera vez que la nube está vacía, se suben los datos que ya estaban en el navegador.
+
+## Instalar en Android / generar APK
+
+La app es una PWA (instalable, con ícono propio y funciona sin conexión). Hay dos formas de llevarla a Android:
+
+**Opción rápida, sin APK**: en el celular abra <https://medicion-ocular.web.app> en Chrome, menú ⋮ → "Instalar aplicación" (o "Añadir a pantalla de inicio"). Queda como una app más, a pantalla completa.
+
+**Opción con APK (para repartir el archivo)**, desde Cloud Shell:
+
+```bash
+npm install -g @bubblewrap/cli
+mkdir -p ~/apk && cd ~/apk
+bubblewrap init --manifest https://medicion-ocular.web.app/manifest.json
+bubblewrap build
+```
+
+`bubblewrap init` pregunta si instala el JDK y el Android SDK (responda Y a ambos) y luego los datos de la app; se puede aceptar todo con Enter. Al final pide crear una clave de firma: anote la contraseña. `bubblewrap build` genera `app-release-signed.apk` (para instalar en celulares) y `app-release-bundle.aab` (para Google Play), y muestra la huella SHA-256 del certificado.
+
+Para que la app abra a pantalla completa, sin la barra del navegador, copie esa huella en `public/.well-known/assetlinks.json` (reemplazando `PEGAR_SHA256`) y vuelva a publicar con `firebase deploy --only hosting`.
+
+Para descargar la APK desde Cloud Shell: menú ⋮ de la terminal → "Descargar" → `apk/app-release-signed.apk`.
