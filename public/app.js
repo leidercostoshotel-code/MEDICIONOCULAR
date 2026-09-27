@@ -326,6 +326,7 @@ function autoDx(n,forzar){
   const key=normTxt(g('txt').value).trim();const v=[g('v1'),g('v2'),g('v3')];
   if(key.startsWith("examen de los ojos")){campoAuto(v[0],r?AUTO_KEYS.dx1(r):"");campoLibre(v[1],forzar);campoLibre(v[2],forzar);} // A = alterado, N = normal (fórmula del Excel)
   else if(key.startsWith("determinacion de la agudeza")){campoAuto(v[0],r?r.od:"");campoAuto(v[1],r?r.oi:"");campoLibre(v[2],forzar);} // OD / OI desde la hoja DATOS
+  else if(key.startsWith("trastorno de la refraccion")){campoAuto(v[0],"RF");campoLibre(v[1],forzar);campoLibre(v[2],forzar);} // RF = refracción
   else v.forEach(el=>campoLibre(el,forzar));
   if(!key)return;
   if(DX_CIE[key]&&(forzar||!g('cie').value.trim()))g('cie').value=DX_CIE[key];
