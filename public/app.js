@@ -210,7 +210,7 @@ function cargarPaciente(n){
   const r=buscarPaciente(n);numActual=r?parseInt(r.n):null;
   setAutos(r);
   const info=document.getElementById('evalInfo'),tag=document.getElementById('savedTag');
-  if(!r){escribirForm(null);info.textContent=String(n||"").trim()?`N° ${n}: no existe en DATOS`:"Escriba el N° del paciente en la casilla del formulario";tag.textContent="";return;}
+  if(!r){escribirForm(null);info.textContent=String(n||"").trim()?`N° ${n}: no existe en DATOS`:"Busque al paciente por DNI, N° o nombre, o escriba el N° en el formulario";tag.textContent="";return;}
   info.textContent=`N° ${r.n} · ${calcNombre(r)}`;
   const ev=evaluaciones[r.n];
   if(ev){escribirForm(ev);tag.textContent="✔ Evaluación guardada";}
@@ -245,6 +245,44 @@ function navPaciente(dir){
     else{next=dir>0?(ns.find(n=>n>cur)??ns[ns.length-1]):([...ns].reverse().find(n=>n<cur)??ns[0]);}}
   document.getElementById('numPac').value=next;cargarPaciente(next);
 }
+/* ======================= BÚSQUEDA PREDICTIVA DE PACIENTES ======================= */
+const bq=document.getElementById('buscarPac'),bqL=document.getElementById('buscarLista');let bqItems=[],bqSel=-1;
+function normTxt(s){return String(s==null?"":s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");}
+function sugerencias(q){
+  const toks=normTxt(q).trim().split(/\s+/).filter(Boolean);if(!toks.length)return [];
+  return pacientes.filter(r=>{const s=normTxt([r.n,r.dni,r.hc,calcNombre(r)].join(" "));return toks.every(t=>s.includes(t));})
+    .sort((a,b)=>{const da=String(a.dni).startsWith(toks[0])||String(a.n)===toks[0],db=String(b.dni).startsWith(toks[0])||String(b.n)===toks[0];if(da!==db)return da?-1:1;return (parseInt(a.n)||0)-(parseInt(b.n)||0);})
+    .slice(0,8);
+}
+function resaltar(txt,q){
+  const toks=normTxt(q).trim().split(/\s+/).filter(Boolean);let out="",i=0;const n=normTxt(txt);
+  while(i<txt.length){let hit=null;for(const t of toks){if(n.startsWith(t,i)&&(!hit||t.length>hit.length))hit=t;}
+    if(hit){out+="<mark>"+esc(txt.slice(i,i+hit.length))+"</mark>";i+=hit.length;}else{out+=esc(txt[i]);i++;}}
+  return out;
+}
+function renderSug(){
+  const q=bq.value;bqItems=sugerencias(q);bqSel=bqItems.length?0:-1;
+  if(!q.trim()){bqL.style.display="none";bqL.innerHTML="";return;}
+  bqL.innerHTML=bqItems.length?bqItems.map((r,i)=>`<div class="bq-item${i===bqSel?' act':''}" data-i="${i}" role="option"><span class="bq-n">N° ${esc(r.n)}</span><span class="bq-nom">${resaltar(calcNombre(r)||"(sin nombre)",q)}</span><span class="bq-dni">DNI ${resaltar(r.dni||"—",q)}${evaluaciones[r.n]?' · <b>✔ evaluado</b>':''}</span></div>`).join("")
+    :`<div class="bq-vacio">Sin coincidencias para “${esc(q)}”</div>`;
+  bqL.style.display="block";
+}
+function elegirSug(i){const r=bqItems[i];if(!r)return;document.getElementById('numPac').value=r.n;cargarPaciente(r.n);bq.value="";bqL.style.display="none";msg(`Paciente N° ${r.n} · ${calcNombre(r)}`);}
+bq.addEventListener('input',renderSug);
+bq.addEventListener('focus',()=>{if(bq.value.trim())renderSug();});
+bq.addEventListener('keydown',e=>{
+  if(bqL.style.display!=="block")return;
+  if(e.key==='ArrowDown'){e.preventDefault();bqSel=Math.min(bqItems.length-1,bqSel+1);}
+  else if(e.key==='ArrowUp'){e.preventDefault();bqSel=Math.max(0,bqSel-1);}
+  else if(e.key==='Enter'){e.preventDefault();elegirSug(bqSel);return;}
+  else if(e.key==='Escape'){bqL.style.display="none";return;}
+  else return;
+  bqL.querySelectorAll('.bq-item').forEach((el,i)=>el.classList.toggle('act',i===bqSel));
+  const act=bqL.querySelector('.bq-item.act');if(act)act.scrollIntoView({block:'nearest'});
+});
+bqL.addEventListener('mousedown',e=>{const it=e.target.closest('.bq-item');if(it){e.preventDefault();elegirSug(+it.dataset.i);}});
+document.addEventListener('click',e=>{if(!e.target.closest('.bq'))bqL.style.display="none";});
+
 document.getElementById('numPac').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,"");cargarPaciente(e.target.value);});
 document.getElementById('sheet').addEventListener('click',e=>{
   const c=e.target.closest('.chk');if(!c)return;c.classList.toggle('on');
