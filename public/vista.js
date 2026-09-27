@@ -157,7 +157,7 @@ document.body.insertAdjacentHTML("afterbegin",`
     <table class="grid">
       <colgroup><col style="width:10.5mm"><col style="width:23.8mm"><col style="width:14.3mm"><col style="width:23.8mm"><col style="width:12.2mm"><col style="width:25.5mm"><col style="width:14.3mm"><col style="width:25.6mm"><col style="width:19.75mm"><col style="width:22.1mm"></colgroup>
       <tr class="r4" style="font-size:8.6pt">
-        <td></td><td class="c">T</td><td class="c">FR</td><td class="c">FC</td><td class="c">PA</td><td class="c">SAT</td><td class="c yellow">PESO</td><td class="c yellow">TALLA</td><td class="c yellow">IMC</td><td class="c">PAB</td>
+        <td></td><td class="c">T</td><td class="c">FR</td><td class="c">FC</td><td class="c">PA</td><td class="c">SAT</td><td class="c">PESO</td><td class="c">TALLA</td><td class="c">IMC</td><td class="c">PAB</td>
       </tr>
       <tr class="r4">
         <td></td>
@@ -166,9 +166,9 @@ document.body.insertAdjacentHTML("afterbegin",`
         <td><input class="f" data-f="ef_fc" style="text-align:center"></td>
         <td><input class="f" data-f="ef_pa" style="text-align:center"></td>
         <td><input class="f" data-f="ef_sat" style="text-align:center"></td>
-        <td class="yellow"><input class="f auto" data-auto="peso" readonly tabindex="-1" style="text-align:center"></td>
-        <td class="yellow"><input class="f auto" data-auto="talla" readonly tabindex="-1" style="text-align:center"></td>
-        <td class="yellow"><input class="f auto" data-auto="imc" readonly tabindex="-1" style="text-align:center"></td>
+        <td><input class="f auto" data-auto="peso" readonly tabindex="-1" style="text-align:center"></td>
+        <td><input class="f auto" data-auto="talla" readonly tabindex="-1" style="text-align:center"></td>
+        <td><input class="f auto" data-auto="imc" readonly tabindex="-1" style="text-align:center"></td>
         <td><input class="f" data-f="ef_pab" style="text-align:center"></td>
       </tr>
     </table>
