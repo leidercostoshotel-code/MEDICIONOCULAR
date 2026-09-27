@@ -204,7 +204,7 @@ function leerForm(){
 }
 function escribirForm(o){
   document.querySelectorAll('#sheet input[data-f^="dx"][readonly]').forEach(el=>campoLibre(el,false));
-  campos().forEach(el=>{const v=o&&o[el.dataset.f]!=null?o[el.dataset.f]:(el.dataset.f==='ev_nombre'?"Dra Mari Alba Mas":"");
+  campos().forEach(el=>{const v=o&&o[el.dataset.f]!=null?o[el.dataset.f]:(el.dataset.f==='ev_nombre'?"Dra. Mari Alva Mas":"");
     if(el.classList.contains('chk'))el.classList.toggle('on',v==="X");else el.value=v;});
 }
 function cargarPaciente(n){
