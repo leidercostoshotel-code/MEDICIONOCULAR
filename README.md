@@ -7,7 +7,10 @@ Los datos se guardan en el navegador y, si Firebase está configurado, también 
 
 | Archivo | Para qué sirve |
 |---|---|
-| `public/index.html` | La aplicación (padrón + hoja de evaluación) |
+| `public/index.html` | Página principal (19 líneas): solo carga los demás archivos |
+| `public/estilos.css` | Estilos de la aplicación |
+| `public/vista.js` | Estructura de la pantalla (padrón, hoja de evaluación, acceso) |
+| `public/app.js` | Lógica: padrón, importar/exportar, hoja de evaluación, guardado local |
 | `public/firebase-config.js` | Datos de conexión a su proyecto Firebase (**editar**) |
 | `public/firebase-sync.js` | Sincronización con Firestore y pantalla de acceso |
 | `firebase.json`, `.firebaserc` | Configuración de Firebase Hosting |
