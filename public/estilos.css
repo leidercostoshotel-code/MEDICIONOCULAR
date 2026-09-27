@@ -63,7 +63,10 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 
 /* ======================= EVALUACIÓN (HOJA A4) ======================= */
 #evalWrap{padding:14px 0 40px}
-.sheet{--pz:0.83;width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:9mm 10mm 8mm 10mm;box-shadow:0 0 8px rgba(0,0,0,.3);font-family:Arial,Helvetica,sans-serif;font-size:7.6pt;line-height:1.15;color:#000;position:relative}
+.sheet{width:210mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:8.2pt;line-height:1.15;color:#000}
+.sheet .pagina{position:relative;min-height:297mm;background:#fff;padding:9mm 10mm 8mm 10mm;box-shadow:0 0 8px rgba(0,0,0,.3);margin-bottom:14px;box-sizing:border-box}
+.sheet .pagina::after{content:"Página " counter(pag) " de 2";position:absolute;right:10mm;bottom:3.5mm;font-size:6.5pt;color:#555}
+.sheet{counter-reset:pag}.sheet .pagina{counter-increment:pag}
 .sheet table{border-collapse:collapse;table-layout:fixed;width:100%}
 .sheet td,.sheet th{padding:0 1px;font-weight:normal;vertical-align:middle;overflow:hidden;white-space:nowrap}
 .sheet .b{font-weight:bold}
@@ -93,9 +96,9 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .sheet .nbox{display:inline-block;width:9mm;height:5.2mm;border:2px solid #000;text-align:center;font-weight:bold;font-size:9pt}
 .sheet .nbox input{width:100%;height:100%;border:0;text-align:center;font:inherit;font-weight:bold;outline:none;background:#fffbe6;padding:0}
 .sheet .nbox input:focus{background:#fff2a8}
-.sheet .vtxt{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;white-space:nowrap;font-size:5.8pt;letter-spacing:0;max-height:100%}
+.sheet .vtxt{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;white-space:nowrap;font-size:6.4pt;letter-spacing:0;max-height:100%}
 .sheet .sec{font-weight:bold;font-size:8pt}
-.sheet .small{font-size:6.5pt}
+.sheet .small{font-size:7pt}
 .sheet .h11{font-size:8.6pt}
 .sheet .h12{font-size:9pt}
 .sheet .sp{height:1.8mm}
@@ -105,10 +108,10 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .sheet .eyes{display:block;height:17mm;margin:.5mm auto 0}
 .sheet .wrap{white-space:normal;line-height:1.05}
 .sheet .navnote{position:absolute;top:2mm;right:10mm;font-size:6.5pt;color:#777}
-.sheet td.hrow{height:3.7mm}
-.sheet .sym td{height:3.5mm}
-.sheet .sym td.symtxt{white-space:normal;line-height:1;font-size:6.4pt;padding:0 .5mm}
-.sheet .r4 td{height:3.9mm}
+.sheet td.hrow{height:4.4mm}
+.sheet .sym td{height:6mm}
+.sheet .sym td.symtxt{white-space:normal;line-height:1;font-size:7pt;padding:0 .5mm}
+.sheet .r4 td{height:5.4mm}
 .savedTag{font-size:11px;color:#1a7f37;font-weight:bold}
 .evalInfo{font-size:12px;color:#333}
 
@@ -120,7 +123,9 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
   #datos{display:none!important}
   #evaluacion{display:block!important}
   #evalWrap{padding:0}
-  .sheet{box-shadow:none;margin:0;width:calc(210mm / var(--pz));min-height:0;height:calc(297mm / var(--pz));padding:8mm 10mm 6mm 10mm;overflow:hidden;zoom:var(--pz)}
+  .sheet{margin:0;width:210mm}
+  .sheet .pagina{box-shadow:none;margin:0;min-height:0;height:297mm;padding:8mm 10mm 6mm 10mm;overflow:hidden;page-break-after:always;break-after:page}
+  .sheet .pagina:last-child{page-break-after:auto;break-after:auto}
   .sheet .navnote{display:none}
   .sheet input.f.auto,.sheet input.f:focus{background:transparent}
   .sheet .yellow,.sheet .yellow input.f.auto{background:#FFFF00!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
