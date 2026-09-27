@@ -364,5 +364,29 @@ document.addEventListener('keydown',e=>{
 /* ======================= INICIO ======================= */
 cargar();renderDatos();escribirForm(null);
 
-/* ======================= APP INSTALABLE (PWA) ======================= */
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+/* ======================= APP INSTALABLE (PWA) Y AVISO DE NUEVA VERSIÓN ======================= */
+(function(){
+  let versionActual=null,avisado=false;
+  function avisar(){
+    if(avisado)return;avisado=true;
+    const d=document.createElement('div');d.className='actualizar no-print';
+    d.innerHTML='<span>🆕 Hay una nueva versión de la aplicación.</span><button type="button">Actualizar ahora</button><button type="button" class="luego" title="Cerrar">✕</button>';
+    d.querySelector('button').onclick=()=>{d.querySelector('button').textContent="Actualizando…";navigator.serviceWorker&&navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{}).then(()=>location.reload(true));};
+    d.querySelector('.luego').onclick=()=>{d.remove();avisado=false;};
+    document.body.appendChild(d);
+  }
+  async function verVersion(){
+    try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+      if(versionActual==null)versionActual=j.v;else if(j.v!==versionActual)avisar();}catch(e){}
+  }
+  window.addEventListener('load',()=>{
+    verVersion();setInterval(verVersion,5*60*1000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)verVersion();});
+    if("serviceWorker" in navigator){
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+      let habiaControl=!!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange',()=>{if(habiaControl)avisar();habiaControl=true;});
+    }
+  });
+  window.verVersion=verVersion;
+})();

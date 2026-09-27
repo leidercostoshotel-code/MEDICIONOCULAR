@@ -79,7 +79,7 @@ document.body.insertAdjacentHTML("afterbegin",`
       <colgroup><col style="width:38mm"><col style="width:112mm"><col style="width:10mm"><col style="width:30mm"></colgroup>
       <tr style="height:5mm">
         <td></td>
-        <td class="b h11" style="vertical-align:bottom">NIÑAS Y NIÑOS</td>
+        <td class="b h11 c" style="vertical-align:bottom">NIÑAS Y NIÑOS</td>
         <td class="b h11 r" style="vertical-align:bottom">DNI:</td>
         <td class="b h11" style="vertical-align:bottom"><input class="f auto b" data-auto="dni" readonly tabindex="-1" style="font-weight:bold"></td>
       </tr>
