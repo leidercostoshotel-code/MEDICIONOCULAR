@@ -59,8 +59,11 @@
   function parar(){paros.forEach(f=>f());paros=[];}
   window.addEventListener('offline',()=>estado("Sin conexión · se guarda local y se sube al reconectar","off"));
 
-  S.entrar=e=>{e.preventDefault();const err=document.getElementById('lgErr');err.textContent="";
-    auth.signInWithEmailAndPassword(document.getElementById('lgEmail').value.trim(),document.getElementById('lgPass').value).catch(()=>{err.textContent="Correo o contraseña incorrectos";});};
+  const ERR={"auth/invalid-email":"El correo no es válido","auth/user-not-found":"No existe un usuario con ese correo","auth/wrong-password":"Contraseña incorrecta","auth/invalid-credential":"Correo o contraseña incorrectos","auth/too-many-requests":"Demasiados intentos; espere unos minutos","auth/network-request-failed":"Sin conexión a internet","auth/user-disabled":"Usuario deshabilitado"};
+  S.entrar=e=>{e.preventDefault();const err=document.getElementById('lgErr'),btn=document.getElementById('lgBtn');err.textContent="";
+    const em=document.getElementById('lgEmail').value.trim(),pw=document.getElementById('lgPass').value;if(!em||!pw){err.textContent="Escriba su correo y contraseña";return;}
+    btn.disabled=true;btn.textContent="Entrando…";
+    auth.signInWithEmailAndPassword(em,pw).catch(x=>{err.textContent=ERR[x.code]||"No se pudo iniciar sesión";}).finally(()=>{btn.disabled=false;btn.textContent="Entrar";});};
   S.cerrarSesion=()=>auth.signOut();
   if(opt.requiereLogin){
     auth.onAuthStateChanged(u=>{lg.style.display=u?'none':'flex';salir.style.display=u?'':'none';if(u)escuchar();else{parar();estado("Inicie sesión para sincronizar","off");}});

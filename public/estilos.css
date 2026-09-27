@@ -1,8 +1,21 @@
 /* ======================= FIREBASE / ACCESO ======================= */
 .syncStatus{margin-left:auto;font-size:12px;color:#cfd8dc;align-self:center;white-space:nowrap}.syncStatus.ok{color:#8ef58e}.syncStatus.off{color:#ffd54f}.syncStatus.err{color:#ff8a80}
 .salir{margin-left:8px;background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;padding:4px 10px;font-size:12px}
-#login{position:fixed;inset:0;background:#263238;z-index:99;display:flex;align-items:center;justify-content:center}
-#login form{background:#fff;padding:24px;border-radius:8px;width:300px;display:flex;flex-direction:column;gap:10px}#login h2{margin:0 0 6px;font-size:18px}#login input{padding:8px;border:1px solid #bbb;border-radius:4px;font-size:14px}#lgErr{color:#c62828;font-size:12px;min-height:14px}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+#login{position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;padding:16px;background:#0f4c81 url("img/fondo.svg") center/cover no-repeat;font-family:Inter,Arial,Helvetica,sans-serif}
+#login form{background:rgba(255,255,255,.96);backdrop-filter:blur(6px);padding:32px 30px 22px;border-radius:16px;width:380px;max-width:100%;display:flex;flex-direction:column;gap:6px;box-shadow:0 24px 60px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.4)}
+.lg-marca{display:flex;align-items:center;gap:12px;margin-bottom:14px}.lg-marca img{width:46px;height:46px;border-radius:12px;box-shadow:0 4px 12px rgba(13,71,161,.35)}
+.lg-marca strong{display:block;font-size:16px;color:#0d47a1;letter-spacing:.2px}.lg-marca span{font-size:12px;color:#607d8b}
+#login h2{margin:0;font-size:22px;font-weight:700;color:#1a2b3c}.lg-sub{margin:0 0 14px;font-size:13px;color:#607d8b;line-height:1.4}
+#login label{font-size:12px;font-weight:600;color:#37474f;margin-top:6px}
+.lg-campo{display:flex;align-items:center;gap:8px;border:1.5px solid #cfd8dc;border-radius:10px;padding:0 10px;background:#fff;transition:border-color .15s,box-shadow .15s}
+.lg-campo:focus-within{border-color:#1e88e5;box-shadow:0 0 0 3px rgba(30,136,229,.18)}.lg-campo svg{width:18px;height:18px;color:#90a4ae;flex:none}
+.lg-campo input{flex:1;border:0;outline:0;padding:11px 0;font-size:14px;font-family:inherit;background:transparent;min-width:0}
+.lg-ojo{border:0;background:transparent;font-size:15px;padding:4px;color:#90a4ae;cursor:pointer}.lg-ojo:hover{color:#1e88e5}
+.lg-btn{margin-top:14px;padding:12px;border:0;border-radius:10px;background:linear-gradient(135deg,#1e88e5,#0d47a1);color:#fff;font-size:15px;font-weight:600;font-family:inherit;letter-spacing:.2px;box-shadow:0 8px 18px rgba(13,71,161,.3);transition:transform .1s,box-shadow .15s}
+.lg-btn:hover{box-shadow:0 10px 22px rgba(13,71,161,.4)}.lg-btn:active{transform:translateY(1px)}.lg-btn:disabled{opacity:.7;cursor:wait}
+#lgErr{color:#c62828;font-size:12.5px;min-height:16px;text-align:center;margin-top:4px}#lgErr:not(:empty){background:#ffebee;border-radius:8px;padding:8px 10px}
+.lg-pie{margin:10px 0 0;font-size:11px;color:#90a4ae;text-align:center}
 /* ======================= GENERAL ======================= */
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:#e9ecef;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#000}
