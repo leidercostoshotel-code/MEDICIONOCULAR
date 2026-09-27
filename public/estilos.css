@@ -125,6 +125,7 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
   .sheet .pagina{box-shadow:none;margin:0;min-height:0;height:297mm;padding:8mm 10mm 6mm 10mm;overflow:hidden;page-break-after:always;break-after:page}
   .sheet .pagina:last-child{page-break-after:auto;break-after:auto}
   .sheet .navnote{display:none}
+  .sheet .nbox{visibility:hidden}
   .sheet input.f.auto,.sheet input.f:focus{background:transparent}
   .sheet .nbox input{background:transparent}
   .sheet .chk:hover{background:transparent}
