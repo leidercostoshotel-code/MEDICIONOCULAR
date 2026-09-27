@@ -63,9 +63,9 @@
   S.entrar=e=>{e.preventDefault();const err=document.getElementById('lgErr'),btn=document.getElementById('lgBtn');err.textContent="";
     const em=document.getElementById('lgEmail').value.trim(),pw=document.getElementById('lgPass').value;if(!em||!pw){err.textContent="Escriba su correo y contraseña";return;}
     btn.disabled=true;btn.textContent="Entrando…";
-    auth.signInWithEmailAndPassword(em,pw).catch(x=>{err.textContent=ERR[x.code]||"No se pudo iniciar sesión";}).finally(()=>{btn.disabled=false;btn.textContent="Entrar";});};
+    auth.signInWithEmailAndPassword(em,pw).catch(x=>{err.textContent=(ERR[x.code]||"No se pudo iniciar sesión")+(x.code?" · "+x.code.replace("auth/",""):"");}).finally(()=>{btn.disabled=false;btn.textContent="Entrar";});};
   S.cerrarSesion=()=>auth.signOut();
   if(opt.requiereLogin){
-    auth.onAuthStateChanged(u=>{lg.style.display=u?'none':'flex';salir.style.display=u?'':'none';if(u)escuchar();else{parar();estado("Inicie sesión para sincronizar","off");}});
+    auth.onAuthStateChanged(u=>{lg.style.display=u?'none':'flex';document.body.classList.toggle('login-abierto',!u);salir.style.display=u?'':'none';if(u)escuchar();else{parar();estado("Inicie sesión para sincronizar","off");}});
   }else escuchar();
 })();
