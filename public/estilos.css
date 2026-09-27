@@ -131,6 +131,7 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
   .sheet .pagina+.pagina{padding-top:16mm}
   .sheet .navnote{display:none}
   .sheet .nbox{visibility:hidden}
+  .sheet input::placeholder{color:transparent}
   .sheet input.f.auto,.sheet input.f:focus{background:transparent}
   .sheet .nbox input{background:transparent}
   .sheet .chk:hover{background:transparent}
