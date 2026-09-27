@@ -335,6 +335,22 @@ function autoDx(n,forzar){
 function autoDxTodos(){for(let n=1;n<=5;n++)autoDx(n,false);}
 document.getElementById('sheet').addEventListener('input',e=>{const m=/^dx(\d)_txt$/.exec(e.target.dataset.f||"");if(m)autoDx(+m[1],true);});
 
+/* ======================= CALENDARIO PARA LA FECHA ======================= */
+(function(){
+  const txt=document.querySelector('#sheet [data-f="fecha"]'),cal=document.getElementById('calFecha'),btn=document.getElementById('btnCal');
+  function abrir(){
+    const d=parseFecha(txt.value)||new Date();
+    cal.value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    try{cal.showPicker();}catch(e){cal.focus();cal.click();}
+  }
+  cal.addEventListener('change',()=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cal.value);if(!m)return;txt.value=m[3]+"/"+m[2]+"/"+m[1];txt.dispatchEvent(new Event('input',{bubbles:true}));});
+  btn.addEventListener('click',abrir);
+  txt.addEventListener('dblclick',abrir);
+  txt.addEventListener('blur',()=>{ // normalizar 5/9/26 -> 05/09/2026
+    const d=parseFecha(txt.value);if(d)txt.value=String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+  });
+})();
+
 document.getElementById('numPac').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,"");cargarPaciente(e.target.value);});
 document.getElementById('sheet').addEventListener('click',e=>{
   const c=e.target.closest('.chk');if(!c)return;c.classList.toggle('on');
