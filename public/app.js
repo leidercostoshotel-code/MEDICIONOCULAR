@@ -283,8 +283,40 @@ bq.addEventListener('keydown',e=>{
 bqL.addEventListener('mousedown',e=>{const it=e.target.closest('.bq-item');if(it){e.preventDefault();elegirSug(+it.dataset.i);}});
 document.addEventListener('click',e=>{if(!e.target.closest('.bq'))bqL.style.display="none";});
 
-/* ======================= DIAGNÓSTICOS: valores y CIE-10 automáticos ======================= */
+/* ======================= MENÚ PREDICTIVO (lista flotante propia) ======================= */
+const MP=document.createElement('div');MP.className='mp-lista no-print';document.body.appendChild(MP);
+let mpInput=null,mpItems=[],mpSel=-1,mpSilencio=false;
+function mpMostrar(input,opciones){
+  if(mpSilencio)return;const q=input.value,toks=normTxt(q).trim().split(/\s+/).filter(Boolean);
+  mpItems=opciones.filter(o=>toks.every(t=>normTxt(o).includes(t)));mpInput=input;mpSel=0;
+  if(!mpItems.length){mpOcultar();return;}
+  MP.innerHTML=mpItems.map((o,i)=>`<div class="mp-item${i?'':' act'}" data-i="${i}">${resaltar(o,q)}</div>`).join("");
+  const r=input.getBoundingClientRect();MP.style.left=r.left+"px";MP.style.top=(r.bottom+3)+"px";MP.style.minWidth=Math.max(r.width,280)+"px";MP.style.display="block";
+}
+function mpOcultar(){MP.style.display="none";mpInput=null;}
+function mpElegir(i){const el=mpInput,v=mpItems[i];if(!el||v==null)return;el.value=v;mpOcultar();mpSilencio=true;el.dispatchEvent(new Event('input',{bubbles:true}));mpSilencio=false;}
+MP.addEventListener('mousedown',e=>{const it=e.target.closest('.mp-item');if(it){e.preventDefault();mpElegir(+it.dataset.i);}});
+function activarPredictivo(input,opciones){
+  input.addEventListener('focus',()=>mpMostrar(input,opciones));
+  input.addEventListener('input',()=>mpMostrar(input,opciones));
+  input.addEventListener('blur',()=>setTimeout(()=>{if(mpInput===input)mpOcultar();},150));
+  input.addEventListener('keydown',e=>{
+    if(MP.style.display!=="block"||mpInput!==input)return;
+    if(e.key==='ArrowDown'){e.preventDefault();mpSel=Math.min(mpItems.length-1,mpSel+1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();mpSel=Math.max(0,mpSel-1);}
+    else if(e.key==='Enter'||e.key==='Tab'){if(e.key==='Enter')e.preventDefault();mpElegir(mpSel);return;}
+    else if(e.key==='Escape'){mpOcultar();return;}
+    else return;
+    MP.querySelectorAll('.mp-item').forEach((el,i)=>el.classList.toggle('act',i===mpSel));
+  });
+}
+window.addEventListener('scroll',mpOcultar,true);window.addEventListener('resize',mpOcultar);
+
+/* ======================= DIAGNÓSTICOS: marcas, valores y CIE-10 automáticos ======================= */
+const DX_OPCIONES=["Examen de los ojos y de la visión","Determinación de la agudeza visual","Trastorno de la refracción","Consejería en salud ocular"];
 const DX_CIE={"examen de los ojos y de la vision":"Z01.0","trastorno de la refraccion":"H52.7"};
+const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p"}; // marca automática P / D / R
+document.querySelectorAll('#sheet input[data-f$="_txt"]').forEach(el=>{if(/^dx\d_txt$/.test(el.dataset.f))activarPredictivo(el,DX_OPCIONES);});
 function autoDx(n,forzar){
   const r=buscarPaciente(numActual);const g=k=>document.querySelector(`#sheet [data-f="dx${n}_${k}"]`);
   const key=normTxt(g('txt').value).trim();if(!key)return;
@@ -293,6 +325,7 @@ function autoDx(n,forzar){
     else if(key.startsWith("determinacion de la agudeza")){g('v1').value=r.od??"";g('v2').value=r.oi??"";}
   }
   if(DX_CIE[key]&&(forzar||!g('cie').value.trim()))g('cie').value=DX_CIE[key];
+  if(forzar&&DX_TIPO[key]){["p","d","r"].forEach(k=>g(k).classList.toggle('on',k===DX_TIPO[key]));}
 }
 function autoDxTodos(){for(let n=1;n<=5;n++)autoDx(n,false);}
 document.getElementById('sheet').addEventListener('input',e=>{const m=/^dx(\d)_txt$/.exec(e.target.dataset.f||"");if(m)autoDx(+m[1],true);});
