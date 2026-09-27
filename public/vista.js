@@ -330,7 +330,18 @@ document.body.insertAdjacentHTML("afterbegin",`
 </div>
 
 <div id="login" style="display:none">
-  <form onsubmit="Sync.entrar(event)"><h2>Acceso</h2><input id="lgEmail" type="email" placeholder="Correo" required autocomplete="username"><input id="lgPass" type="password" placeholder="Contraseña" required autocomplete="current-password"><button class="btn primary">Entrar</button><div id="lgErr"></div></form>
+  <form onsubmit="Sync.entrar(event)" novalidate>
+    <div class="lg-marca"><img src="favicon.svg" alt=""><div><strong>Salud Ocular</strong><span>Niñas y Niños</span></div></div>
+    <h2>Iniciar sesión</h2>
+    <p class="lg-sub">Hoja de evaluación de procedimientos en salud ocular</p>
+    <label for="lgEmail">Correo electrónico</label>
+    <div class="lg-campo"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><input id="lgEmail" type="email" placeholder="nombre@correo.com" required autocomplete="username"></div>
+    <label for="lgPass">Contraseña</label>
+    <div class="lg-campo"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><input id="lgPass" type="password" placeholder="••••••••" required autocomplete="current-password"><button type="button" class="lg-ojo" onclick="const i=document.getElementById('lgPass');i.type=i.type==='password'?'text':'password'" title="Mostrar u ocultar contraseña">👁</button></div>
+    <button id="lgBtn" class="lg-btn" type="submit">Entrar</button>
+    <div id="lgErr" role="alert"></div>
+    <p class="lg-pie">Acceso restringido al personal de salud autorizado.</p>
+  </form>
 </div>
 <div id="msg"></div>
 
