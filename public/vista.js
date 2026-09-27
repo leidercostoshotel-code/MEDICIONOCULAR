@@ -47,6 +47,7 @@ document.body.insertAdjacentHTML("afterbegin",`
   <div class="toolbar">
     <button class="btn" onclick="navPaciente(-1)">◀ Anterior paciente</button>
     <button class="btn" onclick="navPaciente(1)">Siguiente paciente ▶</button>
+    <div class="bq"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input id="buscarPac" type="search" placeholder="Buscar paciente: DNI, N° o apellidos y nombres" autocomplete="off" spellcheck="false"><div id="buscarLista" class="bq-lista" role="listbox"></div></div>
     <span class="evalInfo" id="evalInfo"></span>
     <span class="savedTag" id="savedTag"></span>
     <span class="sep"></span>
@@ -269,6 +270,18 @@ document.body.insertAdjacentHTML("afterbegin",`
         <td class="c"><input class="f auto" data-auto="oi" readonly tabindex="-1" style="text-align:center"></td>
         <td></td>
         <td style="border-right-width:2px"><input class="f" data-f="dx2_cie"></td>
+      </tr>
+      <tr class="r4">
+        <td class="c" style="border-left-width:2px">3. Trastorno de la refracción</td>
+        <td>P</td><td>D</td><td class="c">R</td>
+        <td><input class="f" data-f="dx4_v1"></td><td><input class="f" data-f="dx4_v2"></td><td><input class="f" data-f="dx4_v3"></td>
+        <td style="border-right-width:2px"><input class="f" data-f="dx4_cie"></td>
+      </tr>
+      <tr class="r4">
+        <td class="c" style="border-left-width:2px">4. Consejería en salud ocular</td>
+        <td>P</td><td>D</td><td class="c">R</td>
+        <td><input class="f" data-f="dx5_v1"></td><td><input class="f" data-f="dx5_v2"></td><td><input class="f" data-f="dx5_v3"></td>
+        <td style="border-right-width:2px"><input class="f" data-f="dx5_cie"></td>
       </tr>
       <tr class="r4">
         <td style="border-left-width:2px;border-bottom-width:2px"><input class="f" data-f="dx3_txt"></td>
