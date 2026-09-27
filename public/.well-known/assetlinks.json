@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "app.web.medicion_ocular.twa",
-    "sha256_cert_fingerprints": ["PEGAR_SHA256"]
+    "sha256_cert_fingerprints": ["C7:04:64:97:ED:01:FD:AA:CF:3F:D6:5B:D0:57:F3:DB:68:20:55:E3:C1:8F:F2:2A:A5:E3:2A:AF:0D:70:93:A7"]
   }
 }]
