@@ -58,6 +58,7 @@ document.body.insertAdjacentHTML("afterbegin",`
 
   <div id="evalWrap">
   <div class="sheet" id="sheet">
+  <div class="pagina">
 
     <!-- ENCABEZADO -->
     <table>
@@ -108,7 +109,7 @@ document.body.insertAdjacentHTML("afterbegin",`
 
     <!-- I. ANTECEDENTES -->
     <div class="sp"></div>
-    <table>
+    <table style="font-size:7.2pt">
       <colgroup><col style="width:5mm"><col style="width:34mm"><col style="width:36mm"><col style="width:36mm"><col style="width:36mm"><col></colgroup>
       <tr style="height:4.5mm">
         <td></td>
@@ -120,7 +121,7 @@ document.body.insertAdjacentHTML("afterbegin",`
       </tr>
     </table>
     <div class="sp2"></div>
-    <table>
+    <table style="font-size:7.2pt">
       <colgroup>
         <col style="width:5.25mm"><col style="width:5.25mm"><col style="width:23.8mm"><col style="width:5.55mm"><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:23.8mm">
         <col style="width:1.7mm">
@@ -156,7 +157,7 @@ document.body.insertAdjacentHTML("afterbegin",`
     <table class="grid">
       <colgroup><col style="width:10.5mm"><col style="width:23.8mm"><col style="width:14.3mm"><col style="width:23.8mm"><col style="width:12.2mm"><col style="width:25.5mm"><col style="width:14.3mm"><col style="width:25.6mm"><col style="width:19.75mm"><col style="width:22.1mm"></colgroup>
       <tr class="r4" style="font-size:8.6pt">
-        <td></td><td class="c">T</td><td class="c">FR</td><td class="c">FC</td><td class="c">PA</td><td class="c">SAT</td><td class="c yellow">PESO</td><td class="c yellow">TALLA</td><td class="c yellow">IMC</td><td class="c">PAB</td>
+        <td></td><td class="c">T</td><td class="c">FR</td><td class="c">FC</td><td class="c">PA</td><td class="c">SAT</td><td class="c">PESO</td><td class="c">TALLA</td><td class="c">IMC</td><td class="c">PAB</td>
       </tr>
       <tr class="r4">
         <td></td>
@@ -165,9 +166,9 @@ document.body.insertAdjacentHTML("afterbegin",`
         <td><input class="f" data-f="ef_fc" style="text-align:center"></td>
         <td><input class="f" data-f="ef_pa" style="text-align:center"></td>
         <td><input class="f" data-f="ef_sat" style="text-align:center"></td>
-        <td class="yellow"><input class="f auto" data-auto="peso" readonly tabindex="-1" style="text-align:center"></td>
-        <td class="yellow"><input class="f auto" data-auto="talla" readonly tabindex="-1" style="text-align:center"></td>
-        <td class="yellow"><input class="f auto" data-auto="imc" readonly tabindex="-1" style="text-align:center"></td>
+        <td><input class="f auto" data-auto="peso" readonly tabindex="-1" style="text-align:center"></td>
+        <td><input class="f auto" data-auto="talla" readonly tabindex="-1" style="text-align:center"></td>
+        <td><input class="f auto" data-auto="imc" readonly tabindex="-1" style="text-align:center"></td>
         <td><input class="f" data-f="ef_pab" style="text-align:center"></td>
       </tr>
     </table>
@@ -229,6 +230,15 @@ document.body.insertAdjacentHTML("afterbegin",`
 <tr><td class="c symtxt">ARDOR / ESCOZOR</td><td><span class="chk" data-f="s3_2_si"></span></td><td><span class="chk" data-f="s3_2_no"></span></td><td><input class="f" data-f="s3_2_od"></td><td><input class="f" data-f="s3_2_oi"></td></tr>
 <tr><td class="c symtxt">SECRECIÓN</td><td><span class="chk" data-f="s3_3_si"></span></td><td><span class="chk" data-f="s3_3_no"></span></td><td><input class="f" data-f="s3_3_od"></td><td><input class="f" data-f="s3_3_oi"></td></tr>
 <tr><td><span style="display:flex;align-items:center"><span>OTROS:</span><input class="f" data-f="s3_4_txt" style="flex:1"></span></td><td><span class="chk" data-f="s3_4_si"></span></td><td><span class="chk" data-f="s3_4_no"></span></td><td><input class="f" data-f="s3_4_od"></td><td><input class="f" data-f="s3_4_oi"></td></tr>
+    </table>
+  </div>
+
+  <div class="pagina">
+    <table class="grid sym">
+      <colgroup><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:32mm"><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:59.5mm"><col style="width:77.5mm"></colgroup>
+      <tr style="font-size:7pt">
+        <td colspan="2" class="c">N°</td><td class="c">SIGNOS/SINTOMAS</td><td class="c">SI</td><td class="c">NO</td><td class="c">OJO DERECHO</td><td class="c">OJO IZQUIERDO</td>
+      </tr>
 <tr><td rowspan="5" class="c">4</td><td rowspan="5" class="c"><div class="vtxt" style="margin:0 auto">ESCLERÓTICA</div></td><td class="c symtxt">ENROJECIMIENTO / MANCHA</td><td><span class="chk" data-f="s4_1_si"></span></td><td><span class="chk" data-f="s4_1_no"></span></td><td><input class="f" data-f="s4_1_od"></td><td><input class="f" data-f="s4_1_oi"></td></tr>
 <tr><td class="c symtxt">DOLOR OCULAR</td><td><span class="chk" data-f="s4_2_si"></span></td><td><span class="chk" data-f="s4_2_no"></span></td><td><input class="f" data-f="s4_2_od"></td><td><input class="f" data-f="s4_2_oi"></td></tr>
 <tr><td class="c symtxt">SENSIBILIDAD A LA LUZ</td><td><span class="chk" data-f="s4_3_si"></span></td><td><span class="chk" data-f="s4_3_no"></span></td><td><input class="f" data-f="s4_3_od"></td><td><input class="f" data-f="s4_3_oi"></td></tr>
@@ -254,7 +264,7 @@ document.body.insertAdjacentHTML("afterbegin",`
       <tr class="r4" style="border:2px solid #000">
         <td class="b" style="font-size:8pt;border-left-width:2px;border-top-width:2px">IV. DIAGNÓSTICOS:</td>
         <td colspan="6" class="b c small" style="border-top-width:2px">TIPO DE DIAGNOSTICO</td>
-        <td class="b c" style="border-top-width:2px;border-right-width:2px">CODIGO CIE - 10</td>
+        <td class="b c small" style="border-top-width:2px;border-right-width:2px">CODIGO CIE - 10</td>
       </tr>
       <tr class="r4">
         <td style="border-left-width:2px"><input class="f" data-f="dx1_txt" placeholder="" autocomplete="off"></td>
@@ -309,7 +319,7 @@ document.body.insertAdjacentHTML("afterbegin",`
         <td rowspan="2" class="c" style="border-top-width:2px;border-right-width:2px;font-size:8.6pt">VII. REFERENCIA</td>
       </tr>
       <tr class="r4" style="font-size:6.5pt">
-        <td class="c" style="border-left-width:2px">MEDICAMENTO</td><td class="c">PRESENTACION</td><td class="c">DOSIS</td><td colspan="2" class="c">DURACION</td>
+        <td class="c" style="border-left-width:2px">MEDICAMENTO</td><td class="c">PRESENTACION</td><td class="c">DOSIS</td><td colspan="2" class="c" style="font-size:6pt">DURACIÓN</td>
       </tr>
       <tr class="r4">
         <td style="border-left-width:2px"><input class="f" data-f="med1"></td><td><input class="f" data-f="pres1"></td><td><input class="f" data-f="dosis1"></td><td colspan="2"><input class="f" data-f="dur1"></td>
@@ -334,6 +344,7 @@ document.body.insertAdjacentHTML("afterbegin",`
       <tr class="r4"><td>PROFESIÓN:</td><td class="ul"><input class="f" data-f="ev_profesion"></td><td></td><td class="r">EE.SS:&nbsp;</td><td class="ul"><input class="f" data-f="ev_eess"></td><td></td></tr>
       <tr style="height:5mm"><td colspan="5"></td><td style="vertical-align:bottom;padding-left:6mm">FIRMA Y SELLO:</td></tr>
     </table>
+  </div>
 
   </div>
   </div>
