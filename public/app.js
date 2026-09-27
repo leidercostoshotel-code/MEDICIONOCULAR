@@ -317,7 +317,7 @@ window.addEventListener('scroll',mpOcultar,true);window.addEventListener('resize
 /* ======================= DIAGNÓSTICOS: marcas, valores y CIE-10 automáticos ======================= */
 const DX_OPCIONES=["Examen de los ojos y de la visión","Determinación de la agudeza visual","Trastorno de la refracción","Consejería en salud ocular"];
 const DX_CIE={"examen de los ojos y de la vision":"Z01.0","trastorno de la refraccion":"H52.7"};
-const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p"}; // marca automática P / D / R
+const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p","consejeria en salud ocular":"d"}; // marca automática P / D / R
 document.querySelectorAll('#sheet input[data-f$="_txt"]').forEach(el=>{if(/^dx\d_txt$/.test(el.dataset.f))activarPredictivo(el,DX_OPCIONES);});
 function campoAuto(el,valor){el.value=valor==null?"":String(valor);el.readOnly=true;el.classList.add('auto');el.tabIndex=-1;}
 function campoLibre(el,limpiar){if(el.readOnly){el.readOnly=false;el.classList.remove('auto');el.tabIndex=0;if(limpiar)el.value="";}}
@@ -326,6 +326,7 @@ function autoDx(n,forzar){
   const key=normTxt(g('txt').value).trim();const v=[g('v1'),g('v2'),g('v3')];
   if(key.startsWith("examen de los ojos")){campoAuto(v[0],r?AUTO_KEYS.dx1(r):"");campoLibre(v[1],forzar);campoLibre(v[2],forzar);} // A = alterado, N = normal (fórmula del Excel)
   else if(key.startsWith("determinacion de la agudeza")){campoAuto(v[0],r?r.od:"");campoAuto(v[1],r?r.oi:"");campoLibre(v[2],forzar);} // OD / OI desde la hoja DATOS
+  else if(key.startsWith("trastorno de la refraccion")){campoAuto(v[0],"RF");campoLibre(v[1],forzar);campoLibre(v[2],forzar);} // RF = refracción
   else v.forEach(el=>campoLibre(el,forzar));
   if(!key)return;
   if(DX_CIE[key]&&(forzar||!g('cie').value.trim()))g('cie').value=DX_CIE[key];
