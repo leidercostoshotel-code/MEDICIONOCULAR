@@ -203,6 +203,7 @@ function leerForm(){
   const o={};campos().forEach(el=>{if(el.classList.contains('chk'))o[el.dataset.f]=el.classList.contains('on')?"X":"";else o[el.dataset.f]=el.value;});return o;
 }
 function escribirForm(o){
+  document.querySelectorAll('#sheet input[data-f^="dx"][readonly]').forEach(el=>campoLibre(el,false));
   campos().forEach(el=>{const v=o&&o[el.dataset.f]!=null?o[el.dataset.f]:(el.dataset.f==='ev_nombre'?"Dra Mari Alba Mas":"");
     if(el.classList.contains('chk'))el.classList.toggle('on',v==="X");else el.value=v;});
 }
@@ -213,7 +214,7 @@ function cargarPaciente(n){
   if(!r){escribirForm(null);info.textContent=String(n||"").trim()?`N° ${n}: no existe en DATOS`:"Busque al paciente por DNI, N° o nombre, o escriba el N° en el formulario";tag.textContent="";return;}
   info.textContent=`N° ${r.n} · ${calcNombre(r)}`;
   const ev=evaluaciones[r.n];
-  if(ev){escribirForm(ev);autoDxTodos();tag.textContent="✔ Evaluación guardada";}
+  if(ev){escribirForm(ev);tag.textContent="✔ Evaluación guardada";}
   else{
     escribirForm(null);tag.textContent="";
     // marcar automáticamente la patología oftalmológica elegida en DATOS
@@ -221,6 +222,7 @@ function cargarPaciente(n){
     // marcar automáticamente el antecedente general elegido en DATOS (P = personales, F = familiares)
     if(r.ag){const key=slug(r.ag);const p=document.querySelector(`#sheet .chk[data-f="ag_${key}_p"]`),f=document.querySelector(`#sheet .chk[data-f="ag_${key}_f"]`);if(p&&r.ag_p==="X")p.classList.add('on');if(f&&r.ag_f==="X")f.classList.add('on');}
   }
+  autoDxTodos();
 }
 function slug(s){return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");}
 function guardarEval(){
@@ -317,13 +319,15 @@ const DX_OPCIONES=["Examen de los ojos y de la visión","Determinación de la ag
 const DX_CIE={"examen de los ojos y de la vision":"Z01.0","trastorno de la refraccion":"H52.7"};
 const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p"}; // marca automática P / D / R
 document.querySelectorAll('#sheet input[data-f$="_txt"]').forEach(el=>{if(/^dx\d_txt$/.test(el.dataset.f))activarPredictivo(el,DX_OPCIONES);});
+function campoAuto(el,valor){el.value=valor==null?"":String(valor);el.readOnly=true;el.classList.add('auto');el.tabIndex=-1;}
+function campoLibre(el,limpiar){if(el.readOnly){el.readOnly=false;el.classList.remove('auto');el.tabIndex=0;if(limpiar)el.value="";}}
 function autoDx(n,forzar){
   const r=buscarPaciente(numActual);const g=k=>document.querySelector(`#sheet [data-f="dx${n}_${k}"]`);
-  const key=normTxt(g('txt').value).trim();if(!key)return;
-  if(r){
-    if(key.startsWith("examen de los ojos")){g('v1').value=AUTO_KEYS.dx1(r);}
-    else if(key.startsWith("determinacion de la agudeza")){g('v1').value=r.od??"";g('v2').value=r.oi??"";}
-  }
+  const key=normTxt(g('txt').value).trim();const v=[g('v1'),g('v2'),g('v3')];
+  if(key.startsWith("examen de los ojos")){campoAuto(v[0],r?AUTO_KEYS.dx1(r):"");campoLibre(v[1],forzar);campoLibre(v[2],forzar);} // A = alterado, N = normal (fórmula del Excel)
+  else if(key.startsWith("determinacion de la agudeza")){campoAuto(v[0],r?r.od:"");campoAuto(v[1],r?r.oi:"");campoLibre(v[2],forzar);} // OD / OI desde la hoja DATOS
+  else v.forEach(el=>campoLibre(el,forzar));
+  if(!key)return;
   if(DX_CIE[key]&&(forzar||!g('cie').value.trim()))g('cie').value=DX_CIE[key];
   if(forzar&&DX_TIPO[key]){["p","d","r"].forEach(k=>g(k).classList.toggle('on',k===DX_TIPO[key]));}
 }
