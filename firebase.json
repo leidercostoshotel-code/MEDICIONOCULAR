@@ -1,34 +1,68 @@
 {
-  "hosting": {
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/node_modules/**"
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(js|html|json)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache"
-          }
-        ]
-      },
-      {
-        "source": "/sw.js",
-        "headers": [
-          {
-            "key": "Service-Worker-Allowed",
-            "value": "/"
-          }
-        ]
-      }
-    ],
-    "predeploy": [
-      "node scripts/version.js"
-    ]
-  },
+  "hosting": [
+    {
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/node_modules/**"
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(js|html|json)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/sw.js",
+          "headers": [
+            {
+              "key": "Service-Worker-Allowed",
+              "value": "/"
+            }
+          ]
+        }
+      ],
+      "predeploy": [
+        "node scripts/version.js"
+      ],
+      "target": "ocular"
+    },
+    {
+      "target": "pct",
+      "public": "pct",
+      "ignore": [
+        "firebase.json",
+        "**/node_modules/**"
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(js|html|json)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/sw.js",
+          "headers": [
+            {
+              "key": "Service-Worker-Allowed",
+              "value": "/"
+            }
+          ]
+        }
+      ],
+      "predeploy": [
+        "node scripts/version.js pct"
+      ]
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
