@@ -213,7 +213,7 @@ function cargarPaciente(n){
   if(!r){escribirForm(null);info.textContent=String(n||"").trim()?`N° ${n}: no existe en DATOS`:"Busque al paciente por DNI, N° o nombre, o escriba el N° en el formulario";tag.textContent="";return;}
   info.textContent=`N° ${r.n} · ${calcNombre(r)}`;
   const ev=evaluaciones[r.n];
-  if(ev){escribirForm(ev);tag.textContent="✔ Evaluación guardada";}
+  if(ev){escribirForm(ev);autoDxTodos();tag.textContent="✔ Evaluación guardada";}
   else{
     escribirForm(null);tag.textContent="";
     // marcar automáticamente la patología oftalmológica elegida en DATOS
@@ -282,6 +282,20 @@ bq.addEventListener('keydown',e=>{
 });
 bqL.addEventListener('mousedown',e=>{const it=e.target.closest('.bq-item');if(it){e.preventDefault();elegirSug(+it.dataset.i);}});
 document.addEventListener('click',e=>{if(!e.target.closest('.bq'))bqL.style.display="none";});
+
+/* ======================= DIAGNÓSTICOS: valores y CIE-10 automáticos ======================= */
+const DX_CIE={"examen de los ojos y de la vision":"Z01.0","trastorno de la refraccion":"H52.7"};
+function autoDx(n,forzar){
+  const r=buscarPaciente(numActual);const g=k=>document.querySelector(`#sheet [data-f="dx${n}_${k}"]`);
+  const key=normTxt(g('txt').value).trim();if(!key)return;
+  if(r){
+    if(key.startsWith("examen de los ojos")){g('v1').value=AUTO_KEYS.dx1(r);}
+    else if(key.startsWith("determinacion de la agudeza")){g('v1').value=r.od??"";g('v2').value=r.oi??"";}
+  }
+  if(DX_CIE[key]&&(forzar||!g('cie').value.trim()))g('cie').value=DX_CIE[key];
+}
+function autoDxTodos(){for(let n=1;n<=5;n++)autoDx(n,false);}
+document.getElementById('sheet').addEventListener('input',e=>{const m=/^dx(\d)_txt$/.exec(e.target.dataset.f||"");if(m)autoDx(+m[1],true);});
 
 document.getElementById('numPac').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,"");cargarPaciente(e.target.value);});
 document.getElementById('sheet').addEventListener('click',e=>{
