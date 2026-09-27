@@ -2,8 +2,9 @@
 /* ======================= DATOS INICIALES ======================= */
 const DATA_INICIAL = [];
 const ANT_OFT = ["AMETROPÍA","BLEFARITIS","CATARATA","CONJUNTIVITIS","ESTRABISMO","GLAUCOMA","RETINOPATÍA","TRAUMATISMOS"];
-const COLS = ["n","hc","dni","ap","am","nom","sexo","fn","peso","talla","imc","edad","nombre","od","oi","ao","ao_od","ao_oi","ag","obs"];
-const HEADERS = ["N°","HC","Número de Documento","Apellido Paterno","Apellido Materno","Nombres","Sexo","Fecha de Nacimiento","PESO","TALLA","IMC","Edad","Apellidos y Nombres","OD","OI","ANTECEDENTES OFTALMOLÓGICOS","AO OD","AO OI","ANTECEDENTES GENERALES","OBSERVACIÓN"];
+const ANT_GEN = ["ALERGIAS","CARDIOPATÍAS","COLAGENOPATÍAS","CONVULSIONES","DIABETES","ENDOCRINOPATÍAS","HIPERTENSIÓN","MIGRAÑA","NEUROPATÍAS","OPERACIONES","PSIQUIÁTRICOS","TEC / TRAUMA","TOXICOLOGÍA","TUBERCULOSIS","TUMORES"];
+const COLS = ["n","hc","dni","ap","am","nom","sexo","fn","peso","talla","imc","edad","nombre","od","oi","ao","ao_od","ao_oi","ag","ag_p","ag_f","obs"];
+const HEADERS = ["N°","HC","Número de Documento","Apellido Paterno","Apellido Materno","Nombres","Sexo","Fecha de Nacimiento","PESO","TALLA","IMC","Edad","Apellidos y Nombres","OD","OI","ANTECEDENTES OFTALMOLÓGICOS","AO OD","AO OI","ANTECEDENTES GENERALES","AG P","AG F","OBSERVACIÓN"];
 const LS_PAC = "salud_ocular_pacientes_v1";
 const LS_EVAL = "salud_ocular_evaluaciones_v1";
 
@@ -25,7 +26,7 @@ function calcIMC(p,t){const P=num(p),T=num(t);if(P==null||T==null||T<=0)return "
 function calcNombre(r){return [r.ap,r.am,r.nom].map(x=>String(x||"").trim()).filter(Boolean).join(" ");}
 function hoy(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);}
-function nuevoRegistro(){return {id:uid(),n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",peso:"",talla:"",od:"",oi:"",ao:"",ao_od:"",ao_oi:"",ag:"",obs:""};}
+function nuevoRegistro(){return {id:uid(),n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",peso:"",talla:"",od:"",oi:"",ao:"",ao_od:"",ao_oi:"",ag:"",ag_p:"",ag_f:"",obs:""};}
 function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o[k]=r[k];}o.id=String(o.id||uid());o.n=parseInt(o.n);if(isNaN(o.n))o.n="";o.dni=String(o.dni||"").replace(/\D/g,"");return o;}
 
 /* ======================= PERSISTENCIA ======================= */
@@ -72,7 +73,7 @@ function renderDatos(){
     <td><input data-k="od" value="${esc(r.od)}" inputmode="decimal" style="text-align:center"></td>
     <td><input data-k="oi" value="${esc(r.oi)}" inputmode="decimal" style="text-align:center"></td>
     <td><div class="ao-cell"><select data-k="ao"><option value=""></option>${ANT_OFT.map(a=>`<option ${r.ao===a?'selected':''}>${a}</option>`).join("")}</select><label title="Ojo derecho"><input type="checkbox" data-k="ao_od" ${r.ao_od==="X"?"checked":""}>OD</label><label title="Ojo izquierdo"><input type="checkbox" data-k="ao_oi" ${r.ao_oi==="X"?"checked":""}>OI</label></div></td>
-    <td><input data-k="ag" value="${esc(r.ag)}"></td>
+    <td><div class="ao-cell"><select data-k="ag"><option value=""></option>${(ANT_GEN.includes(r.ag)||!r.ag?ANT_GEN:ANT_GEN.concat(r.ag)).map(a=>`<option ${r.ag===a?'selected':''}>${esc(a)}</option>`).join("")}</select><label title="Personales"><input type="checkbox" data-k="ag_p" ${r.ag_p==="X"?"checked":""}>P</label><label title="Familiares"><input type="checkbox" data-k="ag_f" ${r.ag_f==="X"?"checked":""}>F</label></div></td>
     <td><input data-k="obs" value="${esc(r.obs)}"></td>
     <td class="actions"><button title="Eliminar fila" onclick="delRow(${i})">✕</button></td>
   </tr>`).join("");
@@ -132,7 +133,7 @@ function filasAPacientes(rows){
   if(!rows.length)return [];
   const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");
   const hdr=rows[0].map(norm);
-  const map={n:["n","no","num","numero","nro"],hc:["hc","historia","nhistoria","historiaclinica"],dni:["numerodedocumento","dni","documento","nrodocumento","numdoc"],ap:["apellidopaterno","appaterno","paterno"],am:["apellidomaterno","apmaterno","materno"],nom:["nombres","nombre"],sexo:["sexo","genero"],fn:["fechadenacimiento","fechanacimiento","fnac","nacimiento"],peso:["peso","pesokg"],talla:["talla","tallam"],od:["od","ojoderecho"],oi:["oi","ojoizquierdo"],ao:["antecedentesoftalmologicos","antecedentesoftamologicos","antoftalmologicos","oftalmologicos"],ao_od:["aood","antoftod","ojoderechoantecedente"],ao_oi:["aooi","antoftoi","ojoizquierdoantecedente"],ag:["antecedentesgenerales","antgenerales","generales"],obs:["observacion","observaciones","obs"]};
+  const map={n:["n","no","num","numero","nro"],hc:["hc","historia","nhistoria","historiaclinica"],dni:["numerodedocumento","dni","documento","nrodocumento","numdoc"],ap:["apellidopaterno","appaterno","paterno"],am:["apellidomaterno","apmaterno","materno"],nom:["nombres","nombre"],sexo:["sexo","genero"],fn:["fechadenacimiento","fechanacimiento","fnac","nacimiento"],peso:["peso","pesokg"],talla:["talla","tallam"],od:["od","ojoderecho"],oi:["oi","ojoizquierdo"],ao:["antecedentesoftalmologicos","antecedentesoftamologicos","antoftalmologicos","oftalmologicos"],ao_od:["aood","antoftod","ojoderechoantecedente"],ao_oi:["aooi","antoftoi","ojoizquierdoantecedente"],ag:["antecedentesgenerales","antgenerales","generales"],ag_p:["agp","personales"],ag_f:["agf","familiares"],obs:["observacion","observaciones","obs"]};
   const idx={};let hits=0;
   for(const k in map){const j=hdr.findIndex(h=>map[k].includes(h));if(j>=0){idx[k]=j;hits++;}}
   let body=rows.slice(1);
@@ -167,7 +168,7 @@ function importFile(inp){
     const rd=new FileReader();rd.onload=e=>done(parseCSV(e.target.result));rd.readAsText(f,"UTF-8");
   }
 }
-function filaExport(r){return [r.n,r.hc,r.dni,r.ap,r.am,r.nom,r.sexo,r.fn,r.peso,r.talla,calcIMC(r.peso,r.talla),calcEdad(r.fn),calcNombre(r),r.od,r.oi,r.ao,r.ao_od,r.ao_oi,r.ag,r.obs];}
+function filaExport(r){return [r.n,r.hc,r.dni,r.ap,r.am,r.nom,r.sexo,r.fn,r.peso,r.talla,calcIMC(r.peso,r.talla),calcEdad(r.fn),calcNombre(r),r.od,r.oi,r.ao,r.ao_od,r.ao_oi,r.ag,r.ag_p,r.ag_f,r.obs];}
 function descargar(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportCSV(){
   const q=v=>{v=String(v==null?"":v);return /[;"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
@@ -177,7 +178,7 @@ function exportCSV(){
 function exportXLSX(){
   if(typeof XLSX==="undefined"){msg("Sin librería Excel (sin conexión): se exporta CSV");exportCSV();return;}
   const aoa=[HEADERS].concat(pacientes.map(r=>filaExport(r).map((v,j)=>{ if([0,8,9,10,11,13,14].includes(j)){const n=num(v);return n==null?"":n;} return v;})));
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[6,8,14,16,16,24,8,14,8,8,8,6,34,6,6,26,7,7,26,26].map(w=>({wch:w}));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[6,8,14,16,16,24,8,14,8,8,8,6,34,6,6,26,7,7,26,6,6,26].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Datos");
   // Hoja de evaluaciones guardadas
   const evs=Object.keys(evaluaciones).sort((a,b)=>a-b);
@@ -217,6 +218,8 @@ function cargarPaciente(n){
     escribirForm(null);tag.textContent="";
     // marcar automáticamente la patología oftalmológica elegida en DATOS
     if(r.ao){const key=slug(r.ao),ambos=r.ao_od!=="X"&&r.ao_oi!=="X";const od=document.querySelector(`#sheet .chk[data-f="ao_${key}_od"]`),oi=document.querySelector(`#sheet .chk[data-f="ao_${key}_oi"]`);if(od&&(ambos||r.ao_od==="X"))od.classList.add('on');if(oi&&(ambos||r.ao_oi==="X"))oi.classList.add('on');}
+    // marcar automáticamente el antecedente general elegido en DATOS (P = personales, F = familiares)
+    if(r.ag){const key=slug(r.ag);const p=document.querySelector(`#sheet .chk[data-f="ag_${key}_p"]`),f=document.querySelector(`#sheet .chk[data-f="ag_${key}_f"]`);if(p&&r.ag_p==="X")p.classList.add('on');if(f&&r.ag_f==="X")f.classList.add('on');}
   }
 }
 function slug(s){return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");}
