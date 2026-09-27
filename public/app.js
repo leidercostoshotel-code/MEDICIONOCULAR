@@ -317,7 +317,7 @@ window.addEventListener('scroll',mpOcultar,true);window.addEventListener('resize
 /* ======================= DIAGNÓSTICOS: marcas, valores y CIE-10 automáticos ======================= */
 const DX_OPCIONES=["Examen de los ojos y de la visión","Determinación de la agudeza visual","Trastorno de la refracción","Consejería en salud ocular"];
 const DX_CIE={"examen de los ojos y de la vision":"Z01.0","trastorno de la refraccion":"H52.7"};
-const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p"}; // marca automática P / D / R
+const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p","consejeria en salud ocular":"d"}; // marca automática P / D / R
 document.querySelectorAll('#sheet input[data-f$="_txt"]').forEach(el=>{if(/^dx\d_txt$/.test(el.dataset.f))activarPredictivo(el,DX_OPCIONES);});
 function campoAuto(el,valor){el.value=valor==null?"":String(valor);el.readOnly=true;el.classList.add('auto');el.tabIndex=-1;}
 function campoLibre(el,limpiar){if(el.readOnly){el.readOnly=false;el.classList.remove('auto');el.tabIndex=0;if(limpiar)el.value="";}}
