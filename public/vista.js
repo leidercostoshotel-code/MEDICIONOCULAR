@@ -109,7 +109,7 @@ document.body.insertAdjacentHTML("afterbegin",`
 
     <!-- I. ANTECEDENTES -->
     <div class="sp"></div>
-    <table style="font-size:7.6pt">
+    <table style="font-size:7.2pt">
       <colgroup><col style="width:5mm"><col style="width:34mm"><col style="width:36mm"><col style="width:36mm"><col style="width:36mm"><col></colgroup>
       <tr style="height:4.5mm">
         <td></td>
@@ -121,7 +121,7 @@ document.body.insertAdjacentHTML("afterbegin",`
       </tr>
     </table>
     <div class="sp2"></div>
-    <table style="font-size:7.6pt">
+    <table style="font-size:7.2pt">
       <colgroup>
         <col style="width:5.25mm"><col style="width:5.25mm"><col style="width:23.8mm"><col style="width:5.55mm"><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:23.8mm">
         <col style="width:1.7mm">
@@ -319,7 +319,7 @@ document.body.insertAdjacentHTML("afterbegin",`
         <td rowspan="2" class="c" style="border-top-width:2px;border-right-width:2px;font-size:8.6pt">VII. REFERENCIA</td>
       </tr>
       <tr class="r4" style="font-size:6.5pt">
-        <td class="c" style="border-left-width:2px">MEDICAMENTO</td><td class="c">PRESENTACION</td><td class="c">DOSIS</td><td colspan="2" class="c small">DURACION</td>
+        <td class="c" style="border-left-width:2px">MEDICAMENTO</td><td class="c">PRESENTACION</td><td class="c">DOSIS</td><td colspan="2" class="c" style="font-size:6pt">DURACIÓN</td>
       </tr>
       <tr class="r4">
         <td style="border-left-width:2px"><input class="f" data-f="med1"></td><td><input class="f" data-f="pres1"></td><td><input class="f" data-f="dosis1"></td><td colspan="2"><input class="f" data-f="dur1"></td>
