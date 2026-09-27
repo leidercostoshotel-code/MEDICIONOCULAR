@@ -24,16 +24,16 @@ document.body.insertAdjacentHTML("afterbegin",`
     <button class="btn warn" onclick="resetData()">Restaurar datos originales</button>
   </div>
   <div id="datosWrap">
-    <table class="datos" id="tblDatos" style="width:2367px">
-      <colgroup><col style="width:52px"><col style="width:80px"><col style="width:120px"><col style="width:140px"><col style="width:140px"><col style="width:190px"><col style="width:90px"><col style="width:120px"><col style="width:75px"><col style="width:75px"><col style="width:60px"><col style="width:55px"><col style="width:300px"><col style="width:55px"><col style="width:55px"><col style="width:300px"><col style="width:200px"><col style="width:220px"><col style="width:40px"></colgroup>
+    <table class="datos" id="tblDatos" style="width:2467px">
+      <colgroup><col style="width:52px"><col style="width:80px"><col style="width:120px"><col style="width:140px"><col style="width:140px"><col style="width:190px"><col style="width:90px"><col style="width:120px"><col style="width:75px"><col style="width:75px"><col style="width:60px"><col style="width:55px"><col style="width:300px"><col style="width:55px"><col style="width:55px"><col style="width:300px"><col style="width:300px"><col style="width:220px"><col style="width:40px"></colgroup>
       <thead>
         <tr>
           <th class="w-num">N°</th><th class="w-hc">HC</th><th class="w-dni">Número de Documento</th>
           <th class="w-ap">Apellido Paterno</th><th class="w-ap">Apellido Materno</th><th class="w-nom">Nombres</th>
           <th class="w-sexo">Sexo</th><th class="w-fn">Fecha de Nacimiento</th><th class="w-peso">PESO (kg)</th><th class="w-peso">TALLA (m)</th>
           <th class="w-imc">IMC</th><th class="w-edad">Edad</th><th class="w-full">Apellidos y Nombres</th>
-          <th class="w-od">OD</th><th class="w-od">OI</th><th class="w-ao">ANTECEDENTES OFTALMOLÓGICOS</th>
-          <th class="w-ag">ANTECEDENTES GENERALES</th><th class="w-obs">OBSERVACIÓN</th><th style="width:40px"></th>
+          <th class="w-od">OD</th><th class="w-od">OI</th><th class="w-ao" title="Antecedentes oftalmológicos">ANT. OFT.</th>
+          <th class="w-ag" title="Antecedentes generales">ANT. GEN.</th><th class="w-obs">OBSERVACIÓN</th><th style="width:40px"></th>
         </tr>
       </thead>
       <tbody id="tbodyDatos"></tbody>
