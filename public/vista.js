@@ -24,8 +24,8 @@ document.body.insertAdjacentHTML("afterbegin",`
     <button class="btn warn" onclick="resetData()">Restaurar datos originales</button>
   </div>
   <div id="datosWrap">
-    <table class="datos" id="tblDatos" style="width:2467px">
-      <colgroup><col style="width:52px"><col style="width:80px"><col style="width:120px"><col style="width:140px"><col style="width:140px"><col style="width:190px"><col style="width:90px"><col style="width:120px"><col style="width:75px"><col style="width:75px"><col style="width:60px"><col style="width:55px"><col style="width:300px"><col style="width:55px"><col style="width:55px"><col style="width:300px"><col style="width:300px"><col style="width:220px"><col style="width:40px"></colgroup>
+    <table class="datos" id="tblDatos" style="width:2347px">
+      <colgroup><col style="width:52px"><col style="width:80px"><col style="width:120px"><col style="width:140px"><col style="width:140px"><col style="width:190px"><col style="width:90px"><col style="width:120px"><col style="width:75px"><col style="width:75px"><col style="width:60px"><col style="width:55px"><col style="width:300px"><col style="width:55px"><col style="width:55px"><col style="width:240px"><col style="width:240px"><col style="width:220px"><col style="width:40px"></colgroup>
       <thead>
         <tr>
           <th class="w-num">N°</th><th class="w-hc">HC</th><th class="w-dni">Número de Documento</th>
