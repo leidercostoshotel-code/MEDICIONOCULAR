@@ -1,0 +1,25 @@
+name: Publicar en Firebase Hosting
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar secreto
+        id: chk
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then echo "listo=false" >> "$GITHUB_OUTPUT"; echo "Falta el secreto FIREBASE_SERVICE_ACCOUNT; no se publica."; else echo "listo=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Desplegar
+        if: steps.chk.outputs.listo == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
