@@ -26,7 +26,7 @@
       }
     ],
     "predeploy": [
-      "node -e \"require('fs').writeFileSync('public/version.json',JSON.stringify({v:Date.now(),fecha:new Date().toISOString()}))\""
+      "node scripts/version.js"
     ]
   },
   "firestore": {
