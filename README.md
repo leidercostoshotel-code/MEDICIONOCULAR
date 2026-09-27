@@ -46,7 +46,7 @@ Opción B, automático desde GitHub:
 
 1. En la consola de Firebase: **Configuración → Cuentas de servicio → Generar nueva clave privada** (descarga un JSON).
 2. En GitHub: **Settings → Secrets and variables → Actions → New repository secret**, nombre `FIREBASE_SERVICE_ACCOUNT`, valor = todo el contenido del JSON.
-3. Cada push a `main` publica la app en `https://SU_PROYECTO.web.app`.
+3. Cada push a `main` publica la app en `https://medicion-ocular.web.app`.
 
 ## Cómo se guardan los datos
 
