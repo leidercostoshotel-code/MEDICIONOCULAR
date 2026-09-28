@@ -2,6 +2,7 @@
 document.body.insertAdjacentHTML("afterbegin",`
 <div class="topbar">
   <h1>PCT · Paciente con Tuberculosis</h1>
+  <div class="reloj no-print" id="reloj" title="Hora del equipo · el turno se selecciona solo (M 7:00–13:30 · T 13:35–20:00)"><div class="reloj-hora" id="relojHora">--:--:--</div><div class="reloj-info"><span class="reloj-fecha" id="relojFecha"></span><span class="reloj-turno" id="relojTurno"></span></div></div>
   <div class="tabs">
     <button id="tabDatos" class="active" onclick="showView('datos')">DATOS</button>
     <button id="tabRegistro" onclick="showView('registro')">REGISTRO HIS</button>
@@ -64,7 +65,6 @@ document.body.insertAdjacentHTML("afterbegin",`
     <div class="codform"><input id="cpCod" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" style="text-transform:uppercase"><input id="cpTxt" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" style="text-transform:uppercase"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
     <div id="cpLista" class="cplista"></div>
   </div>
-  <div class="ayuda no-print">Escriba el <b>N° Reg</b> del paciente en la casilla N° de cada bloque (o busque por nombre o DNI): se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla. En <b>Diagnóstico</b> escriba parte del nombre o el <b>código</b> y elija de la lista. Marque P/D/R y N/C/R con un clic. Use <b>＋ Agregar sección</b> para otro paciente o para una <b>continuación</b> (más diagnósticos del mismo paciente: va sin N°, nombre ni datos; también puede escribir <b>0</b> en N°). La <b>✕</b> quita la sección. Todo se guarda automáticamente (el botón <b>Guardar</b> lo confirma).</div>
   <div id="regWrap"><div id="hoja" class="his"></div></div>
 </div>
 
