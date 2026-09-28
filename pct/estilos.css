@@ -200,8 +200,8 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
 .his table{border-collapse:collapse;table-layout:fixed;width:100%}
 .his td,.his th{border:1px solid #000;padding:0 1mm;height:4.2mm;overflow:hidden;white-space:nowrap;vertical-align:middle;font-weight:normal}
 .his .c{text-align:center}.his .b{font-weight:bold}.his .lbl{font-size:6.5pt;font-weight:bold}.his .small{font-size:6.5pt}
-.his .hcab td{border:0}.his .hcab .lbl{border:1px solid #000}.his .hcab .tit{text-align:center;padding:1mm}.his .hcab .tit img{height:7.5mm;display:inline-block;vertical-align:middle;margin-right:3mm}.his .hcab .tit div{display:inline-block;vertical-align:middle;text-align:left;line-height:1.2;white-space:normal;max-width:80mm}.his .hcab .grande{font-size:9.5pt}
-.his .hcab .firma{border:1px solid #000;height:14mm}.his .hcab .turno-cab{text-align:right;font-size:8pt;font-weight:bold;padding-right:2mm}
+.his .hcab td{border:0}.his .hcab .lbl{border:1px solid #000}.his .hcab .tit{text-align:center;padding:1mm}.his .hcab .tit img{display:none}.his .hcab .tit div{display:inline-block;vertical-align:middle;text-align:left;line-height:1.2;white-space:normal;max-width:80mm}.his .hcab .grande{font-size:9.5pt}
+.his .hcab .firma{border:1px solid #000;height:9mm}.his .hcab .firma-tit{font-size:6pt}.his .logo-linea{text-align:left;margin:0 0 1.5mm}.his .logo-linea img{height:9mm;display:block}.his .hcab .turno-cab{text-align:right;font-size:8pt;font-weight:bold;padding-right:2mm}
 .his .hdatos{margin-top:1.5mm}.his .hdatos th{font-size:6.5pt;font-weight:bold;background:#f2f2f2}.his .hdatos td{height:5mm}
 .his .hreg{margin-top:1.5mm}.his .hreg .nums td{height:3.2mm;font-size:6pt;text-align:center;font-weight:bold;background:#f2f2f2}
 .his .hreg .th td{font-size:5.6pt;font-weight:bold;text-align:center;white-space:normal;line-height:1.05;height:5mm;background:#f7f7f7}
@@ -214,7 +214,7 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
   /* la hoja (297mm de ancho) se reduce al 70% para caber en A4 vertical: 10 secciones por página */
   .his{zoom:.7;width:297mm;margin:0}.ayuda{display:none!important}
   .his .pagina{box-shadow:none;margin:0;width:297mm;height:424mm;padding:8mm 8mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
-  .his .hreg .bloque td{height:6.8mm;font-size:8pt}.his .hreg .bloque .lbl{font-size:6.5pt}
+  .his .hreg .bloque td{height:6.5mm;font-size:8pt}.his .hreg .bloque .lbl{font-size:6.5pt}
   .his .hreg .bloque input.hi,.his .hreg .bloque [data-auto],.his .hreg .bloque .tg,.his .hreg .bn .nom{font-size:10pt}
   .his .hreg .bloque .dx input.hi{font-size:9pt}.his .hreg .bloque input.dxcod{font-size:9pt}.his .hreg .bloque input.lab{font-size:8.5pt;padding:0;letter-spacing:-.2px}.his .hreg .bloque td:has(>input.lab){padding:0 .3mm}
   .his .hdatos td{font-size:8.5pt}.his .hcab .lbl{font-size:8pt}

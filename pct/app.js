@@ -307,8 +307,9 @@ function paginaHIS(bloques,np,total,anio,mes){
   const turnoSel=document.getElementById('regTurno').value; // una sola marca: el turno seleccionado en la barra
   // Como la hoja física por ambas caras: página impar (frente) con encabezado completo; página par (reverso) solo con la fila AÑO/MES/ESTABLECIMIENTO
   const reverso=np%2===0;
-  let h=`<div class="pagina${reverso?' reverso':''}">`+(reverso?'':`<table class="hcab"><colgroup><col style="width:22mm"><col style="width:135mm"><col style="width:35mm"><col style="width:25mm"><col style="width:55mm"></colgroup>
-  <tr><td class="lbl cab-lote">LOTE ${cab(config.lote)}</td><td rowspan="4" class="tit"><img src="${LOGO_MINSA}" alt=""><div><b>MINISTERIO DE SALUD</b><br>OFICINA GENERAL DE ESTADÍSTICA E INFORMÁTICA<br><b class="grande">Registro Diario de Atención y Otras Actividades de Salud</b></div></td><td class="lbl c" colspan="3">FIRMA Y SELLO RESPONSABLE DEL HIS</td></tr>
+  let h=`<div class="pagina${reverso?' reverso':''}">`+(reverso?'':`<div class="logo-linea"><img src="${LOGO_MINSA}" alt="Ministerio de Salud"></div>
+  <table class="hcab"><colgroup><col style="width:22mm"><col style="width:150mm"><col style="width:30mm"><col style="width:20mm"><col style="width:50mm"></colgroup>
+  <tr><td class="lbl cab-lote">LOTE ${cab(config.lote)}</td><td rowspan="4" class="tit"><div><b>MINISTERIO DE SALUD</b><br>OFICINA GENERAL DE ESTADÍSTICA E INFORMÁTICA<br><b class="grande">Registro Diario de Atención y Otras Actividades de Salud</b></div></td><td class="lbl c firma-tit" colspan="3">FIRMA Y SELLO RESPONSABLE DEL HIS</td></tr>
   <tr><td class="lbl">&nbsp;</td><td rowspan="3" colspan="3" class="firma"></td></tr>
   <tr><td class="lbl">PÁGINA ${np} de ${total}</td></tr>
   <tr><td class="lbl">FECHA ${cab(fecha)}</td></tr>
