@@ -46,15 +46,6 @@ function guardarPacientes(){try{localStorage.setItem(LS_PAC,JSON.stringify(pacie
 function guardarAtenciones(){try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync)Sync.programarAtenciones();}
 function guardarConfig(){try{localStorage.setItem(LS_CFG,JSON.stringify(config));}catch(e){}if(window.Sync)Sync.programarConfig();}
 
-/* ======================= VISTAS ======================= */
-function showView(v){
-  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));
-  document.getElementById('tabDatos').classList.toggle('active',v==='datos');
-  document.getElementById('tabAtencion').classList.toggle('active',v==='atencion');
-  document.getElementById('tabRegistro').classList.toggle('active',v==='registro');
-  if(v==='atencion')pintarFicha();
-  if(v==='registro')renderRegistro();
-}
 
 /* ======================= TABLA DATOS ======================= */
 function contarAt(r){let c=0;for(const id in atenciones){const a=atenciones[id];if(a.pacId===r.id||(r.dni&&a.dni===r.dni))c++;}return c;}
@@ -176,7 +167,7 @@ function mpMostrar(input,opciones,alElegir,render){
   const r=input.getBoundingClientRect();MP.style.left=Math.min(r.left,window.innerWidth-Math.max(r.width,300)-8)+"px";MP.style.top=(r.bottom+3)+"px";MP.style.minWidth=Math.max(r.width,300)+"px";MP.style.display="block";
 }
 function mpOcultar(){MP.style.display="none";mpInput=null;}
-function mpElegir(i){const el=mpInput,v=mpItems[i];if(!el||v==null)return;const fn=mpOnPick;mpOcultar();mpSilencio=true;if(fn)fn(v,el);else{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));}mpSilencio=false;}
+function mpElegir(i){const el=mpInput,v=mpItems[i];if(!el||v==null)return;const fn=mpOnPick;mpOcultar();mpSilencio=true;try{if(fn)fn(v,el);else{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));}}finally{mpSilencio=false;}}
 MP.addEventListener('mousedown',e=>{const it=e.target.closest('.mp-item');if(it){e.preventDefault();mpElegir(+it.dataset.i);}});
 function activarPredictivo(input,opciones,alElegir,render){
   if(input.dataset.mp)return;input.dataset.mp="1";
@@ -194,7 +185,7 @@ function activarPredictivo(input,opciones,alElegir,render){
     const act=MP.querySelector('.mp-item.act');if(act)act.scrollIntoView({block:'nearest'});
   });
 }
-window.addEventListener('scroll',mpOcultar,true);window.addEventListener('resize',mpOcultar);
+window.addEventListener('scroll',e=>{if(e.target!==mpInput)mpOcultar();},true);window.addEventListener('resize',mpOcultar);
 
 /* ======================= CIE-10 (15 000 códigos, carga diferida) ======================= */
 let CIE=null,CIE_N=null,cieCargando=null;
@@ -215,110 +206,51 @@ function agregarCodigo(){const c=document.getElementById('cpCod').value.trim().t
   const lst=codigosPropios().filter(o=>o.c!==c);lst.push({c,t});config.codigos=lst;guardarConfig();pintarCodigos();
   document.getElementById('cpCod').value="";document.getElementById('cpTxt').value="";msg("Código "+c+" agregado");}
 function quitarCodigo(i){const lst=codigosPropios();const o=lst[i];if(!o||!confirm(`¿Quitar el código ${o.c} · ${o.t}?`))return;lst.splice(i,1);config.codigos=lst;guardarConfig();pintarCodigos();}
-function elegirCIE(v,el){const m=/^dx(\d)_txt$/.exec(el.dataset.f);el.value=v[1];if(m){const c=document.querySelector(`#formAt [data-f="dx${m[1]}_cie"]`);if(c)c.value=v[0];}marcarCambio();}
-document.querySelectorAll('#formAt .dxtxt').forEach(el=>{el.addEventListener('focus',cargarCIE,{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE);});
+function elegirCIE(v,el){const tr=el.closest('tr');const txt=tr.querySelector('input[data-f$="_txt"]'),cod=tr.querySelector('input[data-f$="_cie"]');
+  txt.value=String(v[1]).toUpperCase();cod.value=v[0];guardarCelda(txt);guardarCelda(cod);}
 
-/* ======================= BÚSQUEDA PREDICTIVA DE PACIENTES ======================= */
-const bq=document.getElementById('buscarPac'),bqL=document.getElementById('buscarLista');let bqItems=[],bqSel=-1;
-function sugerencias(q){const toks=normTxt(q).trim().split(/\s+/).filter(Boolean);if(!toks.length)return [];
-  return pacientes.filter(r=>{const s=normTxt([r.n,r.dni,r.hc,r.nom].join(" "));return toks.every(t=>s.includes(t));})
-    .sort((a,b)=>{const da=String(a.dni).startsWith(toks[0])||String(a.n)===toks[0],db=String(b.dni).startsWith(toks[0])||String(b.n)===toks[0];if(da!==db)return da?-1:1;return (parseInt(a.n)||0)-(parseInt(b.n)||0);}).slice(0,8);}
-function renderSug(){const q=bq.value;bqItems=sugerencias(q);bqSel=bqItems.length?0:-1;
-  if(!q.trim()){bqL.style.display="none";bqL.innerHTML="";return;}
-  bqL.innerHTML=bqItems.length?bqItems.map((r,i)=>`<div class="bq-item${i===bqSel?' act':''}" data-i="${i}" role="option"><span class="bq-n">N° ${esc(r.n)}</span><span class="bq-nom">${resaltar(r.nom||"(sin nombre)",q)}</span><span class="bq-dni">DNI ${resaltar(r.dni||"—",q)}${contarAt(r)?' · <b>'+contarAt(r)+' atenc.</b>':''}</span></div>`).join("")
-    :`<div class="bq-vacio">Sin coincidencias para “${esc(q)}”</div>`;bqL.style.display="block";}
-function elegirSug(i){const r=bqItems[i];if(!r)return;bq.value="";bqL.style.display="none";elegirPaciente(r.id);}
-bq.addEventListener('input',renderSug);bq.addEventListener('focus',()=>{if(bq.value.trim())renderSug();});
-bq.addEventListener('keydown',e=>{if(bqL.style.display!=="block")return;
-  if(e.key==='ArrowDown'){e.preventDefault();bqSel=Math.min(bqItems.length-1,bqSel+1);}else if(e.key==='ArrowUp'){e.preventDefault();bqSel=Math.max(0,bqSel-1);}
-  else if(e.key==='Enter'){e.preventDefault();elegirSug(bqSel);return;}else if(e.key==='Escape'){bqL.style.display="none";return;}else return;
-  bqL.querySelectorAll('.bq-item').forEach((el,i)=>el.classList.toggle('act',i===bqSel));});
-bqL.addEventListener('mousedown',e=>{const it=e.target.closest('.bq-item');if(it){e.preventDefault();elegirSug(+it.dataset.i);}});
-document.addEventListener('click',e=>{if(!e.target.closest('.bq'))bqL.style.display="none";});
-
-/* ======================= ATENCIÓN HIS ======================= */
-function campos(){return document.querySelectorAll('#formAt [data-f]');}
-function leerForm(){const o={};campos().forEach(el=>{o[el.dataset.f]=el.classList.contains('chk')?(el.classList.contains('on')?"X":""):el.value;});return o;}
-function escribirForm(o){campos().forEach(el=>{const v=o&&o[el.dataset.f]!=null?o[el.dataset.f]:"";if(el.classList.contains('chk'))el.classList.toggle('on',v==="X");else el.value=v;});}
-function pacPorId(id){return pacientes.find(r=>r.id===id)||null;}
-function atencionesDe(r){return Object.values(atenciones).filter(a=>a.pacId===r.id||(r.dni&&a.dni===r.dni)).sort(ordenAt);}
-function ordenAt(a,b){const da=parseFecha(a.fecha),db=parseFecha(b.fecha);return (da?da.getTime():0)-(db?db.getTime():0)||(parseInt(a.n)||0)-(parseInt(b.n)||0);}
-function elegirPaciente(id){pacActual=pacPorId(id);atActual=null;pintarFicha();if(pacActual){const prev=atencionesDe(pacActual);if(prev.length)cargarAtencion(prev[prev.length-1].id);else nuevaAtencion(true);}}
-function irAtencion(id){showView('atencion');elegirPaciente(id);}
-function pintarFicha(){
-  const r=pacActual,nom=document.getElementById('fpNombre'),sub=document.getElementById('fpSub'),li=document.getElementById('fpLista'),info=document.getElementById('evalInfo');
-  document.querySelector('#formAt [data-auto=edad]').value=r?edadDe(r):"";
-  if(!r){nom.textContent="Busque o elija un paciente";sub.textContent="Los datos de DNI, historia clínica, edad y sexo se toman de la pestaña DATOS.";li.innerHTML="";info.textContent="";return;}
-  nom.textContent=`N° ${r.n} · ${r.nom||"(sin nombre)"}`;
-  sub.textContent=`DNI ${r.dni||"—"} · HC ${r.hc||"—"} · ${edadDe(r)?edadDe(r)+" años":"edad —"} · Sexo ${r.sexo||"—"} · ${r.dx||""} ${r.tto?"· "+r.tto:""}`;
-  const prev=atencionesDe(r);
-  li.innerHTML=(prev.length?`<span class="ficha-lbl">Atenciones:</span>`:`<span class="ficha-lbl">Sin atenciones registradas</span>`)+prev.map(a=>`<button type="button" class="chip${a.id===atActual?' act':''}" onclick="cargarAtencion('${a.id}')">${esc(a.fecha)}</button>`).join("")+`<button type="button" class="chip nuevo" onclick="nuevaAtencion()">+ nueva</button>`;
-  info.textContent=atActual?`Editando atención del ${atenciones[atActual].fecha}`:"Nueva atención (sin guardar)";
-}
-function defaults(){const ult=Object.values(atenciones).sort(ordenAt).pop()||{};
-  return {fecha:hoy(),turno:ult.turno||"M",financia:config.financia||"2",distrito:ult.distrito||config.distrito||"",etnia:config.etnia||"58",cpoblado:ult.cpoblado||"",edadU:"A",est_c:"X",ser_c:"X"};}
-function nuevaAtencion(silencio){if(!pacActual){alert("Primero busque y elija un paciente.");return;}atActual=null;const d=defaults();if(pacActual.peso)d.peso=pacActual.peso;if(pacActual.talla)d.talla=pacActual.talla;escribirForm(d);document.getElementById('savedTag').textContent="";pintarFicha();if(!silencio)msg("Nueva atención para N° "+pacActual.n);}
-function cargarAtencion(id){const a=atenciones[id];if(!a)return;atActual=id;if(!pacActual||(pacActual.id!==a.pacId&&pacActual.dni!==a.dni))pacActual=pacPorId(a.pacId)||pacientes.find(r=>r.dni&&r.dni===a.dni)||pacActual;escribirForm(a);document.getElementById('savedTag').textContent="✔ Atención guardada";pintarFicha();}
-function marcarCambio(){document.getElementById('savedTag').textContent="";}
-document.getElementById('formAt').addEventListener('input',marcarCambio);
-document.getElementById('formAt').addEventListener('click',e=>{const c=e.target.closest('.chk');if(!c)return;c.classList.toggle('on');
-  const g=/^(est|ser|dx\d)_/.exec(c.dataset.f);if(g&&c.classList.contains('on'))c.parentElement.querySelectorAll('.chk').forEach(x=>{if(x!==c)x.classList.remove('on');});marcarCambio();});
-function guardarAtencion(){
-  if(!pacActual){alert("Primero busque y elija un paciente.");return;}
-  const f=leerForm();const d=parseFecha(f.fecha);if(!d){alert("Escriba una fecha de atención válida (dd/mm/aaaa).");return;}
-  f.fecha=fmtFecha(d);
-  if(!f.dx1_txt.trim()&&!f.dx2_txt.trim()&&!f.dx3_txt.trim()){if(!confirm("No hay ningún diagnóstico o actividad. ¿Guardar de todos modos?"))return;}
-  const id=atActual||uid();const r=pacActual;
-  atenciones[id]=Object.assign({},f,{id,pacId:r.id,n:r.n,nombre:r.nom,dni:r.dni,hc:r.hc,sexo:r.sexo,edad:edadDe(r),anio:d.getFullYear(),mes:d.getMonth()+1,dia:d.getDate(),guardado:new Date().toISOString()});
-  atActual=id;guardarAtenciones();document.getElementById('savedTag').textContent="✔ Atención guardada";pintarFicha();
-  if(f.peso&&f.peso!==r.peso||f.talla&&f.talla!==r.talla){r.peso=f.peso||r.peso;r.talla=f.talla||r.talla;guardarPacientes();}
-  msg(`Atención del ${f.fecha} guardada para N° ${r.n}`);
-}
-function eliminarAtencion(){if(!atActual||!atenciones[atActual]){msg("No hay una atención guardada seleccionada");return;}
-  if(!confirm(`¿Eliminar la atención del ${atenciones[atActual].fecha}?`))return;delete atenciones[atActual];guardarAtenciones();atActual=null;nuevaAtencion(true);msg("Atención eliminada");}
-document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key.toLowerCase()==='s'&&document.getElementById('atencion').classList.contains('active')){e.preventDefault();guardarAtencion();}});
-window.alCambiarPacientes=()=>{if(pacActual)pacActual=pacPorId(pacActual.id)||pacActual;pintarFicha();};
-window.alCambiarAtenciones=()=>{pintarFicha();if(document.getElementById('registro').classList.contains('active'))renderRegistro();if(document.getElementById('datos').classList.contains('active'))renderDatos();};
-window.alCambiarConfig=()=>{pintarConfig();pintarCodigos();if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
-
-/* ======================= CALENDARIO PARA LA FECHA ======================= */
-(function(){const txt=document.querySelector('#formAt [data-f="fecha"]'),cal=document.getElementById('calFecha'),btn=document.getElementById('btnCal');
-  function abrir(){const d=parseFecha(txt.value)||new Date();cal.value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");try{cal.showPicker();}catch(e){cal.focus();cal.click();}}
-  cal.addEventListener('change',()=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cal.value);if(!m)return;txt.value=m[3]+"/"+m[2]+"/"+m[1];txt.dispatchEvent(new Event('input',{bubbles:true}));});
-  btn.addEventListener('click',abrir);txt.addEventListener('dblclick',abrir);
-  document.querySelectorAll('#formAt [data-f="fecha"],#formAt [data-f="fechaHb"],#formAt [data-f="fechaRegla"]').forEach(el=>el.addEventListener('blur',()=>{const d=parseFecha(el.value);if(d)el.value=fmtFecha(d);}));
-})();
-
-/* ======================= REGISTRO HIS (mensual, impresión) ======================= */
+/* ======================= REGISTRO HIS EDITABLE (como el Excel) ======================= */
 const CAB_AT=["FECHA","TURNO","N° REG","APELLIDOS Y NOMBRES","DNI","HC","EDAD","SEXO","FINANCIA","DISTRITO","ETNIA","C. POBLADO","GESTANTE","PC","PAB","PESO","TALLA","HB","F. HB","F. REGLA","ESTABLEC","SERVICIO","DX1","TIPO1","LAB1","CIE1","DX2","TIPO2","LAB2","CIE2","DX3","TIPO3","LAB3","CIE3"];
+function pacPorId(id){return pacientes.find(r=>r.id===id)||null;}
+function pacPorN(n){n=parseInt(n);if(isNaN(n))return null;return pacientes.find(r=>parseInt(r.n)===n)||null;}
+function ordenAt(a,b){return (a.dia||0)-(b.dia||0)||(parseInt(a.n)||0)-(parseInt(b.n)||0)||String(a.guardado||"").localeCompare(String(b.guardado||""));}
 function tipoDe(a,n){return a[`dx${n}_p`]==="X"?"P":a[`dx${n}_d`]==="X"?"D":a[`dx${n}_r`]==="X"?"R":"";}
 function ncrDe(a,p){return a[p+"_n"]==="X"?"N":a[p+"_c"]==="X"?"C":a[p+"_r"]==="X"?"R":"";}
 function filaAt(a){const lab=n=>[a[`dx${n}_l1`],a[`dx${n}_l2`],a[`dx${n}_l3`]].filter(Boolean).join(" ");
   return [a.fecha,a.turno,a.n,a.nombre,a.dni,a.hc,a.edad,a.sexo,a.financia,a.distrito,a.etnia,a.cpoblado,a.gestante,a.pc,a.pab,a.peso,a.talla,a.hb,a.fechaHb,a.fechaRegla,ncrDe(a,'est'),ncrDe(a,'ser'),a.dx1_txt,tipoDe(a,1),lab(1),a.dx1_cie,a.dx2_txt,tipoDe(a,2),lab(2),a.dx2_cie,a.dx3_txt,tipoDe(a,3),lab(3),a.dx3_cie].map(v=>v==null?"":v);}
+function irAtencion(id){const r=pacPorId(id);const ats=Object.values(atenciones).filter(a=>a.pacId===id).sort((x,y)=>String(x.guardado).localeCompare(String(y.guardado)));
+  if(ats.length){const u=ats[ats.length-1];document.getElementById('regAnio').value=u.anio;document.getElementById('regMes').value=u.mes;llenarDias();document.getElementById('regDia').value="";}
+  showView('registro');if(r)msg(`${ats.length} atención(es) de N° ${r.n}`);}
 function pintarConfig(){for(const [id,k] of [['cfgEstab','estab'],['cfgUps','ups'],['cfgResp','resp'],['cfgDigit','digit'],['cfgLote','lote']]){const el=document.getElementById(id);if(document.activeElement!==el)el.value=config[k]||"";}}
-document.querySelectorAll('.cfg').forEach(el=>el.addEventListener('input',()=>{const k={cfgEstab:'estab',cfgUps:'ups',cfgResp:'resp',cfgDigit:'digit',cfgLote:'lote'}[el.id];config[k]=el.value;guardarConfig();clearTimeout(pintarConfig._t);pintarConfig._t=setTimeout(renderRegistro,400);}));
+document.querySelectorAll('.cfg').forEach(el=>el.addEventListener('input',()=>{const k={cfgEstab:'estab',cfgUps:'ups',cfgResp:'resp',cfgDigit:'digit',cfgLote:'lote'}[el.id];config[k]=el.value;guardarConfig();clearTimeout(pintarConfig._t);pintarConfig._t=setTimeout(()=>{const h=document.getElementById('hoja');h.querySelectorAll('.hdatos td:nth-child(3)').forEach(t=>t.textContent=config.estab||"");h.querySelectorAll('.hdatos td:nth-child(4)').forEach(t=>t.textContent=config.ups||"");h.querySelectorAll('.hdatos td:nth-child(5)').forEach(t=>t.textContent=config.resp||"");h.querySelectorAll('.cab-lote').forEach(t=>t.textContent="LOTE "+(config.lote||""));h.querySelectorAll('.cab-digit').forEach(t=>t.textContent="DIGITADOR "+(config.digit||""));},300);}));
 (function(){const h=new Date();const ms=document.getElementById('regMes');ms.innerHTML=MESES_LARGO.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");ms.value=h.getMonth()+1;document.getElementById('regAnio').value=h.getFullYear();
   ['regAnio','regMes','regDia'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{if(id!=='regDia')llenarDias();renderRegistro();}));llenarDias();})();
-function llenarDias(){const a=+document.getElementById('regAnio').value,m=+document.getElementById('regMes').value,sel=document.getElementById('regDia');const dias=new Set(Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m).map(x=>x.dia));
-  sel.innerHTML=`<option value="">Todos los días</option>`+[...dias].sort((x,y)=>x-y).map(d=>`<option value="${d}">${String(d).padStart(2,"0")}</option>`).join("");}
-function atencionesPeriodo(){const a=+document.getElementById('regAnio').value,m=+document.getElementById('regMes').value,d=document.getElementById('regDia').value;
-  return Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m&&(!d||x.dia===+d)).sort(ordenAt);}
+function periodo(){return {a:+document.getElementById('regAnio').value,m:+document.getElementById('regMes').value,d:document.getElementById('regDia').value};}
+function llenarDias(){const {a,m}=periodo(),sel=document.getElementById('regDia'),act=sel.value;const dias=new Set(Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m).map(x=>x.dia));
+  sel.innerHTML=`<option value="">Todos los días</option>`+[...dias].sort((x,y)=>x-y).map(d=>`<option value="${d}">${String(d).padStart(2,"0")}</option>`).join("");if([...dias].includes(+act))sel.value=act;}
+function atencionesPeriodo(){const {a,m,d}=periodo();return Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m&&(!d||x.dia===+d)).sort(ordenAt);}
+function diaPorDefecto(){const {a,m,d}=periodo();if(d)return +d;const h=new Date();return (h.getFullYear()===a&&h.getMonth()+1===m)?h.getDate():"";}
+function focoHoja(){const el=document.activeElement;const bl=el&&el.closest&&el.closest('.bloque');return bl?{id:bl.dataset.id,f:el.dataset.f,s:el.selectionStart}:null;}
+function restaurarFocoHoja(f){if(!f||!f.id)return;const el=document.querySelector(`.bloque[data-id="${f.id}"] [data-f="${f.f}"]`);if(el){el.focus();try{el.setSelectionRange(f.s,f.s);}catch(e){}}}
 function renderRegistro(){
-  const lista=atencionesPeriodo(),a=+document.getElementById('regAnio').value,m=+document.getElementById('regMes').value;
+  const lista=atencionesPeriodo(),{a,m}=periodo();
   document.getElementById('regInfo').textContent=`${lista.length} atención(es) · ${MESES_LARGO[m-1]} ${a}`;
-  const paginas=[];for(let i=0;i<Math.max(1,lista.length);i+=BLOQUES_POR_PAGINA)paginas.push(lista.slice(i,i+BLOQUES_POR_PAGINA));
-  const total=paginas.length;
-  document.getElementById('hoja').innerHTML=paginas.map((bl,pi)=>paginaHIS(bl,pi+1,total,a,m)).join("");
+  const bloques=lista.concat([null]); // siempre un bloque vacío al final para seguir registrando
+  const paginas=[];for(let i=0;i<bloques.length;i+=BLOQUES_POR_PAGINA)paginas.push(bloques.slice(i,i+BLOQUES_POR_PAGINA));
+  const f=focoHoja();
+  document.getElementById('hoja').innerHTML=paginas.map((bl,pi)=>paginaHIS(bl,pi+1,paginas.length,a,m)).join("");
+  activarHoja();restaurarFocoHoja(f);
 }
 function cab(v){return esc(v==null?"":v);}
 function paginaHIS(bloques,np,total,anio,mes){
-  const ini=(np-1)*BLOQUES_POR_PAGINA;const fecha=bloques.length?bloques[0].fecha:"";
-  let h=`<div class="pagina"><table class="hcab"><colgroup><col style="width:22mm"><col style="width:120mm"><col style="width:40mm"><col style="width:30mm"><col style="width:60mm"></colgroup>
-  <tr><td class="lbl">LOTE</td><td rowspan="4" class="tit"><img src="${LOGO_MINSA}" alt=""><div><b>MINISTERIO DE SALUD</b><br>OFICINA GENERAL DE ESTADÍSTICA E INFORMÁTICA<br><b class="grande">Registro Diario de Atención y Otras Actividades de Salud</b></div></td><td class="lbl c" colspan="3">FIRMA Y SELLO RESPONSABLE DEL HIS</td></tr>
-  <tr><td class="lbl">${cab(config.lote)}&nbsp;</td><td rowspan="3" colspan="3" class="firma"></td></tr>
+  const ini=(np-1)*BLOQUES_POR_PAGINA;const {d}=periodo();const fecha=d?String(d).padStart(2,"0")+"/"+String(mes).padStart(2,"0")+"/"+anio:"";
+  const turnos=new Set(bloques.filter(Boolean).map(b=>b.turno));
+  let h=`<div class="pagina"><table class="hcab"><colgroup><col style="width:22mm"><col style="width:135mm"><col style="width:35mm"><col style="width:25mm"><col style="width:55mm"></colgroup>
+  <tr><td class="lbl cab-lote">LOTE ${cab(config.lote)}</td><td rowspan="4" class="tit"><img src="${LOGO_MINSA}" alt=""><div><b>MINISTERIO DE SALUD</b><br>OFICINA GENERAL DE ESTADÍSTICA E INFORMÁTICA<br><b class="grande">Registro Diario de Atención y Otras Actividades de Salud</b></div></td><td class="lbl c" colspan="3">FIRMA Y SELLO RESPONSABLE DEL HIS</td></tr>
+  <tr><td class="lbl">&nbsp;</td><td rowspan="3" colspan="3" class="firma"></td></tr>
   <tr><td class="lbl">PÁGINA ${np} de ${total}</td></tr>
   <tr><td class="lbl">FECHA ${cab(fecha)}</td></tr>
-  <tr><td class="lbl">DIGITADOR ${cab(config.digit)}</td><td class="c small">TURNO: &nbsp; ${["M","T","N"].map(t=>t+" "+(bloques.some(b=>b.turno===t)?"☒":"☐")).join(" &nbsp; ")}</td><td colspan="3"></td></tr>
+  <tr><td class="lbl cab-digit">DIGITADOR ${cab(config.digit)}</td><td class="c small">TURNO: &nbsp; ${["M","T","N"].map(t=>t+" "+(turnos.has(t)?"☒":"☐")).join(" &nbsp; ")}</td><td colspan="3"></td></tr>
   </table>
   <table class="hdatos"><tr><th style="width:14mm">AÑO</th><th style="width:14mm">MES</th><th>NOMBRE DE ESTABLECIMIENTO DE SALUD (IPRESS)</th><th style="width:50mm">UNIDAD PRODUCTORA DE SALUD (UPS)</th><th style="width:70mm">NOMBRE DEL RESPONSABLE DE LA ATENCIÓN</th></tr>
   <tr><td class="c">${anio}</td><td class="c">${MESES[mes-1]}</td><td>${cab(config.estab)}</td><td>${cab(config.ups)}</td><td>${cab(config.resp)}</td></tr></table>
@@ -327,25 +259,91 @@ function paginaHIS(bloques,np,total,anio,mes){
   <tr class="th"><td rowspan="3">N°</td><td rowspan="3">DÍA</td><td>DNI</td><td>FINANCIA</td><td>DISTRITO DE PROCEDENCIA</td><td colspan="2" rowspan="3">EDAD</td><td rowspan="3">SEXO</td><td colspan="2" rowspan="3">PERÍMETRO CEFÁLICO Y ABDOMINAL</td><td colspan="2" rowspan="3">EVALUACIÓN ANTROPOMÉTRICA HEMOGLOBINA</td><td rowspan="3">ESTABLEC</td><td rowspan="3">SERVICIO</td><td rowspan="3">DIAGNÓSTICO MOTIVO DE CONSULTA Y/O ACTIVIDAD DE SALUD</td><td colspan="3" rowspan="2">TIPOS DE DIAGNÓSTICO</td><td colspan="3" rowspan="2">VALOR LAB</td><td rowspan="3">CÓDIGO</td></tr>
   <tr class="th"><td>HISTORIA CLÍNICA</td><td>10</td><td>12</td></tr>
   <tr class="th"><td>GESTANTE / PUÉRPERA</td><td>ETNIA</td><td>CENTRO POBLADO</td><td>P</td><td>D</td><td>R</td><td>1</td><td>2</td><td>3</td></tr>`;
-  for(let i=0;i<BLOQUES_POR_PAGINA;i++){const a=bloques[i];h+=bloqueHIS(a,ini+i+1);}
+  for(let i=0;i<bloques.length;i++)h+=bloqueHIS(bloques[i],ini+i+1);
   h+=`</table><div class="pie">Página ${np} de ${total}</div></div>`;return h;
 }
+function inp(a,f,cls,extra){return `<input class="hi ${cls||''}" data-f="${f}" value="${a?cab(a[f]):''}" ${extra||''}>`;}
+function tog(a,f,letra,grupo){const on=a&&a[f]==="X";return `<span class="tg${on?' on':''}" data-f="${f}" data-g="${grupo}">${on?'X':letra}</span>`;}
 function bloqueHIS(a,n){
-  const v=k=>a?cab(a[k]):"";const x=k=>a&&a[k]==="X"?"X":"";
-  const ncr=(p,l)=>a?(a[p+"_"+l.toLowerCase()]==="X"?"X":l):l;
-  const dx=i=>a?[a[`dx${i}_txt`],a[`dx${i}_p`],a[`dx${i}_d`],a[`dx${i}_r`],a[`dx${i}_l1`],a[`dx${i}_l2`],a[`dx${i}_l3`],a[`dx${i}_cie`]].map(s=>cab(s)):["","","","","","","",""];
-  const pd=(i,l)=>a?(a[`dx${i}_${l.toLowerCase()}`]==="X"?"X":l):l;
-  const [d1,,,,l11,l12,l13,c1]=dx(1),[d2,,,,l21,l22,l23,c2]=dx(2),[d3,,,,l31,l32,l33,c3]=dx(3);
-  return `<tr class="bn"><td class="c b">${a?n:""}</td><td colspan="2" class="lbl">NOMBRE DEL PACIENTE:</td><td colspan="19" class="nom">${a?cab(a.nombre):""}</td></tr>
-  <tr class="bf"><td></td><td colspan="2" class="lbl">FECHA DE NACIMIENTO</td><td colspan="4">${a?cab((pacPorId(a.pacId)||{}).fn):""}</td><td colspan="3" class="lbl">FECHA DE HB</td><td colspan="4">${v('fechaHb')}</td><td class="lbl">FECHA DE REGLA</td><td colspan="7">${v('fechaRegla')}</td></tr>
-  <tr class="b1"><td></td><td rowspan="3" class="c">${a?a.dia:""}</td><td class="c">${v('dni')}</td><td rowspan="2" class="c">${v('financia')}</td><td rowspan="2">${v('distrito')}</td><td rowspan="3" class="c b">${v('edad')}</td><td class="c">${a?(a.edadU==="A"?"X":"A"):"A"}</td><td rowspan="3" class="c">${v('sexo')}</td><td class="lbl">PC</td><td class="c">${v('pc')}</td><td class="lbl">PESO</td><td class="c">${v('peso')}</td><td class="c">${ncr('est','N')}</td><td class="c">${ncr('ser','N')}</td><td class="dx">${d1}</td><td class="c">${pd(1,'P')}</td><td class="c">${pd(1,'D')}</td><td class="c">${pd(1,'R')}</td><td class="c">${l11}</td><td class="c">${l12}</td><td class="c">${l13}</td><td class="c cod">${c1}</td></tr>
-  <tr class="b2"><td></td><td class="c">${v('hc')}</td><td class="c">${a?(a.edadU==="M"?"X":"M"):"M"}</td><td class="lbl">PAB</td><td class="c">${v('pab')}</td><td class="lbl">TALLA</td><td class="c">${v('talla')}</td><td class="c">${ncr('est','C')}</td><td class="c">${ncr('ser','C')}</td><td class="dx">${d2}</td><td class="c">${pd(2,'P')}</td><td class="c">${pd(2,'D')}</td><td class="c">${pd(2,'R')}</td><td class="c">${l21}</td><td class="c">${l22}</td><td class="c">${l23}</td><td class="c cod">${c2}</td></tr>
-  <tr class="b3"><td></td><td class="c">${v('gestante')}</td><td class="c">${v('etnia')}</td><td>${v('cpoblado')}</td><td class="c">${a?(a.edadU==="D"?"X":"D"):"D"}</td><td colspan="2"></td><td class="lbl">HB</td><td class="c">${v('hb')}</td><td class="c">${ncr('est','R')}</td><td class="c">${ncr('ser','R')}</td><td class="dx">${d3}</td><td class="c">${pd(3,'P')}</td><td class="c">${pd(3,'D')}</td><td class="c">${pd(3,'R')}</td><td class="c">${l31}</td><td class="c">${l32}</td><td class="c">${l33}</td><td class="c cod">${c3}</td></tr>`;
+  const id=a?a.id:"nuevo-"+n;const pac=a?(pacPorId(a.pacId)||{}):{};
+  const fila=i=>`<td class="dx">${inp(a,`dx${i}_txt`,'dxtxt','autocomplete="off"')}</td><td class="c">${tog(a,`dx${i}_p`,'P','dx'+i)}</td><td class="c">${tog(a,`dx${i}_d`,'D','dx'+i)}</td><td class="c">${tog(a,`dx${i}_r`,'R','dx'+i)}</td><td class="c">${inp(a,`dx${i}_l1`,'c')}</td><td class="c">${inp(a,`dx${i}_l2`,'c')}</td><td class="c">${inp(a,`dx${i}_l3`,'c')}</td><td class="c cod">${inp(a,`dx${i}_cie`,'dxcod c b','autocomplete="off"')}</td>`;
+  return `<tbody class="bloque" data-id="${id}" ${a?'':'data-nuevo="1"'}>
+  <tr class="bn"><td class="c b"><input class="hi npac c b" data-f="npac" value="${a?cab(a.n):''}" autocomplete="off" title="N° Reg del paciente (o escriba nombre / DNI)"></td><td colspan="2" class="lbl">NOMBRE DEL PACIENTE:</td><td colspan="18" class="nom" data-auto="nombre">${a?cab(a.nombre):''}</td><td class="c no-print"><button type="button" class="quitar" title="Quitar esta atención" ${a?'':'disabled'}>✕</button></td></tr>
+  <tr class="bf"><td></td><td colspan="2" class="lbl">FECHA DE NACIMIENTO</td><td colspan="4" data-auto="fn">${cab(pac.fn)}</td><td colspan="3" class="lbl">FECHA DE HB</td><td colspan="4">${inp(a,'fechaHb','','placeholder=""')}</td><td class="lbl">FECHA DE REGLA</td><td colspan="7">${inp(a,'fechaRegla')}</td></tr>
+  <tr class="b1"><td></td><td rowspan="3" class="c">${inp(a,'dia','c b','inputmode="numeric" maxlength="2"')}</td><td class="c" data-auto="dni">${a?cab(a.dni):''}</td><td rowspan="2" class="c">${inp(a,'financia','c')}</td><td rowspan="2">${inp(a,'distrito')}</td><td rowspan="3" class="c b" data-auto="edad">${a?cab(a.edad):''}</td><td class="c">${tog(a,'edad_a','A','edad')}</td><td rowspan="3" class="c" data-auto="sexo">${a?cab(a.sexo):''}</td><td class="lbl">PC</td><td class="c">${inp(a,'pc','c')}</td><td class="lbl">PESO</td><td class="c">${inp(a,'peso','c')}</td><td class="c">${tog(a,'est_n','N','est')}</td><td class="c">${tog(a,'ser_n','N','ser')}</td>${fila(1)}</tr>
+  <tr class="b2"><td></td><td class="c" data-auto="hc">${a?cab(a.hc):''}</td><td class="c">${tog(a,'edad_m','M','edad')}</td><td class="lbl">PAB</td><td class="c">${inp(a,'pab','c')}</td><td class="lbl">TALLA</td><td class="c">${inp(a,'talla','c')}</td><td class="c">${tog(a,'est_c','C','est')}</td><td class="c">${tog(a,'ser_c','C','ser')}</td>${fila(2)}</tr>
+  <tr class="b3"><td></td><td class="c">${inp(a,'gestante','c','maxlength="1"')}</td><td class="c">${inp(a,'etnia','c')}</td><td>${inp(a,'cpoblado')}</td><td class="c">${tog(a,'edad_d','D','edad')}</td><td colspan="2"></td><td class="lbl">HB</td><td class="c">${inp(a,'hb','c')}</td><td class="c">${tog(a,'est_r','R','est')}</td><td class="c">${tog(a,'ser_r','R','ser')}</td>${fila(3)}</tr>
+  </tbody>`;
 }
+function defaultsAt(){const ult=Object.values(atenciones).sort((x,y)=>String(x.guardado||"").localeCompare(String(y.guardado||""))).pop()||{};
+  return {turno:document.getElementById('regTurno').value,financia:config.financia||"2",distrito:ult.distrito||config.distrito||"",etnia:config.etnia||"58",cpoblado:ult.cpoblado||"",edad_a:"X",est_c:"X",ser_c:"X"};}
+function crearAtencion(bloque,pac){
+  const {a,m}=periodo();const dia=parseInt(bloque.querySelector('[data-f=dia]').value)||diaPorDefecto()||1;
+  const id=uid();const rec=Object.assign({},defaultsAt(),{id,pacId:pac.id,n:pac.n,nombre:pac.nom,dni:pac.dni,hc:pac.hc,sexo:pac.sexo,edad:edadDe(pac),peso:pac.peso||"",talla:pac.talla||"",anio:a,mes:m,dia,fecha:String(dia).padStart(2,"0")+"/"+String(m).padStart(2,"0")+"/"+a,guardado:new Date().toISOString()});
+  // conservar lo ya escrito en el bloque vacío
+  bloque.querySelectorAll('input.hi').forEach(i=>{if(i.dataset.f!=='npac'&&i.dataset.f!=='dia'&&i.value.trim())rec[i.dataset.f]=i.value;});
+  bloque.querySelectorAll('.tg.on').forEach(t=>rec[t.dataset.f]="X");
+  atenciones[id]=rec;guardarAtenciones();return rec;
+}
+function asignarPaciente(bloque,pac){
+  let id=bloque.dataset.id,rec=atenciones[id];
+  if(!rec){rec=crearAtencion(bloque,pac);bloque.dataset.id=rec.id;bloque.removeAttribute('data-nuevo');bloque.querySelector('.quitar').disabled=false;}
+  else{Object.assign(rec,{pacId:pac.id,n:pac.n,nombre:pac.nom,dni:pac.dni,hc:pac.hc,sexo:pac.sexo,edad:edadDe(pac)});if(!rec.peso)rec.peso=pac.peso||"";if(!rec.talla)rec.talla=pac.talla||"";guardarAtenciones();}
+  // llenar celdas automáticas y valores por defecto (como las fórmulas del Excel)
+  bloque.querySelector('[data-f=npac]').value=pac.n;
+  bloque.querySelector('[data-auto=nombre]').textContent=pac.nom||"";bloque.querySelector('[data-auto=fn]').textContent=pac.fn||"";
+  bloque.querySelector('[data-auto=dni]').textContent=pac.dni||"";bloque.querySelector('[data-auto=hc]').textContent=pac.hc||"";
+  bloque.querySelector('[data-auto=edad]').textContent=edadDe(pac);bloque.querySelector('[data-auto=sexo]').textContent=pac.sexo||"";
+  bloque.querySelectorAll('input.hi').forEach(i=>{const k=i.dataset.f;if(k==='npac')return;if(rec[k]!=null&&i.value!==String(rec[k]))i.value=rec[k];});
+  bloque.querySelectorAll('.tg').forEach(t=>{const on=rec[t.dataset.f]==="X";t.classList.toggle('on',on);t.textContent=on?'X':t.dataset.f.split('_')[1].toUpperCase();});
+  document.getElementById('savedTag').textContent="✔ Guardado";
+  llenarDias();document.getElementById('regInfo').textContent=`${atencionesPeriodo().length} atención(es) · ${MESES_LARGO[periodo().m-1]} ${periodo().a}`;
+  if(!document.querySelector('.bloque[data-nuevo]')){clearTimeout(asignarPaciente._t);asignarPaciente._t=setTimeout(renderRegistro,0);}
+}
+function guardarCelda(el){
+  const bloque=el.closest('.bloque');if(!bloque)return;const rec=atenciones[bloque.dataset.id];if(!rec)return;
+  const k=el.dataset.f;let v=el.classList.contains('tg')?(el.classList.contains('on')?"X":""):el.value;
+  if(k==='dia'){const d=parseInt(v);if(!isNaN(d)&&d>=1&&d<=31){rec.dia=d;rec.fecha=String(d).padStart(2,"0")+"/"+String(rec.mes).padStart(2,"0")+"/"+rec.anio;}}
+  else rec[k]=v;
+  if(k==='peso'||k==='talla'){const p=pacPorId(rec.pacId);if(p&&v){p[k]=v;guardarPacientes();}}
+  rec.guardado=new Date().toISOString();guardarAtenciones();document.getElementById('savedTag').textContent="✔ Guardado";
+}
+function sugerirPaciente(q,toks){if(!toks.length)return [];const qn=q.trim(),num=/^\d+$/.test(qn);
+  const rank=r=>{const n=String(r.n);if(num){if(n===qn)return 0;if(n.startsWith(qn))return 1;if(String(r.dni||"").startsWith(qn)||String(r.hc||"").replace(/\s/g,"").startsWith(qn))return 2;return 9;}
+    const s=normTxt([r.n,r.dni,r.hc,r.nom].join(" "));return toks.every(t=>s.includes(t))?3:9;};
+  return pacientes.map(r=>[rank(r),r]).filter(x=>x[0]<9).sort((x,y)=>x[0]-y[0]||(parseInt(x[1].n)||0)-(parseInt(y[1].n)||0)).slice(0,8).map(x=>x[1]);}
+function renderPac(r,q){return `<span class="cie-cod">N° ${resaltar(String(r.n),q)}</span><span class="cie-txt">${resaltar(r.nom||"(sin nombre)",q)} · DNI ${resaltar(r.dni||"—",q)}</span>`;}
+function activarHoja(){
+  const hoja=document.getElementById('hoja');
+  hoja.querySelectorAll('input.npac').forEach(el=>activarPredictivo(el,sugerirPaciente,(r,inp)=>asignarPaciente(inp.closest('.bloque'),r),renderPac));
+  hoja.querySelectorAll('input.dxtxt').forEach(el=>{el.addEventListener('focus',cargarCIE,{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE);});
+  hoja.querySelectorAll('input.dxcod').forEach(el=>{el.addEventListener('focus',cargarCIE,{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE);});
+}
+document.getElementById('hoja').addEventListener('change',e=>{const el=e.target;if(!el.classList.contains('hi'))return;
+  if(el.dataset.f==='npac'){const p=pacPorN(el.value);if(p)asignarPaciente(el.closest('.bloque'),p);else if(el.value.trim()&&!atenciones[el.closest('.bloque').dataset.id]){msg("No existe un paciente con N° "+el.value);}return;}
+  const bl=el.closest('.bloque');if(!atenciones[bl.dataset.id]){if(el.value.trim())msg("Primero escriba el N° del paciente en este bloque");return;}
+  if(/^(fechaHb|fechaRegla)$/.test(el.dataset.f)){const d=parseFecha(el.value);if(d)el.value=fmtFecha(d);}
+  guardarCelda(el);});
+document.getElementById('hoja').addEventListener('input',e=>{const el=e.target;if(!el.classList.contains('hi')||el.dataset.f==='npac')return;const bl=el.closest('.bloque');if(atenciones[bl.dataset.id]){document.getElementById('savedTag').textContent="";clearTimeout(el._t);el._t=setTimeout(()=>guardarCelda(el),500);}});
+document.getElementById('hoja').addEventListener('click',e=>{
+  const q=e.target.closest('.quitar');if(q){const bl=q.closest('.bloque'),rec=atenciones[bl.dataset.id];if(!rec)return;if(!confirm(`¿Quitar la atención de N° ${rec.n} · ${rec.nombre}?`))return;delete atenciones[bl.dataset.id];guardarAtenciones();renderRegistro();msg("Atención quitada");return;}
+  const t=e.target.closest('.tg');if(!t)return;const bl=t.closest('.bloque');if(!atenciones[bl.dataset.id]){msg("Primero escriba el N° del paciente en este bloque");return;}
+  const on=!t.classList.contains('on');
+  bl.querySelectorAll(`.tg[data-g="${t.dataset.g}"]`).forEach(x=>{const xon=x===t?on:false;x.classList.toggle('on',xon);x.textContent=xon?'X':x.dataset.f.split('_')[1].toUpperCase();guardarCelda(x);});
+});
+document.getElementById('regTurno').addEventListener('change',()=>{});
+window.alCambiarPacientes=()=>{if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
+window.alCambiarAtenciones=()=>{if(document.getElementById('registro').classList.contains('active')){llenarDias();renderRegistro();}if(document.getElementById('datos').classList.contains('active'))renderDatos();};
+window.alCambiarConfig=()=>{pintarConfig();pintarCodigos();if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
 function exportRegistroXLSX(){if(typeof XLSX==="undefined"){alert("No se pudo cargar la librería de Excel (sin conexión).");return;}
   const lista=atencionesPeriodo();if(!lista.length){msg("No hay atenciones en el periodo");return;}
-  const a=+document.getElementById('regAnio').value,m=+document.getElementById('regMes').value;
-  const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}.xlsx`);}
+  const {a,m}=periodo();const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}.xlsx`);}
 
 /* ======================= INICIO ======================= */
-cargar();renderDatos();escribirForm(null);pintarConfig();pintarCodigos();
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));
+  document.getElementById('tabDatos').classList.toggle('active',v==='datos');
+  document.getElementById('tabRegistro').classList.toggle('active',v==='registro');
+  if(v==='registro'){llenarDias();renderRegistro();}
+}
+cargar();renderDatos();pintarConfig();pintarCodigos();
