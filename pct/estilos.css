@@ -216,7 +216,7 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
   .his .pagina{box-shadow:none;margin:0;width:297mm;height:424mm;padding:8mm 8mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
   .his .hreg .bloque td{height:6.8mm;font-size:8pt}.his .hreg .bloque .lbl{font-size:6.5pt}
   .his .hreg .bloque input.hi,.his .hreg .bloque [data-auto],.his .hreg .bloque .tg,.his .hreg .bn .nom{font-size:10pt}
-  .his .hreg .bloque .dx input.hi{font-size:9pt}.his .hreg .bloque input.dxcod{font-size:9pt}
+  .his .hreg .bloque .dx input.hi{font-size:9pt}.his .hreg .bloque input.dxcod{font-size:9pt}.his .hreg .bloque input.lab{font-size:8.5pt;padding:0;letter-spacing:-.2px}.his .hreg .bloque td:has(>input.lab){padding:0 .3mm}
   .his .hdatos td{font-size:8.5pt}.his .hcab .lbl{font-size:8pt}
   .cfgbar{display:none!important}
 }
@@ -273,5 +273,20 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
   .his .hreg .bloque .dx{font-size:12pt}
   .his input.npac{font-size:12pt}
   .his .hreg .bloque input.dxcod{font-size:11pt;letter-spacing:-.2px}
+  .his .hreg .bloque input.lab{font-size:10.5pt;padding:0;letter-spacing:-.3px}.his .hreg .bloque td:has(>input.lab){padding:0 .3mm}
 }
 .his .hreg .bloque input.hi{text-transform:uppercase}
+
+/* Códigos propios: búsqueda y edición */
+.codbusca{display:flex;align-items:center;gap:10px;margin-bottom:8px}.codbusca input{border:1px solid #cfd8dc;border-radius:6px;padding:7px 8px;font:inherit;font-size:13px;flex:1;max-width:420px}
+.cpchip .cp-edit{color:#1F4E79}.cpchip.editando{background:#e3f2fd;border-color:#90caf9;color:#0d47a1}
+.cpchip mark{background:#ffe082;padding:0}
+
+/* Paginación del padrón */
+.paginador{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;padding:10px 16px;background:#f8f9fa;border-top:1px solid #ddd;font-size:12px}
+.paginador .pg-info{margin-right:10px;color:#555}
+.paginador .pg{border:1px solid #cfd8dc;background:#fff;border-radius:6px;min-width:32px;padding:6px 8px;font:inherit;font-size:12px;cursor:pointer;color:#1F4E79}
+.paginador .pg:hover:not(:disabled){background:#e3f2fd}.paginador .pg.act{background:#1F4E79;color:#fff;border-color:#1F4E79;font-weight:bold}.paginador .pg:disabled{opacity:.4;cursor:default}
+.paginador .pg-nav{padding:6px 12px}.paginador .pg-pts{padding:0 4px;color:#888}
+table.datos input.estimado::placeholder{color:#7a8a99;font-style:italic}
+#datos.con-pag #datosWrap{height:calc(100vh - 138px)}
