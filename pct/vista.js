@@ -64,7 +64,7 @@ document.body.insertAdjacentHTML("afterbegin",`
     <div class="codform"><input id="cpCod" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" style="text-transform:uppercase"><input id="cpTxt" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" style="text-transform:uppercase"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
     <div id="cpLista" class="cplista"></div>
   </div>
-  <div class="ayuda no-print">Escriba el <b>N° Reg</b> del paciente en la casilla N° de cada bloque (o busque por nombre o DNI): se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla. En <b>Diagnóstico</b> escriba parte del nombre o el <b>código</b> y elija de la lista. Marque P/D/R y N/C/R con un clic. Use <b>＋ Agregar sección</b> para más pacientes y la <b>✕</b> de cada sección para quitarla. Todo se guarda automáticamente (el botón <b>Guardar</b> lo confirma).</div>
+  <div class="ayuda no-print">Escriba el <b>N° Reg</b> del paciente en la casilla N° de cada bloque (o busque por nombre o DNI): se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla. En <b>Diagnóstico</b> escriba parte del nombre o el <b>código</b> y elija de la lista. Marque P/D/R y N/C/R con un clic. Use <b>＋ Agregar sección</b> para otro paciente o para una <b>continuación</b> (más diagnósticos del mismo paciente: va sin N°, nombre ni datos; también puede escribir <b>0</b> en N°). La <b>✕</b> quita la sección. Todo se guarda automáticamente (el botón <b>Guardar</b> lo confirma).</div>
   <div id="regWrap"><div id="hoja" class="his"></div></div>
 </div>
 
