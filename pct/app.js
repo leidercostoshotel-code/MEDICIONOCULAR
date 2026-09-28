@@ -40,6 +40,7 @@ function cargar(){
   try{const p=JSON.parse(localStorage.getItem(LS_PAC));if(Array.isArray(p)&&p.length)pacientes=p.map(normalizar);}catch(e){}
   if(!pacientes.length)pacientes=DATA_INICIAL.map(normalizar);
   try{atenciones=JSON.parse(localStorage.getItem(LS_AT))||{};}catch(e){atenciones={};}
+  Object.values(atenciones).forEach(a=>{if(a&&!a.creado)a.creado=a.guardado||"";}); // registros antiguos: orden de llegada = último guardado
   try{config=Object.assign(config,JSON.parse(localStorage.getItem(LS_CFG))||{});}catch(e){}
 }
 function guardarPacientes(){try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync)Sync.programarPacientes();}
@@ -230,7 +231,9 @@ function elegirCIE(v,el){const tr=el.closest('tr');const txt=tr.querySelector('i
 const CAB_AT=["FECHA","TURNO","N° REG","APELLIDOS Y NOMBRES","DNI","HC","EDAD","SEXO","FINANCIA","DISTRITO","ETNIA","C. POBLADO","GESTANTE","PC","PAB","PESO","TALLA","HB","F. HB","F. REGLA","ESTABLEC","SERVICIO","DX1","TIPO1","LAB1","CIE1","DX2","TIPO2","LAB2","CIE2","DX3","TIPO3","LAB3","CIE3"];
 function pacPorId(id){return pacientes.find(r=>r.id===id)||null;}
 function pacPorN(n){n=parseInt(n);if(isNaN(n))return null;return pacientes.find(r=>parseInt(r.n)===n)||null;}
-function ordenAt(a,b){return (a.dia||0)-(b.dia||0)||(parseInt(a.n)||0)-(parseInt(b.n)||0)||String(a.guardado||"").localeCompare(String(b.guardado||""));}
+function creadoDe(a){return String(a.creado||a.guardado||"");}
+// Orden de llegada (como en el papel): por momento de registro, nunca por N°
+function ordenAt(a,b){return creadoDe(a).localeCompare(creadoDe(b));}
 function tipoDe(a,n){return a[`dx${n}_p`]==="X"?"P":a[`dx${n}_d`]==="X"?"D":a[`dx${n}_r`]==="X"?"R":"";}
 function ncrDe(a,p){return a[p+"_n"]==="X"?"N":a[p+"_c"]==="X"?"C":a[p+"_r"]==="X"?"R":"";}
 function filaAt(a){if(esCont(a)){const pr=principalDe(a);a=Object.assign({},a,{n:"",nombre:pr?`(continuación de N° ${pr.n} · ${pr.nombre})`:"(continuación)",dni:"",hc:"",edad:"",sexo:""});}const lab=n=>[a[`dx${n}_l1`],a[`dx${n}_l2`],a[`dx${n}_l3`]].filter(Boolean).join(" ");
@@ -248,7 +251,7 @@ function llenarDias(){const {a,m}=periodo(),sel=document.getElementById('regDia'
 function atencionesPeriodo(){const {a,m,d}=periodo();const todas=Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m);
   const conts={};todas.forEach(x=>{if(x.contDe&&atenciones[x.contDe]){(conts[x.contDe]=conts[x.contDe]||[]).push(x);}});
   const princ=todas.filter(x=>!(x.contDe&&atenciones[x.contDe])).filter(x=>!d||x.dia===+d).sort(ordenAt);
-  const out=[];princ.forEach(x=>{out.push(x);(conts[x.id]||[]).sort((p,q)=>String(p.guardado||"").localeCompare(String(q.guardado||""))).forEach(c=>out.push(c));});return out;}
+  const out=[];princ.forEach(x=>{out.push(x);(conts[x.id]||[]).sort(ordenAt).forEach(c=>out.push(c));});return out;}
 function esCont(a){return !!(a&&a.contDe);}
 function principalDe(a){return a&&a.contDe?atenciones[a.contDe]||null:null;}
 function diaPorDefecto(){const {a,m,d}=periodo();if(d)return +d;const h=new Date();return (h.getFullYear()===a&&h.getMonth()+1===m)?h.getDate():"";}
@@ -294,7 +297,7 @@ function bloqueHIS(a,n){
   const id=a?a.id:"nuevo-"+n;const cont=esCont(a);const pac=(a&&!cont)?(pacPorId(a.pacId)||{}):{};const pr=cont?principalDe(a):null;
   const fila=i=>`<td class="dx">${inp(a,`dx${i}_txt`,'dxtxt','autocomplete="off"')}</td><td class="c">${tog(a,`dx${i}_p`,'P','dx'+i)}</td><td class="c">${tog(a,`dx${i}_d`,'D','dx'+i)}</td><td class="c">${tog(a,`dx${i}_r`,'R','dx'+i)}</td><td class="c">${inp(a,`dx${i}_l1`,'c')}</td><td class="c">${inp(a,`dx${i}_l2`,'c')}</td><td class="c">${inp(a,`dx${i}_l3`,'c')}</td><td class="c cod">${inp(a,`dx${i}_cie`,'dxcod c b','autocomplete="off"')}</td>`;
   return `<tbody class="bloque${cont?' cont':''}" data-id="${id}" ${a?'':'data-nuevo="1"'} ${cont?`data-cont-de="${cab(pr?pr.n:'')}"`:''}>
-  <tr class="bn"><td class="c b"><input class="hi npac c b" data-f="npac" value="${a&&!cont?cab(a.n):''}" autocomplete="off" title="${cont?'Continuación: pertenece al paciente de la sección anterior':'N° Reg del paciente (o escriba nombre / DNI)'}"></td><td colspan="2" class="lbl">NOMBRE DEL PACIENTE:</td><td colspan="18" class="nom" data-auto="nombre" ${cont?`data-cont-de="${cab(pr?pr.n:'')}"`:''}>${a&&!cont?cab(a.nombre):''}</td><td class="c no-print"><button type="button" class="quitar" title="${a?'Quitar esta atención':'Quitar esta sección vacía'}">✕</button></td></tr>
+  <tr class="bn"><td class="c b">${cont?'<span class="npac-bloq" title="Sección ligada al paciente anterior: no lleva N°">🔒</span>':`<input class="hi npac c b" data-f="npac" value="${a?cab(a.n):''}" autocomplete="off" title="N° Reg del paciente (o escriba nombre / DNI)">`}</td><td colspan="2" class="lbl">NOMBRE DEL PACIENTE:</td><td colspan="18" class="nom" data-auto="nombre" ${cont?`data-cont-de="${cab(pr?pr.n:'')}"`:''}>${a&&!cont?cab(a.nombre):''}</td><td class="c no-print"><button type="button" class="quitar" title="${a?'Quitar esta atención':'Quitar esta sección vacía'}">✕</button></td></tr>
   <tr class="bf"><td></td><td colspan="2" class="lbl">FECHA DE NACIMIENTO</td><td colspan="4" data-auto="fn">${cab(pac.fn)}</td><td colspan="3" class="lbl">FECHA DE HB</td><td colspan="4">${inp(a,'fechaHb','','placeholder=""')}</td><td class="lbl">FECHA DE REGLA</td><td colspan="7">${inp(a,'fechaRegla')}</td></tr>
   <tr class="b1"><td></td><td rowspan="3" class="c">${cont?'<input class="hi c b" data-f="dia" value="" readonly title="Continuación: el día es el de la sección anterior">':inp(a,'dia','c b','inputmode="numeric" maxlength="2"')}</td><td class="c" data-auto="dni">${a&&!cont?cab(a.dni):''}</td><td rowspan="2" class="c">${inp(a,'financia','c')}</td><td rowspan="2">${inp(a,'distrito')}</td><td rowspan="3" class="c b" data-auto="edad">${a&&!cont?cab(a.edad):''}</td><td class="c">${tog(a,'edad_a','A','edad')}</td><td rowspan="3" class="c" data-auto="sexo">${a&&!cont?cab(a.sexo):''}</td><td class="lbl">PC</td><td class="c">${inp(a,'pc','c')}</td><td class="lbl">PESO</td><td class="c">${inp(a,'peso','c')}</td><td class="c">${tog(a,'est_n','N','est')}</td><td class="c">${tog(a,'ser_n','N','ser')}</td>${fila(1)}</tr>
   <tr class="b2"><td></td><td class="c" data-auto="hc">${a&&!cont?cab(a.hc):''}</td><td class="c">${tog(a,'edad_m','M','edad')}</td><td class="lbl">PAB</td><td class="c">${inp(a,'pab','c')}</td><td class="lbl">TALLA</td><td class="c">${inp(a,'talla','c')}</td><td class="c">${tog(a,'est_c','C','est')}</td><td class="c">${tog(a,'ser_c','C','ser')}</td>${fila(2)}</tr>
@@ -304,13 +307,13 @@ function bloqueHIS(a,n){
 function defaultsAt(){const ult=Object.values(atenciones).sort((x,y)=>String(x.guardado||"").localeCompare(String(y.guardado||""))).pop()||{};
   return {turno:document.getElementById('regTurno').value,financia:config.financia||"2",distrito:ult.distrito||config.distrito||"",etnia:config.etnia||"58",cpoblado:ult.cpoblado||"",edad_a:"X",est_c:"X",ser_c:"X"};}
 function crearContinuacion(principal){const {a,m}=periodo();const id=uid();
-  const rec={id,contDe:principal.id,pacId:principal.pacId,n:"",nombre:"",dni:"",hc:"",sexo:"",edad:"",anio:a,mes:m,dia:principal.dia,fecha:principal.fecha,turno:principal.turno,guardado:new Date().toISOString()};
+  const rec={id,contDe:principal.id,pacId:principal.pacId,n:"",nombre:"",dni:"",hc:"",sexo:"",edad:"",anio:a,mes:m,dia:principal.dia,fecha:principal.fecha,turno:principal.turno,creado:new Date().toISOString(),guardado:new Date().toISOString()};
   atenciones[id]=rec;guardarAtenciones();return rec;}
 function ultimaPrincipal(){const l=atencionesPeriodo().filter(x=>!esCont(x));return l.length?l[l.length-1]:null;}
 function principalAnterior(bloque){let b=bloque.previousElementSibling;while(b){if(b.classList.contains('bloque')){const r=atenciones[b.dataset.id];if(r)return esCont(r)?principalDe(r):r;}b=b.previousElementSibling;}return null;}
 function crearAtencion(bloque,pac){
   const {a,m}=periodo();const dia=parseInt(bloque.querySelector('[data-f=dia]').value)||diaPorDefecto()||1;
-  const id=uid();const rec=Object.assign({},defaultsAt(),{id,pacId:pac.id,n:pac.n,nombre:pac.nom,dni:pac.dni,hc:pac.hc,sexo:pac.sexo,edad:edadDe(pac),peso:pac.peso||"",talla:pac.talla||"",anio:a,mes:m,dia,fecha:String(dia).padStart(2,"0")+"/"+String(m).padStart(2,"0")+"/"+a,guardado:new Date().toISOString()});
+  const id=uid();const rec=Object.assign({},defaultsAt(),{id,pacId:pac.id,n:pac.n,nombre:pac.nom,dni:pac.dni,hc:pac.hc,sexo:pac.sexo,edad:edadDe(pac),peso:pac.peso||"",talla:pac.talla||"",anio:a,mes:m,dia,fecha:String(dia).padStart(2,"0")+"/"+String(m).padStart(2,"0")+"/"+a,creado:new Date().toISOString(),guardado:new Date().toISOString()});
   // conservar lo ya escrito en el bloque vacío
   bloque.querySelectorAll('input.hi').forEach(i=>{if(i.dataset.f!=='npac'&&i.dataset.f!=='dia'&&i.value.trim())rec[i.dataset.f]=i.value;});
   bloque.querySelectorAll('.tg.on').forEach(t=>rec[t.dataset.f]="X");
@@ -388,6 +391,19 @@ window.alCambiarConfig=()=>{pintarConfig();pintarCodigos();if(document.getElemen
 function exportRegistroXLSX(){if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel.");return;}
   const lista=atencionesPeriodo();if(!lista.length){msg("No hay atenciones en el periodo");return;}
   const {a,m}=periodo();const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}.xlsx`);}
+
+/* ======================= RELOJ Y TURNO AUTOMÁTICO ======================= */
+// Turno según la hora: M = 7:00 a 13:30 · T = 13:35 a 20:00 · fuera de ese horario = N
+function turnoActual(d){const min=d.getHours()*60+d.getMinutes();if(min>=7*60&&min<=13*60+34)return "M";if(min>=13*60+35&&min<=20*60)return "T";return "N";}
+const NOMBRE_TURNO={M:"Turno mañana",T:"Turno tarde",N:"Turno noche"};
+let turnoManual=false;document.getElementById('regTurno').addEventListener('change',()=>{turnoManual=true;});
+const DIAS_SEM=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+function tickReloj(){const d=new Date();const p2=n=>String(n).padStart(2,"0");
+  document.getElementById('relojHora').textContent=`${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+  const ds=DIAS_SEM[d.getDay()];document.getElementById('relojFecha').textContent=`${ds.charAt(0).toUpperCase()+ds.slice(1)} ${d.getDate()} de ${MESES_LARGO[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
+  const t=turnoActual(d);const rt=document.getElementById('relojTurno');rt.textContent=NOMBRE_TURNO[t];rt.dataset.t=t;
+  const sel=document.getElementById('regTurno');if(!turnoManual&&sel.value!==t)sel.value=t;}
+tickReloj();setInterval(tickReloj,1000);
 
 /* ======================= INICIO ======================= */
 function showView(v){
