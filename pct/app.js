@@ -353,4 +353,5 @@ function showView(v){
   document.getElementById('tabRegistro').classList.toggle('active',v==='registro');
   if(v==='registro'){llenarDias();renderRegistro();}
 }
+(function(){const tb=document.querySelector('.topbar');const fija=()=>document.documentElement.style.setProperty('--tb',tb.offsetHeight+'px');fija();window.addEventListener('resize',fija);})();
 cargar();renderDatos();pintarConfig();pintarCodigos();
