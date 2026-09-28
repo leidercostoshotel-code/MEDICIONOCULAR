@@ -283,7 +283,7 @@ function paginaHIS(bloques,np,total,anio,mes){
   </table>
   <table class="hdatos"><tr><th style="width:14mm">AÑO</th><th style="width:14mm">MES</th><th>NOMBRE DE ESTABLECIMIENTO DE SALUD (IPRESS)</th><th style="width:50mm">UNIDAD PRODUCTORA DE SALUD (UPS)</th><th style="width:70mm">NOMBRE DEL RESPONSABLE DE LA ATENCIÓN</th></tr>
   <tr><td class="c">${anio}</td><td class="c">${MESES[mes-1]}</td><td>${cab(config.estab)}</td><td>${cab(config.ups)}</td><td>${cab(config.resp)}</td></tr></table>
-  <table class="hreg"><colgroup>${[7,9,22,11,22,9,5,8,9,11,11,11,9,9,62,5,5,5,7,7,7,16].map(w=>`<col style="width:${w}mm">`).join("")}</colgroup>
+  <table class="hreg"><colgroup>${[10,9,22,11,22,9,5,8,9,11,11,13,9,9,57,5,5,5,7,7,7,16].map(w=>`<col style="width:${w}mm">`).join("")}</colgroup>
   <tr class="nums"><td></td><td>7</td><td>8</td><td>9</td><td>11</td><td colspan="2">13</td><td>14</td><td colspan="2">15</td><td colspan="2">16</td><td>17</td><td>18</td><td>19</td><td colspan="3">20</td><td colspan="3">21</td><td>22</td></tr>
   <tr class="th"><td rowspan="3">N°</td><td rowspan="3">DÍA</td><td>DNI</td><td>FINANCIA</td><td>DISTRITO DE PROCEDENCIA</td><td colspan="2" rowspan="3">EDAD</td><td rowspan="3">SEXO</td><td colspan="2" rowspan="3">PERÍMETRO CEFÁLICO Y ABDOMINAL</td><td colspan="2" rowspan="3">EVALUACIÓN ANTROPOMÉTRICA HEMOGLOBINA</td><td rowspan="3">ESTABLEC</td><td rowspan="3">SERVICIO</td><td rowspan="3">DIAGNÓSTICO MOTIVO DE CONSULTA Y/O ACTIVIDAD DE SALUD</td><td colspan="3" rowspan="2">TIPOS DE DIAGNÓSTICO</td><td colspan="3" rowspan="2">VALOR LAB</td><td rowspan="3">CÓDIGO</td></tr>
   <tr class="th"><td>HISTORIA CLÍNICA</td><td>10</td><td>12</td></tr>
@@ -337,6 +337,7 @@ function asignarPaciente(bloque,pac){
 function guardarCelda(el){
   const bloque=el.closest('.bloque');if(!bloque)return;const rec=atenciones[bloque.dataset.id];if(!rec)return;
   const k=el.dataset.f;let v=el.classList.contains('tg')?(el.classList.contains('on')?"X":""):el.value;
+  if(!el.classList.contains('tg')&&typeof v==='string'&&v!==v.toUpperCase()){v=v.toUpperCase();el.value=v;} // en las secciones todo va en mayúsculas
   if(k==='dia'){const d=parseInt(v);if(!isNaN(d)&&d>=1&&d<=31){rec.dia=d;rec.fecha=String(d).padStart(2,"0")+"/"+String(rec.mes).padStart(2,"0")+"/"+rec.anio;}}
   else rec[k]=v;
   if((k==='peso'||k==='talla')&&!esCont(rec)){const p=pacPorId(rec.pacId);if(p&&v){p[k]=v;guardarPacientes();}}

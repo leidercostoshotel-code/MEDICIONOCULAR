@@ -261,3 +261,13 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
 .reloj-turno[data-t=T]{background:#e3f2fd;color:#0d47a1}.reloj-turno[data-t=N]{background:#3949ab;color:#fff}
 @media (max-width:760px){.reloj-info{display:none}.reloj{padding:4px 10px}.reloj-hora{font-size:18px}}
 @media (max-width:480px){.reloj{display:none}}
+
+/* Secciones en pantalla: letra más grande (12pt); la impresión mantiene su tamaño */
+@media screen{
+  .his .hreg .bloque td{height:6.8mm}
+  .his .hreg .bloque input.hi,.his .hreg .bloque [data-auto],.his .hreg .bloque .tg{font-size:12pt}
+  .his .hreg .bn .nom{font-size:12pt}
+  .his .hreg .bloque .dx{font-size:12pt}
+  .his input.npac{font-size:12pt}
+}
+.his .hreg .bloque input.hi{text-transform:uppercase}
