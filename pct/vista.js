@@ -91,7 +91,7 @@ document.body.insertAdjacentHTML("afterbegin",`
       </div>
       <div class="grupo">
         <h3>Códigos propios <small>códigos o actividades que no están en la lista CIE-10; se guardan en la nube y aparecen en la búsqueda</small></h3>
-        <div class="codform"><input id="cpCod" placeholder="Código (ej. 9940301)" maxlength="12"><input id="cpTxt" placeholder="Descripción (ej. Consejería en tuberculosis)"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
+        <div class="codform"><input id="cpCod" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" style="text-transform:uppercase"><input id="cpTxt" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" style="text-transform:uppercase"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
         <div id="cpLista" class="cplista"></div>
       </div>
     </div>

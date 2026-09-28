@@ -199,7 +199,7 @@ window.addEventListener('scroll',mpOcultar,true);window.addEventListener('resize
 /* ======================= CIE-10 (15 000 códigos, carga diferida) ======================= */
 let CIE=null,CIE_N=null,cieCargando=null;
 function cargarCIE(){if(CIE||cieCargando)return cieCargando;cieCargando=fetch('cie10.json').then(r=>r.json()).then(d=>{CIE=d;CIE_N=d.map(([c,t])=>normTxt(c+" "+t));return d;}).catch(()=>{cieCargando=null;msg("No se pudo cargar la lista CIE-10");return null;});return cieCargando;}
-function codigosPropios(){return Array.isArray(config.codigos)?config.codigos:[];}
+function codigosPropios(){return Array.isArray(config.codigos)?config.codigos.map(o=>({c:String(o.c||'').toUpperCase(),t:String(o.t||'').toUpperCase()})):[];}
 function buscarCIE(q,toks){
   if(!toks.length)return [];const out=[];const cod=toks[0].toUpperCase();
   codigosPropios().forEach(o=>{if(toks.every(t=>normTxt(o.c+" "+o.t).includes(t)))out.push([o.c,o.t,true]);});
@@ -210,7 +210,7 @@ function buscarCIE(q,toks){
 function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>${o[2]?'<span class="cie-propio">propio</span>':''}`;}
 function pintarCodigos(){const li=document.getElementById('cpLista');const lst=codigosPropios();
   li.innerHTML=lst.length?lst.map((o,i)=>`<span class="cpchip"><b>${esc(o.c)}</b> ${esc(o.t)}<button type="button" title="Quitar" onclick="quitarCodigo(${i})">✕</button></span>`).join(""):'<span class="ficha-lbl">Aún no hay códigos propios.</span>';}
-function agregarCodigo(){const c=document.getElementById('cpCod').value.trim().toUpperCase(),t=document.getElementById('cpTxt').value.trim();
+function agregarCodigo(){const c=document.getElementById('cpCod').value.trim().toUpperCase(),t=document.getElementById('cpTxt').value.trim().toUpperCase();
   if(!c||!t){alert("Escriba el código y su descripción.");return;}
   const lst=codigosPropios().filter(o=>o.c!==c);lst.push({c,t});config.codigos=lst;guardarConfig();pintarCodigos();
   document.getElementById('cpCod').value="";document.getElementById('cpTxt').value="";msg("Código "+c+" agregado");}
