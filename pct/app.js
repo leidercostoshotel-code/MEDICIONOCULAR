@@ -217,13 +217,25 @@ function buscarCIE(q,toks){
   return out.slice(0,12);
 }
 function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>${o[2]?'<span class="cie-propio">propio</span>':''}`;}
-function pintarCodigos(){const li=document.getElementById('cpLista');const lst=codigosPropios();
-  li.innerHTML=lst.length?lst.map((o,i)=>`<span class="cpchip"><b>${esc(o.c)}</b> ${esc(o.t)}<button type="button" title="Quitar" onclick="quitarCodigo(${i})">✕</button></span>`).join(""):'<span class="ficha-lbl">Aún no hay códigos propios.</span>';}
-function agregarCodigo(){const c=document.getElementById('cpCod').value.trim().toUpperCase(),t=document.getElementById('cpTxt').value.trim().toUpperCase();
-  if(!c||!t){avisar("Datos incompletos","Escriba el código y su descripción para agregarlo.");return;}
-  const lst=codigosPropios().filter(o=>o.c!==c);lst.push({c,t});config.codigos=lst;guardarConfig();pintarCodigos();
-  document.getElementById('cpCod').value="";document.getElementById('cpTxt').value="";msg("Código "+c+" agregado");}
-async function quitarCodigo(i){const lst=codigosPropios();const o=lst[i];if(!o||!await confirmar("Quitar código propio",`Se quitará el código ${o.c} · ${o.t} de la lista.`,{ok:"Quitar",peligro:true}))return;lst.splice(i,1);config.codigos=lst;guardarConfig();pintarCodigos();}
+let cpEditando=null; // código que se está editando (su valor original)
+function pintarCodigos(){const li=document.getElementById('cpLista');const lst=codigosPropios();const q=normTxt(document.getElementById('cpBuscar').value||"").trim();
+  const vis=lst.map((o,i)=>[o,i]).filter(([o])=>!q||normTxt(o.c+" "+o.t).includes(q));
+  document.getElementById('cpCuenta').textContent=lst.length?(q?`${vis.length} de ${lst.length}`:`${lst.length} código(s) guardado(s)`):"";
+  li.innerHTML=lst.length?(vis.length?vis.map(([o,i])=>`<span class="cpchip${cpEditando===o.c?' editando':''}"><b>${resaltar(o.c,q)}</b> ${resaltar(o.t,q)}<button type="button" class="cp-edit" title="Editar" onclick="editarCodigo(${i})">✎</button><button type="button" title="Quitar" onclick="quitarCodigo(${i})">✕</button></span>`).join(""):'<span class="ficha-lbl">Ningún código coincide con la búsqueda.</span>'):'<span class="ficha-lbl">Aún no hay códigos propios.</span>';}
+function editarCodigo(i){const o=codigosPropios()[i];if(!o)return;cpEditando=o.c;document.getElementById('cpCod').value=o.c;document.getElementById('cpTxt').value=o.t;
+  document.getElementById('cpBtn').textContent="Guardar cambios";document.getElementById('cpCancelar').style.display="";pintarCodigos();document.getElementById('cpTxt').focus();}
+function cancelarEdicionCodigo(){cpEditando=null;document.getElementById('cpCod').value="";document.getElementById('cpTxt').value="";document.getElementById('cpBtn').textContent="+ Agregar código";document.getElementById('cpCancelar').style.display="none";pintarCodigos();}
+async function agregarCodigo(){const c=document.getElementById('cpCod').value.trim().toUpperCase(),t=document.getElementById('cpTxt').value.trim().toUpperCase();
+  if(!c||!t){avisar("Datos incompletos","Escriba el código y su descripción.");return;}
+  const lst=codigosPropios();
+  if(cpEditando){const k=lst.findIndex(o=>o.c===cpEditando);if(k<0){cpEditando=null;}else{
+      if(c!==cpEditando&&lst.some(o=>o.c===c)){avisar("Código repetido",`Ya existe otro código ${c}. Cambie el código o edite ese.`);return;}
+      lst[k]={c,t};config.codigos=lst;guardarConfig();cancelarEdicionCodigo();msg("Código "+c+" actualizado");return;}}
+  const rep=lst.find(o=>o.c===c);
+  if(rep&&!await confirmar("Código existente",`El código ${c} ya existe con la descripción «${rep.t}». ¿Reemplazarla por «${t}»?`,{ok:"Reemplazar"}))return;
+  config.codigos=lst.filter(o=>o.c!==c).concat([{c,t}]);guardarConfig();pintarCodigos();
+  document.getElementById('cpCod').value="";document.getElementById('cpTxt').value="";document.getElementById('cpCod').focus();msg("Código "+c+(rep?" actualizado":" agregado"));}
+async function quitarCodigo(i){const lst=codigosPropios();const o=lst[i];if(!o||!await confirmar("Quitar código propio",`Se quitará el código ${o.c} · ${o.t} de la lista.`,{ok:"Quitar",peligro:true}))return;if(cpEditando===o.c)cancelarEdicionCodigo();lst.splice(i,1);config.codigos=lst;guardarConfig();pintarCodigos();}
 function elegirCIE(v,el){const tr=el.closest('tr');const txt=tr.querySelector('input[data-f$="_txt"]'),cod=tr.querySelector('input[data-f$="_cie"]');
   txt.value=String(v[1]).toUpperCase();cod.value=v[0];guardarCelda(txt);guardarCelda(cod);}
 
@@ -285,7 +297,7 @@ function paginaHIS(bloques,np,total,anio,mes){
   </table>`)+`
   <table class="hdatos"><tr><th style="width:14mm">AÑO</th><th style="width:14mm">MES</th><th>NOMBRE DE ESTABLECIMIENTO DE SALUD (IPRESS)</th><th style="width:50mm">UNIDAD PRODUCTORA DE SALUD (UPS)</th><th style="width:70mm">NOMBRE DEL RESPONSABLE DE LA ATENCIÓN</th></tr>
   <tr><td class="c">${anio}</td><td class="c">${MESES[mes-1]}</td><td>${cab(config.estab)}</td><td>${cab(config.ups)}</td><td>${cab(config.resp)}</td></tr></table>
-  <table class="hreg"><colgroup>${[10,9,22,11,22,9,5,8,9,11,11,13,9,9,54,5,5,5,6,6,6,22].map(w=>`<col style="width:${w}mm">`).join("")}</colgroup>
+  <table class="hreg"><colgroup>${[10,9,22,11,22,9,5,8,9,11,11,13,9,9,42,5,5,5,10,10,10,22].map(w=>`<col style="width:${w}mm">`).join("")}</colgroup>
   <tr class="nums"><td></td><td>7</td><td>8</td><td>9</td><td>11</td><td colspan="2">13</td><td>14</td><td colspan="2">15</td><td colspan="2">16</td><td>17</td><td>18</td><td>19</td><td colspan="3">20</td><td colspan="3">21</td><td>22</td></tr>
   <tr class="th"><td rowspan="3">N°</td><td rowspan="3">DÍA</td><td>DNI</td><td>FINANCIA</td><td>DISTRITO DE PROCEDENCIA</td><td colspan="2" rowspan="3">EDAD</td><td rowspan="3">SEXO</td><td colspan="2" rowspan="3">PERÍMETRO CEFÁLICO Y ABDOMINAL</td><td colspan="2" rowspan="3">EVALUACIÓN ANTROPOMÉTRICA HEMOGLOBINA</td><td rowspan="3">ESTABLEC</td><td rowspan="3">SERVICIO</td><td rowspan="3">DIAGNÓSTICO MOTIVO DE CONSULTA Y/O ACTIVIDAD DE SALUD</td><td colspan="3" rowspan="2">TIPOS DE DIAGNÓSTICO</td><td colspan="3" rowspan="2">VALOR LAB</td><td rowspan="3">CÓDIGO</td></tr>
   <tr class="th"><td>HISTORIA CLÍNICA</td><td>10</td><td>12</td></tr>
@@ -297,7 +309,7 @@ function inp(a,f,cls,extra){return `<input class="hi ${cls||''}" data-f="${f}" v
 function tog(a,f,letra,grupo){const on=a&&a[f]==="X";return `<span class="tg${on?' on':''}" data-f="${f}" data-g="${grupo}">${on?'X':letra}</span>`;}
 function bloqueHIS(a,n){
   const id=a?a.id:"nuevo-"+n;const cont=esCont(a);const pac=(a&&!cont)?(pacPorId(a.pacId)||{}):{};const pr=cont?principalDe(a):null;
-  const fila=i=>`<td class="dx">${inp(a,`dx${i}_txt`,'dxtxt','autocomplete="off"')}</td><td class="c">${tog(a,`dx${i}_p`,'P','dx'+i)}</td><td class="c">${tog(a,`dx${i}_d`,'D','dx'+i)}</td><td class="c">${tog(a,`dx${i}_r`,'R','dx'+i)}</td><td class="c">${inp(a,`dx${i}_l1`,'c')}</td><td class="c">${inp(a,`dx${i}_l2`,'c')}</td><td class="c">${inp(a,`dx${i}_l3`,'c')}</td><td class="c cod">${inp(a,`dx${i}_cie`,'dxcod c b','autocomplete="off"')}</td>`;
+  const fila=i=>`<td class="dx">${inp(a,`dx${i}_txt`,'dxtxt','autocomplete="off"')}</td><td class="c">${tog(a,`dx${i}_p`,'P','dx'+i)}</td><td class="c">${tog(a,`dx${i}_d`,'D','dx'+i)}</td><td class="c">${tog(a,`dx${i}_r`,'R','dx'+i)}</td><td class="c">${inp(a,`dx${i}_l1`,'c lab','maxlength="3"')}</td><td class="c">${inp(a,`dx${i}_l2`,'c lab','maxlength="3"')}</td><td class="c">${inp(a,`dx${i}_l3`,'c lab','maxlength="3"')}</td><td class="c cod">${inp(a,`dx${i}_cie`,'dxcod c b','autocomplete="off"')}</td>`;
   return `<tbody class="bloque${cont?' cont':''}" data-id="${id}" ${a?'':'data-nuevo="1"'} ${cont?`data-cont-de="${cab(pr?pr.n:'')}"`:''}>
   <tr class="bn"><td class="c b">${cont?'<span class="npac-bloq" title="Sección ligada al paciente anterior: no lleva N°">🔒</span>':`<input class="hi npac c b" data-f="npac" value="${a?cab(a.n):''}" autocomplete="off" title="N° Reg del paciente (o escriba nombre / DNI)">`}</td><td colspan="2" class="lbl">NOMBRE DEL PACIENTE:</td><td colspan="18" class="nom" data-auto="nombre" ${cont?`data-cont-de="${cab(pr?pr.n:'')}"`:''}>${a&&!cont?cab(a.nombre):''}</td><td class="c no-print"><button type="button" class="quitar" title="${a?'Quitar esta atención':'Quitar esta sección vacía'}">✕</button></td></tr>
   <tr class="bf"><td></td><td colspan="2" class="lbl">FECHA DE NACIMIENTO</td><td colspan="4" data-auto="fn">${cab(pac.fn)}</td><td colspan="3" class="lbl">FECHA DE HB</td><td colspan="4">${inp(a,'fechaHb','','placeholder=""')}</td><td class="lbl">FECHA DE REGLA</td><td colspan="7">${inp(a,'fechaRegla')}</td></tr>
