@@ -233,7 +233,7 @@ function pacPorN(n){n=parseInt(n);if(isNaN(n))return null;return pacientes.find(
 function ordenAt(a,b){return (a.dia||0)-(b.dia||0)||(parseInt(a.n)||0)-(parseInt(b.n)||0)||String(a.guardado||"").localeCompare(String(b.guardado||""));}
 function tipoDe(a,n){return a[`dx${n}_p`]==="X"?"P":a[`dx${n}_d`]==="X"?"D":a[`dx${n}_r`]==="X"?"R":"";}
 function ncrDe(a,p){return a[p+"_n"]==="X"?"N":a[p+"_c"]==="X"?"C":a[p+"_r"]==="X"?"R":"";}
-function filaAt(a){const lab=n=>[a[`dx${n}_l1`],a[`dx${n}_l2`],a[`dx${n}_l3`]].filter(Boolean).join(" ");
+function filaAt(a){if(esCont(a)){const pr=principalDe(a);a=Object.assign({},a,{n:"",nombre:pr?`(continuación de N° ${pr.n} · ${pr.nombre})`:"(continuación)",dni:"",hc:"",edad:"",sexo:""});}const lab=n=>[a[`dx${n}_l1`],a[`dx${n}_l2`],a[`dx${n}_l3`]].filter(Boolean).join(" ");
   return [a.fecha,a.turno,a.n,a.nombre,a.dni,a.hc,a.edad,a.sexo,a.financia,a.distrito,a.etnia,a.cpoblado,a.gestante,a.pc,a.pab,a.peso,a.talla,a.hb,a.fechaHb,a.fechaRegla,ncrDe(a,'est'),ncrDe(a,'ser'),a.dx1_txt,tipoDe(a,1),lab(1),a.dx1_cie,a.dx2_txt,tipoDe(a,2),lab(2),a.dx2_cie,a.dx3_txt,tipoDe(a,3),lab(3),a.dx3_cie].map(v=>v==null?"":v);}
 function irAtencion(id){const r=pacPorId(id);const ats=Object.values(atenciones).filter(a=>a.pacId===id).sort((x,y)=>String(x.guardado).localeCompare(String(y.guardado)));
   if(ats.length){const u=ats[ats.length-1];document.getElementById('regAnio').value=u.anio;document.getElementById('regMes').value=u.mes;llenarDias();document.getElementById('regDia').value="";}
@@ -245,7 +245,12 @@ document.querySelectorAll('.cfg').forEach(el=>el.addEventListener('input',()=>{c
 function periodo(){return {a:+document.getElementById('regAnio').value,m:+document.getElementById('regMes').value,d:document.getElementById('regDia').value};}
 function llenarDias(){const {a,m}=periodo(),sel=document.getElementById('regDia'),act=sel.value;const dias=new Set(Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m).map(x=>x.dia));
   sel.innerHTML=`<option value="">Todos los días</option>`+[...dias].sort((x,y)=>x-y).map(d=>`<option value="${d}">${String(d).padStart(2,"0")}</option>`).join("");if([...dias].includes(+act))sel.value=act;}
-function atencionesPeriodo(){const {a,m,d}=periodo();return Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m&&(!d||x.dia===+d)).sort(ordenAt);}
+function atencionesPeriodo(){const {a,m,d}=periodo();const todas=Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m);
+  const conts={};todas.forEach(x=>{if(x.contDe&&atenciones[x.contDe]){(conts[x.contDe]=conts[x.contDe]||[]).push(x);}});
+  const princ=todas.filter(x=>!(x.contDe&&atenciones[x.contDe])).filter(x=>!d||x.dia===+d).sort(ordenAt);
+  const out=[];princ.forEach(x=>{out.push(x);(conts[x.id]||[]).sort((p,q)=>String(p.guardado||"").localeCompare(String(q.guardado||""))).forEach(c=>out.push(c));});return out;}
+function esCont(a){return !!(a&&a.contDe);}
+function principalDe(a){return a&&a.contDe?atenciones[a.contDe]||null:null;}
 function diaPorDefecto(){const {a,m,d}=periodo();if(d)return +d;const h=new Date();return (h.getFullYear()===a&&h.getMonth()+1===m)?h.getDate():"";}
 function focoHoja(){const el=document.activeElement;const bl=el&&el.closest&&el.closest('.bloque');return bl?{id:bl.dataset.id,f:el.dataset.f,s:el.selectionStart}:null;}
 function restaurarFocoHoja(f){if(!f||!f.id)return;const el=document.querySelector(`.bloque[data-id="${f.id}"] [data-f="${f.f}"]`);if(el){el.focus();try{el.setSelectionRange(f.s,f.s);}catch(e){}}}
@@ -283,18 +288,23 @@ function paginaHIS(bloques,np,total,anio,mes){
 function inp(a,f,cls,extra){return `<input class="hi ${cls||''}" data-f="${f}" value="${a?cab(a[f]):''}" ${extra||''}>`;}
 function tog(a,f,letra,grupo){const on=a&&a[f]==="X";return `<span class="tg${on?' on':''}" data-f="${f}" data-g="${grupo}">${on?'X':letra}</span>`;}
 function bloqueHIS(a,n){
-  const id=a?a.id:"nuevo-"+n;const pac=a?(pacPorId(a.pacId)||{}):{};
+  const id=a?a.id:"nuevo-"+n;const cont=esCont(a);const pac=(a&&!cont)?(pacPorId(a.pacId)||{}):{};const pr=cont?principalDe(a):null;
   const fila=i=>`<td class="dx">${inp(a,`dx${i}_txt`,'dxtxt','autocomplete="off"')}</td><td class="c">${tog(a,`dx${i}_p`,'P','dx'+i)}</td><td class="c">${tog(a,`dx${i}_d`,'D','dx'+i)}</td><td class="c">${tog(a,`dx${i}_r`,'R','dx'+i)}</td><td class="c">${inp(a,`dx${i}_l1`,'c')}</td><td class="c">${inp(a,`dx${i}_l2`,'c')}</td><td class="c">${inp(a,`dx${i}_l3`,'c')}</td><td class="c cod">${inp(a,`dx${i}_cie`,'dxcod c b','autocomplete="off"')}</td>`;
-  return `<tbody class="bloque" data-id="${id}" ${a?'':'data-nuevo="1"'}>
-  <tr class="bn"><td class="c b"><input class="hi npac c b" data-f="npac" value="${a?cab(a.n):''}" autocomplete="off" title="N° Reg del paciente (o escriba nombre / DNI)"></td><td colspan="2" class="lbl">NOMBRE DEL PACIENTE:</td><td colspan="18" class="nom" data-auto="nombre">${a?cab(a.nombre):''}</td><td class="c no-print"><button type="button" class="quitar" title="${a?'Quitar esta atención':'Quitar esta sección vacía'}">✕</button></td></tr>
+  return `<tbody class="bloque${cont?' cont':''}" data-id="${id}" ${a?'':'data-nuevo="1"'} ${cont?`data-cont-de="${cab(pr?pr.n:'')}"`:''}>
+  <tr class="bn"><td class="c b"><input class="hi npac c b" data-f="npac" value="${a&&!cont?cab(a.n):''}" autocomplete="off" title="${cont?'Continuación: pertenece al paciente de la sección anterior':'N° Reg del paciente (o escriba nombre / DNI)'}"></td><td colspan="2" class="lbl">NOMBRE DEL PACIENTE:</td><td colspan="18" class="nom" data-auto="nombre" ${cont?`data-cont-de="${cab(pr?pr.n:'')}"`:''}>${a&&!cont?cab(a.nombre):''}</td><td class="c no-print"><button type="button" class="quitar" title="${a?'Quitar esta atención':'Quitar esta sección vacía'}">✕</button></td></tr>
   <tr class="bf"><td></td><td colspan="2" class="lbl">FECHA DE NACIMIENTO</td><td colspan="4" data-auto="fn">${cab(pac.fn)}</td><td colspan="3" class="lbl">FECHA DE HB</td><td colspan="4">${inp(a,'fechaHb','','placeholder=""')}</td><td class="lbl">FECHA DE REGLA</td><td colspan="7">${inp(a,'fechaRegla')}</td></tr>
-  <tr class="b1"><td></td><td rowspan="3" class="c">${inp(a,'dia','c b','inputmode="numeric" maxlength="2"')}</td><td class="c" data-auto="dni">${a?cab(a.dni):''}</td><td rowspan="2" class="c">${inp(a,'financia','c')}</td><td rowspan="2">${inp(a,'distrito')}</td><td rowspan="3" class="c b" data-auto="edad">${a?cab(a.edad):''}</td><td class="c">${tog(a,'edad_a','A','edad')}</td><td rowspan="3" class="c" data-auto="sexo">${a?cab(a.sexo):''}</td><td class="lbl">PC</td><td class="c">${inp(a,'pc','c')}</td><td class="lbl">PESO</td><td class="c">${inp(a,'peso','c')}</td><td class="c">${tog(a,'est_n','N','est')}</td><td class="c">${tog(a,'ser_n','N','ser')}</td>${fila(1)}</tr>
-  <tr class="b2"><td></td><td class="c" data-auto="hc">${a?cab(a.hc):''}</td><td class="c">${tog(a,'edad_m','M','edad')}</td><td class="lbl">PAB</td><td class="c">${inp(a,'pab','c')}</td><td class="lbl">TALLA</td><td class="c">${inp(a,'talla','c')}</td><td class="c">${tog(a,'est_c','C','est')}</td><td class="c">${tog(a,'ser_c','C','ser')}</td>${fila(2)}</tr>
+  <tr class="b1"><td></td><td rowspan="3" class="c">${cont?'<input class="hi c b" data-f="dia" value="" readonly title="Continuación: el día es el de la sección anterior">':inp(a,'dia','c b','inputmode="numeric" maxlength="2"')}</td><td class="c" data-auto="dni">${a&&!cont?cab(a.dni):''}</td><td rowspan="2" class="c">${inp(a,'financia','c')}</td><td rowspan="2">${inp(a,'distrito')}</td><td rowspan="3" class="c b" data-auto="edad">${a&&!cont?cab(a.edad):''}</td><td class="c">${tog(a,'edad_a','A','edad')}</td><td rowspan="3" class="c" data-auto="sexo">${a&&!cont?cab(a.sexo):''}</td><td class="lbl">PC</td><td class="c">${inp(a,'pc','c')}</td><td class="lbl">PESO</td><td class="c">${inp(a,'peso','c')}</td><td class="c">${tog(a,'est_n','N','est')}</td><td class="c">${tog(a,'ser_n','N','ser')}</td>${fila(1)}</tr>
+  <tr class="b2"><td></td><td class="c" data-auto="hc">${a&&!cont?cab(a.hc):''}</td><td class="c">${tog(a,'edad_m','M','edad')}</td><td class="lbl">PAB</td><td class="c">${inp(a,'pab','c')}</td><td class="lbl">TALLA</td><td class="c">${inp(a,'talla','c')}</td><td class="c">${tog(a,'est_c','C','est')}</td><td class="c">${tog(a,'ser_c','C','ser')}</td>${fila(2)}</tr>
   <tr class="b3"><td></td><td class="c">${inp(a,'gestante','c','maxlength="1"')}</td><td class="c">${inp(a,'etnia','c')}</td><td>${inp(a,'cpoblado')}</td><td class="c">${tog(a,'edad_d','D','edad')}</td><td colspan="2"></td><td class="lbl">HB</td><td class="c">${inp(a,'hb','c')}</td><td class="c">${tog(a,'est_r','R','est')}</td><td class="c">${tog(a,'ser_r','R','ser')}</td>${fila(3)}</tr>
   </tbody>`;
 }
 function defaultsAt(){const ult=Object.values(atenciones).sort((x,y)=>String(x.guardado||"").localeCompare(String(y.guardado||""))).pop()||{};
   return {turno:document.getElementById('regTurno').value,financia:config.financia||"2",distrito:ult.distrito||config.distrito||"",etnia:config.etnia||"58",cpoblado:ult.cpoblado||"",edad_a:"X",est_c:"X",ser_c:"X"};}
+function crearContinuacion(principal){const {a,m}=periodo();const id=uid();
+  const rec={id,contDe:principal.id,pacId:principal.pacId,n:"",nombre:"",dni:"",hc:"",sexo:"",edad:"",anio:a,mes:m,dia:principal.dia,fecha:principal.fecha,turno:principal.turno,guardado:new Date().toISOString()};
+  atenciones[id]=rec;guardarAtenciones();return rec;}
+function ultimaPrincipal(){const l=atencionesPeriodo().filter(x=>!esCont(x));return l.length?l[l.length-1]:null;}
+function principalAnterior(bloque){let b=bloque.previousElementSibling;while(b){if(b.classList.contains('bloque')){const r=atenciones[b.dataset.id];if(r)return esCont(r)?principalDe(r):r;}b=b.previousElementSibling;}return null;}
 function crearAtencion(bloque,pac){
   const {a,m}=periodo();const dia=parseInt(bloque.querySelector('[data-f=dia]').value)||diaPorDefecto()||1;
   const id=uid();const rec=Object.assign({},defaultsAt(),{id,pacId:pac.id,n:pac.n,nombre:pac.nom,dni:pac.dni,hc:pac.hc,sexo:pac.sexo,edad:edadDe(pac),peso:pac.peso||"",talla:pac.talla||"",anio:a,mes:m,dia,fecha:String(dia).padStart(2,"0")+"/"+String(m).padStart(2,"0")+"/"+a,guardado:new Date().toISOString()});
@@ -323,10 +333,10 @@ function guardarCelda(el){
   const k=el.dataset.f;let v=el.classList.contains('tg')?(el.classList.contains('on')?"X":""):el.value;
   if(k==='dia'){const d=parseInt(v);if(!isNaN(d)&&d>=1&&d<=31){rec.dia=d;rec.fecha=String(d).padStart(2,"0")+"/"+String(rec.mes).padStart(2,"0")+"/"+rec.anio;}}
   else rec[k]=v;
-  if(k==='peso'||k==='talla'){const p=pacPorId(rec.pacId);if(p&&v){p[k]=v;guardarPacientes();}}
+  if((k==='peso'||k==='talla')&&!esCont(rec)){const p=pacPorId(rec.pacId);if(p&&v){p[k]=v;guardarPacientes();}}
   rec.guardado=new Date().toISOString();guardarAtenciones();marcarGuardado();
 }
-function sugerirPaciente(q,toks){if(!toks.length)return [];const qn=q.trim(),num=/^\d+$/.test(qn);
+function sugerirPaciente(q,toks){if(!toks.length)return [];const qn=q.trim(),num=/^\d+$/.test(qn);if(/^0+$/.test(qn))return []; // 0 = continuación del paciente anterior
   const rank=r=>{const n=String(r.n);if(num){if(n===qn)return 0;if(n.startsWith(qn))return 1;if(String(r.dni||"").startsWith(qn)||String(r.hc||"").replace(/\s/g,"").startsWith(qn))return 2;return 9;}
     const s=normTxt([r.n,r.dni,r.hc,r.nom].join(" "));return toks.every(t=>s.includes(t))?3:9;};
   return pacientes.map(r=>[rank(r),r]).filter(x=>x[0]<9).sort((x,y)=>x[0]-y[0]||(parseInt(x[1].n)||0)-(parseInt(y[1].n)||0)).slice(0,8).map(x=>x[1]);}
@@ -338,20 +348,33 @@ function activarHoja(){
   hoja.querySelectorAll('input.dxcod').forEach(el=>{el.addEventListener('focus',cargarCIE,{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE);});
 }
 document.getElementById('hoja').addEventListener('change',e=>{const el=e.target;if(!el.classList.contains('hi'))return;
-  if(el.dataset.f==='npac'){const p=pacPorN(el.value);if(p)asignarPaciente(el.closest('.bloque'),p);else if(el.value.trim()&&!atenciones[el.closest('.bloque').dataset.id]){msg("No existe un paciente con N° "+el.value);}return;}
+  if(el.dataset.f==='npac'){const bl=el.closest('.bloque'),v=el.value.trim();
+    if(atenciones[bl.dataset.id]&&esCont(atenciones[bl.dataset.id])){el.value="";if(v&&v!=="0")msg("Esta sección es continuación del paciente anterior; quítela con ✕ si desea una atención nueva");return;}
+    if(v==="0"&&!atenciones[bl.dataset.id]){const pr=principalAnterior(bl);if(!pr){el.value="";msg("No hay un paciente anterior al que pertenezca esta sección");return;}
+      const rec=crearContinuacion(pr);bl.dataset.id=rec.id;bl.removeAttribute('data-nuevo');bl.classList.add('cont');bl.dataset.contDe=pr.n;el.value="";
+      bl.querySelectorAll('input.hi').forEach(i=>{if(i.dataset.f!=='npac'&&i.value.trim()){rec[i.dataset.f]=i.value;}});guardarAtenciones();marcarGuardado();
+      if(bloquesExtra>0&&document.querySelector('.bloque[data-nuevo]'))bloquesExtra--;setTimeout(renderRegistro,0);msg("Sección de continuación de N° "+pr.n);return;}
+    const p=pacPorN(v);if(p)asignarPaciente(bl,p);else if(v&&!atenciones[bl.dataset.id]){msg("No existe un paciente con N° "+v);}return;}
   const bl=el.closest('.bloque');if(!atenciones[bl.dataset.id]){if(el.value.trim())msg("Primero escriba el N° del paciente en este bloque");return;}
   if(/^(fechaHb|fechaRegla)$/.test(el.dataset.f)){const d=parseFecha(el.value);if(d)el.value=fmtFecha(d);}
   guardarCelda(el);});
 document.getElementById('hoja').addEventListener('input',e=>{const el=e.target;if(!el.classList.contains('hi')||el.dataset.f==='npac')return;const bl=el.closest('.bloque');if(atenciones[bl.dataset.id]){const st=document.getElementById('savedTag');st.textContent="Guardando…";st.classList.remove('ok');clearTimeout(el._t);el._t=setTimeout(()=>guardarCelda(el),500);}});
 document.getElementById('hoja').addEventListener('click',async e=>{
   const q=e.target.closest('.quitar');if(q){const bl=q.closest('.bloque'),rec=atenciones[bl.dataset.id];
-    if(!rec){if(document.querySelectorAll('.bloque[data-nuevo]').length<=1){msg("Debe quedar al menos una sección vacía para registrar");return;}bloquesExtra=Math.max(0,bloquesExtra-1);bl.remove();document.querySelectorAll('.bloque[data-nuevo] .npac').forEach(i=>i.blur());return;}if(!await confirmar("Quitar atención",`Se quitará de la hoja la atención de N° ${rec.n} · ${rec.nombre} del ${rec.fecha||''}.`,{ok:"Quitar",peligro:true}))return;if(!atenciones[bl.dataset.id])return;delete atenciones[bl.dataset.id];guardarAtenciones();renderRegistro();msg("Atención quitada");return;}
+    if(!rec){if(document.querySelectorAll('.bloque[data-nuevo]').length<=1){msg("Debe quedar al menos una sección vacía para registrar");return;}bloquesExtra=Math.max(0,bloquesExtra-1);bl.remove();document.querySelectorAll('.bloque[data-nuevo] .npac').forEach(i=>i.blur());return;}const conts=Object.values(atenciones).filter(x=>x.contDe===rec.id);const pr=principalDe(rec);
+    const txt=esCont(rec)?`Se quitará esta sección de continuación${pr?` de N° ${pr.n} · ${pr.nombre}`:''}.`:`Se quitará de la hoja la atención de N° ${rec.n} · ${rec.nombre} del ${rec.fecha||''}${conts.length?` y sus ${conts.length} sección(es) de continuación`:''}.`;
+    if(!await confirmar(esCont(rec)?"Quitar continuación":"Quitar atención",txt,{ok:"Quitar",peligro:true}))return;if(!atenciones[bl.dataset.id])return;conts.forEach(c=>delete atenciones[c.id]);delete atenciones[bl.dataset.id];guardarAtenciones();renderRegistro();msg("Atención quitada");return;}
   const t=e.target.closest('.tg');if(!t)return;const bl=t.closest('.bloque');if(!atenciones[bl.dataset.id]){msg("Primero escriba el N° del paciente en este bloque");return;}
   const on=!t.classList.contains('on');
   bl.querySelectorAll(`.tg[data-g="${t.dataset.g}"]`).forEach(x=>{const xon=x===t?on:false;x.classList.toggle('on',xon);x.textContent=xon?'X':x.dataset.f.split('_')[1].toUpperCase();guardarCelda(x);});
 });
 function marcarGuardado(){const st=document.getElementById('savedTag');const h=new Date();st.textContent="✔ Guardado "+String(h.getHours()).padStart(2,"0")+":"+String(h.getMinutes()).padStart(2,"0");st.classList.add('ok');}
-function agregarSeccion(){bloquesExtra++;renderRegistro();const nuevos=document.querySelectorAll('.bloque[data-nuevo]');const b=nuevos[nuevos.length-1];if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.querySelector('.npac').focus();}msg("Sección añadida: escriba el N° del paciente");}
+async function agregarSeccion(){
+  const ult=ultimaPrincipal();let cont=false;
+  if(ult){const r=await dialogo({tipo:'pregunta',titulo:"Agregar sección",texto:`¿La nueva sección es de otro paciente o es continuación de N° ${ult.n} · ${ult.nombre} (más diagnósticos)?\nLa continuación va sin N°, nombre ni datos: pertenece al paciente anterior.`,botones:[{txt:"Cancelar",val:null},{txt:"Continuación de N° "+ult.n,val:"cont"},{txt:"Nuevo paciente",val:"nuevo",clase:"primario"}],escape:null});
+    if(r===null)return;cont=r==="cont";}
+  if(cont){const rec=crearContinuacion(ult);renderRegistro();const b=document.querySelector(`.bloque[data-id="${rec.id}"]`);if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.querySelector('[data-f=dx1_txt]').focus();}msg("Sección de continuación de N° "+ult.n+" añadida");return;}
+  bloquesExtra++;renderRegistro();const nuevos=document.querySelectorAll('.bloque[data-nuevo]');const b=nuevos[nuevos.length-1];if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.querySelector('.npac').focus();}msg("Sección añadida: escriba el N° del paciente");}
 function guardarTodo(){const el=document.activeElement;if(el&&el.classList&&el.classList.contains('hi')){el.blur();}
   document.querySelectorAll('#hoja input.hi').forEach(i=>{if(i._t){clearTimeout(i._t);i._t=null;guardarCelda(i);}});
   guardarPacientes();guardarAtenciones();guardarConfig();marcarGuardado();
