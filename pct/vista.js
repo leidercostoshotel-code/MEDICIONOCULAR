@@ -62,7 +62,8 @@ document.body.insertAdjacentHTML("afterbegin",`
     <button class="btn" type="button" onclick="document.getElementById('cpPanel').classList.toggle('abierto')">Códigos propios</button>
   </div>
   <div id="cpPanel" class="toolbar cfgbar cppanel no-print">
-    <div class="codform"><input id="cpCod" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" style="text-transform:uppercase"><input id="cpTxt" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" style="text-transform:uppercase"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
+    <form class="codform" autocomplete="off" onsubmit="agregarCodigo();return false"><input id="cpCod" name="cp-cod-nohist" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><input id="cpTxt" name="cp-txt-nohist" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><button type="submit" class="btn primary" id="cpBtn">+ Agregar código</button><button type="button" class="btn" id="cpCancelar" onclick="cancelarEdicionCodigo()" style="display:none">Cancelar</button></form>
+    <div class="codbusca"><input id="cpBuscar" placeholder="🔎 Buscar código o descripción…" autocomplete="off" oninput="pintarCodigos()"><span id="cpCuenta" class="status"></span></div>
     <div id="cpLista" class="cplista"></div>
   </div>
   <div id="regWrap"><div id="hoja" class="his"></div></div>
