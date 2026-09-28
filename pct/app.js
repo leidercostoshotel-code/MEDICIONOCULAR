@@ -99,8 +99,8 @@ function addRow(){
   const last=document.querySelector('#tbodyDatos tr:last-child input[data-k=nom]');if(last)last.focus();
   msg("Fila N° "+r.n+" agregada");
 }
-function delRow(i){const r=pacientes[i];if(!confirm(`¿Eliminar la fila N° ${r.n} (${r.nom||'sin nombre'})?`))return;pacientes.splice(i,1);guardarPacientes();renderDatos();msg("Fila eliminada");}
-function resetData(){if(!confirm("Se reemplazará el padrón actual por los datos originales del Excel. ¿Continuar?"))return;pacientes=DATA_INICIAL.map(normalizar);guardarPacientes();renderDatos();msg("Datos originales restaurados");}
+async function delRow(i){const r=pacientes[i];if(!await confirmar("Eliminar paciente",`Se eliminará del padrón la fila N° ${r.n} · ${r.nom||'sin nombre'}. Esta acción no se puede deshacer.`,{ok:"Eliminar",peligro:true}))return;pacientes.splice(i,1);guardarPacientes();renderDatos();msg("Fila eliminada");}
+async function resetData(){if(!await confirmar("Restaurar padrón original","Se reemplazará el padrón actual por los datos originales del Excel. Los cambios hechos en DATOS se perderán.",{ok:"Restaurar",peligro:true}))return;pacientes=DATA_INICIAL.map(normalizar);guardarPacientes();renderDatos();msg("Datos originales restaurados");}
 
 /* ======================= IMPORTAR / EXPORTAR ======================= */
 function parseCSV(text){
@@ -131,12 +131,12 @@ function filasAPacientes(rows){
 }
 function importFile(inp){
   const f=inp.files[0];if(!f)return;inp.value="";
-  const done=rows=>{const nuevos=filasAPacientes(rows);if(!nuevos.length){msg("No se encontraron registros válidos");return;}
-    const modo=confirm(`Se leyeron ${nuevos.length} registros.\n\nAceptar = REEMPLAZAR el padrón actual\nCancelar = AGREGAR al padrón actual`);
+  const done=async rows=>{const nuevos=filasAPacientes(rows);if(!nuevos.length){msg("No se encontraron registros válidos");return;}
+    const modo=await dialogo({tipo:'pregunta',titulo:"Importar padrón",texto:`Se leyeron ${nuevos.length} registros del archivo. ¿Cómo desea incorporarlos?`,botones:[{txt:"Cancelar",val:null},{txt:"Agregar al padrón",val:false},{txt:"Reemplazar padrón",val:true,clase:"peligro"}],escape:null});if(modo===null)return;
     if(modo){pacientes=nuevos;}else{let max=pacientes.reduce((m,r)=>Math.max(m,parseInt(r.n)||0),0);nuevos.forEach(r=>{if(r.n===""||pacientes.some(p=>p.n===r.n))r.n=++max;else max=Math.max(max,r.n);pacientes.push(r);});}
     guardarPacientes();renderDatos();msg(`${nuevos.length} registros importados`);};
   if(/\.(xlsx|xls)$/i.test(f.name)){
-    if(typeof XLSX==="undefined"){alert("No se pudo cargar la librería de Excel (sin conexión). Importe el archivo como CSV.");return;}
+    if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel. Importe el archivo como CSV.");return;}
     const rd=new FileReader();rd.onload=e=>{const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});const name=wb.SheetNames.find(n=>/pacientes|datos/i.test(n))||wb.SheetNames[0];
       let rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:false,defval:""});rows=rows.filter(r=>r.some(x=>String(x).trim()!==""));done(rows);};
     rd.readAsArrayBuffer(f);
@@ -148,12 +148,29 @@ function exportCSV(){const q=v=>{v=String(v==null?"":v);return /[";\n\r]/.test(v
   const lines=[HEADERS.map(q).join(";")].concat(pacientes.map(r=>filaExport(r).map(q).join(";")));
   descargar(new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}),"PCT_pacientes.csv");}
 function exportXLSX(){
-  if(typeof XLSX==="undefined"){alert("No se pudo cargar la librería de Excel (sin conexión). Use Exportar CSV.");return;}
+  if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel. Use Exportar CSV.");return;}
   const aoa=[HEADERS].concat(pacientes.map(filaExport));const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[7,34,14,12,14,6,6,18,8,8,16].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"PACIENTES");
   const ats=Object.values(atenciones).sort(ordenAt);
   if(ats.length){const ws2=XLSX.utils.aoa_to_sheet([CAB_AT].concat(ats.map(filaAt)));XLSX.utils.book_append_sheet(wb,ws2,"ATENCIONES");}
   XLSX.writeFile(wb,"PCT_pacientes.xlsx");}
+
+/* ======================= DIÁLOGOS PROPIOS (reemplazan confirm/alert) ======================= */
+const DLG=document.createElement('div');DLG.className='dlg-fondo no-print';DLG.innerHTML='<div class="dlg" role="dialog" aria-modal="true"><div class="dlg-ico"></div><div class="dlg-cuerpo"><h3 class="dlg-tit"></h3><p class="dlg-txt"></p></div><div class="dlg-btns"></div></div>';document.body.appendChild(DLG);
+function dialogo(o){return new Promise(res=>{
+  const ico={pregunta:'?',peligro:'!',info:'i',ok:'✓'}[o.tipo||'pregunta'];
+  DLG.querySelector('.dlg-ico').textContent=ico;DLG.querySelector('.dlg').dataset.tipo=o.tipo||'pregunta';
+  DLG.querySelector('.dlg-tit').textContent=o.titulo||"";DLG.querySelector('.dlg-txt').textContent=o.texto||"";
+  const bs=DLG.querySelector('.dlg-btns');bs.innerHTML="";const prev=document.activeElement;
+  const cerrar=v=>{DLG.classList.remove('abierto');document.removeEventListener('keydown',tecla);if(prev&&prev.focus)prev.focus();res(v);};
+  const tecla=e=>{if(e.key==='Escape'){e.preventDefault();cerrar(o.escape===undefined?false:o.escape);}};
+  (o.botones||[{txt:"Cancelar",val:false},{txt:"Aceptar",val:true,clase:"primario"}]).forEach(b=>{const el=document.createElement('button');el.type="button";el.className="dlg-btn "+(b.clase||"");el.textContent=b.txt;el.onclick=()=>cerrar(b.val);bs.appendChild(el);});
+  document.addEventListener('keydown',tecla);DLG.classList.add('abierto');
+  const foco=bs.querySelector('.primario, .peligro')||bs.lastElementChild;if(foco)foco.focus();
+});}
+function confirmar(titulo,texto,opc){opc=opc||{};return dialogo({tipo:opc.peligro?'peligro':'pregunta',titulo,texto,botones:[{txt:opc.cancelar||"Cancelar",val:false},{txt:opc.ok||"Aceptar",val:true,clase:opc.peligro?"peligro":"primario"}]});}
+function avisar(titulo,texto,tipo){return dialogo({tipo:tipo||'info',titulo,texto,botones:[{txt:"Entendido",val:true,clase:"primario"}],escape:true});}
+DLG.addEventListener('mousedown',e=>{if(e.target===DLG){const b=DLG.querySelector('.dlg-btn');if(b)b.click();}});
 
 /* ======================= MENÚ PREDICTIVO (lista flotante) ======================= */
 const MP=document.createElement('div');MP.className='mp-lista no-print';document.body.appendChild(MP);
@@ -202,10 +219,10 @@ function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span>
 function pintarCodigos(){const li=document.getElementById('cpLista');const lst=codigosPropios();
   li.innerHTML=lst.length?lst.map((o,i)=>`<span class="cpchip"><b>${esc(o.c)}</b> ${esc(o.t)}<button type="button" title="Quitar" onclick="quitarCodigo(${i})">✕</button></span>`).join(""):'<span class="ficha-lbl">Aún no hay códigos propios.</span>';}
 function agregarCodigo(){const c=document.getElementById('cpCod').value.trim().toUpperCase(),t=document.getElementById('cpTxt').value.trim().toUpperCase();
-  if(!c||!t){alert("Escriba el código y su descripción.");return;}
+  if(!c||!t){avisar("Datos incompletos","Escriba el código y su descripción para agregarlo.");return;}
   const lst=codigosPropios().filter(o=>o.c!==c);lst.push({c,t});config.codigos=lst;guardarConfig();pintarCodigos();
   document.getElementById('cpCod').value="";document.getElementById('cpTxt').value="";msg("Código "+c+" agregado");}
-function quitarCodigo(i){const lst=codigosPropios();const o=lst[i];if(!o||!confirm(`¿Quitar el código ${o.c} · ${o.t}?`))return;lst.splice(i,1);config.codigos=lst;guardarConfig();pintarCodigos();}
+async function quitarCodigo(i){const lst=codigosPropios();const o=lst[i];if(!o||!await confirmar("Quitar código propio",`Se quitará el código ${o.c} · ${o.t} de la lista.`,{ok:"Quitar",peligro:true}))return;lst.splice(i,1);config.codigos=lst;guardarConfig();pintarCodigos();}
 function elegirCIE(v,el){const tr=el.closest('tr');const txt=tr.querySelector('input[data-f$="_txt"]'),cod=tr.querySelector('input[data-f$="_cie"]');
   txt.value=String(v[1]).toUpperCase();cod.value=v[0];guardarCelda(txt);guardarCelda(cod);}
 
@@ -326,9 +343,9 @@ document.getElementById('hoja').addEventListener('change',e=>{const el=e.target;
   if(/^(fechaHb|fechaRegla)$/.test(el.dataset.f)){const d=parseFecha(el.value);if(d)el.value=fmtFecha(d);}
   guardarCelda(el);});
 document.getElementById('hoja').addEventListener('input',e=>{const el=e.target;if(!el.classList.contains('hi')||el.dataset.f==='npac')return;const bl=el.closest('.bloque');if(atenciones[bl.dataset.id]){const st=document.getElementById('savedTag');st.textContent="Guardando…";st.classList.remove('ok');clearTimeout(el._t);el._t=setTimeout(()=>guardarCelda(el),500);}});
-document.getElementById('hoja').addEventListener('click',e=>{
+document.getElementById('hoja').addEventListener('click',async e=>{
   const q=e.target.closest('.quitar');if(q){const bl=q.closest('.bloque'),rec=atenciones[bl.dataset.id];
-    if(!rec){if(document.querySelectorAll('.bloque[data-nuevo]').length<=1){msg("Debe quedar al menos una sección vacía para registrar");return;}bloquesExtra=Math.max(0,bloquesExtra-1);bl.remove();document.querySelectorAll('.bloque[data-nuevo] .npac').forEach(i=>i.blur());return;}if(!confirm(`¿Quitar la atención de N° ${rec.n} · ${rec.nombre}?`))return;delete atenciones[bl.dataset.id];guardarAtenciones();renderRegistro();msg("Atención quitada");return;}
+    if(!rec){if(document.querySelectorAll('.bloque[data-nuevo]').length<=1){msg("Debe quedar al menos una sección vacía para registrar");return;}bloquesExtra=Math.max(0,bloquesExtra-1);bl.remove();document.querySelectorAll('.bloque[data-nuevo] .npac').forEach(i=>i.blur());return;}if(!await confirmar("Quitar atención",`Se quitará de la hoja la atención de N° ${rec.n} · ${rec.nombre} del ${rec.fecha||''}.`,{ok:"Quitar",peligro:true}))return;if(!atenciones[bl.dataset.id])return;delete atenciones[bl.dataset.id];guardarAtenciones();renderRegistro();msg("Atención quitada");return;}
   const t=e.target.closest('.tg');if(!t)return;const bl=t.closest('.bloque');if(!atenciones[bl.dataset.id]){msg("Primero escriba el N° del paciente en este bloque");return;}
   const on=!t.classList.contains('on');
   bl.querySelectorAll(`.tg[data-g="${t.dataset.g}"]`).forEach(x=>{const xon=x===t?on:false;x.classList.toggle('on',xon);x.textContent=xon?'X':x.dataset.f.split('_')[1].toUpperCase();guardarCelda(x);});
@@ -342,7 +359,7 @@ function guardarTodo(){const el=document.activeElement;if(el&&el.classList&&el.c
 window.alCambiarPacientes=()=>{if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
 window.alCambiarAtenciones=()=>{if(document.getElementById('registro').classList.contains('active')){llenarDias();renderRegistro();}if(document.getElementById('datos').classList.contains('active'))renderDatos();};
 window.alCambiarConfig=()=>{pintarConfig();pintarCodigos();if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
-function exportRegistroXLSX(){if(typeof XLSX==="undefined"){alert("No se pudo cargar la librería de Excel (sin conexión).");return;}
+function exportRegistroXLSX(){if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel.");return;}
   const lista=atencionesPeriodo();if(!lista.length){msg("No hay atenciones en el periodo");return;}
   const {a,m}=periodo();const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}.xlsx`);}
 
