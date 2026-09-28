@@ -273,17 +273,17 @@ new MutationObserver(()=>{clearTimeout(asegurarBloqueVacio._t);asegurarBloqueVac
 function cab(v){return esc(v==null?"":v);}
 function paginaHIS(bloques,np,total,anio,mes){
   const ini=(np-1)*BLOQUES_POR_PAGINA;const {d}=periodo();const fecha=d?String(d).padStart(2,"0")+"/"+String(mes).padStart(2,"0")+"/"+anio:"";
-  const turnos=new Set(bloques.filter(Boolean).map(b=>b.turno));
+  const turnoSel=document.getElementById('regTurno').value; // una sola marca: el turno seleccionado en la barra
   let h=`<div class="pagina"><table class="hcab"><colgroup><col style="width:22mm"><col style="width:135mm"><col style="width:35mm"><col style="width:25mm"><col style="width:55mm"></colgroup>
   <tr><td class="lbl cab-lote">LOTE ${cab(config.lote)}</td><td rowspan="4" class="tit"><img src="${LOGO_MINSA}" alt=""><div><b>MINISTERIO DE SALUD</b><br>OFICINA GENERAL DE ESTADÍSTICA E INFORMÁTICA<br><b class="grande">Registro Diario de Atención y Otras Actividades de Salud</b></div></td><td class="lbl c" colspan="3">FIRMA Y SELLO RESPONSABLE DEL HIS</td></tr>
   <tr><td class="lbl">&nbsp;</td><td rowspan="3" colspan="3" class="firma"></td></tr>
   <tr><td class="lbl">PÁGINA ${np} de ${total}</td></tr>
   <tr><td class="lbl">FECHA ${cab(fecha)}</td></tr>
-  <tr><td class="lbl cab-digit">DIGITADOR ${cab(config.digit)}</td><td class="c small">TURNO: &nbsp; ${["M","T","N"].map(t=>t+" "+(turnos.has(t)?"☒":"☐")).join(" &nbsp; ")}</td><td colspan="3"></td></tr>
+  <tr><td class="lbl cab-digit">DIGITADOR ${cab(config.digit)}</td><td></td><td colspan="3" class="turno-cab">TURNO: &nbsp; ${["M","T","N"].map(t=>t+" "+(t===turnoSel?"☒":"☐")).join(" &nbsp; ")}</td></tr>
   </table>
   <table class="hdatos"><tr><th style="width:14mm">AÑO</th><th style="width:14mm">MES</th><th>NOMBRE DE ESTABLECIMIENTO DE SALUD (IPRESS)</th><th style="width:50mm">UNIDAD PRODUCTORA DE SALUD (UPS)</th><th style="width:70mm">NOMBRE DEL RESPONSABLE DE LA ATENCIÓN</th></tr>
   <tr><td class="c">${anio}</td><td class="c">${MESES[mes-1]}</td><td>${cab(config.estab)}</td><td>${cab(config.ups)}</td><td>${cab(config.resp)}</td></tr></table>
-  <table class="hreg"><colgroup>${[7,9,22,11,22,9,5,8,9,11,11,11,9,9,62,5,5,5,7,7,7,16].map(w=>`<col style="width:${w}mm">`).join("")}</colgroup>
+  <table class="hreg"><colgroup>${[10,9,22,11,22,9,5,8,9,11,11,13,9,9,57,5,5,5,7,7,7,16].map(w=>`<col style="width:${w}mm">`).join("")}</colgroup>
   <tr class="nums"><td></td><td>7</td><td>8</td><td>9</td><td>11</td><td colspan="2">13</td><td>14</td><td colspan="2">15</td><td colspan="2">16</td><td>17</td><td>18</td><td>19</td><td colspan="3">20</td><td colspan="3">21</td><td>22</td></tr>
   <tr class="th"><td rowspan="3">N°</td><td rowspan="3">DÍA</td><td>DNI</td><td>FINANCIA</td><td>DISTRITO DE PROCEDENCIA</td><td colspan="2" rowspan="3">EDAD</td><td rowspan="3">SEXO</td><td colspan="2" rowspan="3">PERÍMETRO CEFÁLICO Y ABDOMINAL</td><td colspan="2" rowspan="3">EVALUACIÓN ANTROPOMÉTRICA HEMOGLOBINA</td><td rowspan="3">ESTABLEC</td><td rowspan="3">SERVICIO</td><td rowspan="3">DIAGNÓSTICO MOTIVO DE CONSULTA Y/O ACTIVIDAD DE SALUD</td><td colspan="3" rowspan="2">TIPOS DE DIAGNÓSTICO</td><td colspan="3" rowspan="2">VALOR LAB</td><td rowspan="3">CÓDIGO</td></tr>
   <tr class="th"><td>HISTORIA CLÍNICA</td><td>10</td><td>12</td></tr>
@@ -337,6 +337,7 @@ function asignarPaciente(bloque,pac){
 function guardarCelda(el){
   const bloque=el.closest('.bloque');if(!bloque)return;const rec=atenciones[bloque.dataset.id];if(!rec)return;
   const k=el.dataset.f;let v=el.classList.contains('tg')?(el.classList.contains('on')?"X":""):el.value;
+  if(!el.classList.contains('tg')&&typeof v==='string'&&v!==v.toUpperCase()){v=v.toUpperCase();el.value=v;} // en las secciones todo va en mayúsculas
   if(k==='dia'){const d=parseInt(v);if(!isNaN(d)&&d>=1&&d<=31){rec.dia=d;rec.fecha=String(d).padStart(2,"0")+"/"+String(rec.mes).padStart(2,"0")+"/"+rec.anio;}}
   else rec[k]=v;
   if((k==='peso'||k==='talla')&&!esCont(rec)){const p=pacPorId(rec.pacId);if(p&&v){p[k]=v;guardarPacientes();}}
@@ -396,13 +397,14 @@ function exportRegistroXLSX(){if(typeof XLSX==="undefined"){avisar("Sin conexió
 // Turno según la hora: M = 7:00 a 13:30 · T = 13:35 a 20:00 · fuera de ese horario = N
 function turnoActual(d){const min=d.getHours()*60+d.getMinutes();if(min>=7*60&&min<=13*60+34)return "M";if(min>=13*60+35&&min<=20*60)return "T";return "N";}
 const NOMBRE_TURNO={M:"Turno mañana",T:"Turno tarde",N:"Turno noche"};
-let turnoManual=false;document.getElementById('regTurno').addEventListener('change',()=>{turnoManual=true;});
+let turnoManual=false;document.getElementById('regTurno').addEventListener('change',()=>{turnoManual=true;pintarTurnoHoja();});
+function pintarTurnoHoja(){const t=document.getElementById('regTurno').value;document.querySelectorAll('#hoja .turno-cab').forEach(td=>{td.innerHTML='TURNO: &nbsp; '+["M","T","N"].map(x=>x+" "+(x===t?"☒":"☐")).join(" &nbsp; ");});}
 const DIAS_SEM=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 function tickReloj(){const d=new Date();const p2=n=>String(n).padStart(2,"0");
   document.getElementById('relojHora').textContent=`${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
   const ds=DIAS_SEM[d.getDay()];document.getElementById('relojFecha').textContent=`${ds.charAt(0).toUpperCase()+ds.slice(1)} ${d.getDate()} de ${MESES_LARGO[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
   const t=turnoActual(d);const rt=document.getElementById('relojTurno');rt.textContent=NOMBRE_TURNO[t];rt.dataset.t=t;
-  const sel=document.getElementById('regTurno');if(!turnoManual&&sel.value!==t)sel.value=t;}
+  const sel=document.getElementById('regTurno');if(!turnoManual&&sel.value!==t){sel.value=t;pintarTurnoHoja();}}
 tickReloj();setInterval(tickReloj,1000);
 
 /* ======================= INICIO ======================= */
