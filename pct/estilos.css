@@ -214,7 +214,10 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
   /* la hoja (297mm de ancho) se reduce al 70% para caber en A4 vertical: 10 secciones por página */
   .his{zoom:.7;width:297mm;margin:0}.ayuda{display:none!important}
   .his .pagina{box-shadow:none;margin:0;width:297mm;height:424mm;padding:8mm 8mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
-  .his .hreg .bloque td{height:6.6mm}
+  .his .hreg .bloque td{height:6.8mm;font-size:8pt}.his .hreg .bloque .lbl{font-size:6.5pt}
+  .his .hreg .bloque input.hi,.his .hreg .bloque [data-auto],.his .hreg .bloque .tg,.his .hreg .bn .nom{font-size:10pt}
+  .his .hreg .bloque .dx input.hi{font-size:9pt}
+  .his .hdatos td{font-size:8.5pt}.his .hcab .lbl{font-size:8pt}
   .cfgbar{display:none!important}
 }
 /* Calendario en la tabla DATOS y códigos propios */
