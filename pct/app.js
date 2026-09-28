@@ -274,13 +274,15 @@ function cab(v){return esc(v==null?"":v);}
 function paginaHIS(bloques,np,total,anio,mes){
   const ini=(np-1)*BLOQUES_POR_PAGINA;const {d}=periodo();const fecha=d?String(d).padStart(2,"0")+"/"+String(mes).padStart(2,"0")+"/"+anio:"";
   const turnoSel=document.getElementById('regTurno').value; // una sola marca: el turno seleccionado en la barra
-  let h=`<div class="pagina"><table class="hcab"><colgroup><col style="width:22mm"><col style="width:135mm"><col style="width:35mm"><col style="width:25mm"><col style="width:55mm"></colgroup>
+  // Como la hoja física por ambas caras: página impar (frente) con encabezado completo; página par (reverso) solo con la fila AÑO/MES/ESTABLECIMIENTO
+  const reverso=np%2===0;
+  let h=`<div class="pagina${reverso?' reverso':''}">`+(reverso?'':`<table class="hcab"><colgroup><col style="width:22mm"><col style="width:135mm"><col style="width:35mm"><col style="width:25mm"><col style="width:55mm"></colgroup>
   <tr><td class="lbl cab-lote">LOTE ${cab(config.lote)}</td><td rowspan="4" class="tit"><img src="${LOGO_MINSA}" alt=""><div><b>MINISTERIO DE SALUD</b><br>OFICINA GENERAL DE ESTADÍSTICA E INFORMÁTICA<br><b class="grande">Registro Diario de Atención y Otras Actividades de Salud</b></div></td><td class="lbl c" colspan="3">FIRMA Y SELLO RESPONSABLE DEL HIS</td></tr>
   <tr><td class="lbl">&nbsp;</td><td rowspan="3" colspan="3" class="firma"></td></tr>
   <tr><td class="lbl">PÁGINA ${np} de ${total}</td></tr>
   <tr><td class="lbl">FECHA ${cab(fecha)}</td></tr>
   <tr><td class="lbl cab-digit">DIGITADOR ${cab(config.digit)}</td><td></td><td colspan="3" class="turno-cab">TURNO: &nbsp; ${["M","T","N"].map(t=>t+" "+(t===turnoSel?"☒":"☐")).join(" &nbsp; ")}</td></tr>
-  </table>
+  </table>`)+`
   <table class="hdatos"><tr><th style="width:14mm">AÑO</th><th style="width:14mm">MES</th><th>NOMBRE DE ESTABLECIMIENTO DE SALUD (IPRESS)</th><th style="width:50mm">UNIDAD PRODUCTORA DE SALUD (UPS)</th><th style="width:70mm">NOMBRE DEL RESPONSABLE DE LA ATENCIÓN</th></tr>
   <tr><td class="c">${anio}</td><td class="c">${MESES[mes-1]}</td><td>${cab(config.estab)}</td><td>${cab(config.ups)}</td><td>${cab(config.resp)}</td></tr></table>
   <table class="hreg"><colgroup>${[10,9,22,11,22,9,5,8,9,11,11,13,9,9,57,5,5,5,7,7,7,16].map(w=>`<col style="width:${w}mm">`).join("")}</colgroup>
