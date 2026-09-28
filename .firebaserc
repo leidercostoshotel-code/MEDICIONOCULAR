@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "medicion-ocular"
+  },
+  "targets": {
+    "medicion-ocular": {
+      "hosting": {
+        "ocular": [
+          "medicion-ocular"
+        ],
+        "pct": [
+          "pct-huascar"
+        ]
+      }
+    }
   }
 }

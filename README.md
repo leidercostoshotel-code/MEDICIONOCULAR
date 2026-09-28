@@ -78,3 +78,23 @@ bubblewrap build
 Para que la app abra a pantalla completa, sin la barra del navegador, copie esa huella en `public/.well-known/assetlinks.json` (reemplazando `PEGAR_SHA256`) y vuelva a publicar con `firebase deploy --only hosting`.
 
 Para descargar la APK desde Cloud Shell: menú ⋮ de la terminal → "Descargar" → `apk/app-release-signed.apk`.
+
+## Sistema PCT (Paciente con Tuberculosis)
+
+Segunda aplicación del mismo proyecto Firebase, en la carpeta `pct/`, con la misma estructura que la de salud ocular: `index.html` de 19 líneas, `vista.js`, `app.js`, `estilos.css`, `firebase-sync.js`. Comparte los usuarios de acceso y usa las colecciones `pct_pacientes`, `pct_atenciones` y `pct_config` en Firestore.
+
+- **DATOS**: padrón de pacientes (N° Reg, apellidos y nombres, HC, DNI, fecha de nacimiento, edad, sexo, diagnóstico, peso, talla, tratamiento). Importa/exporta CSV y Excel.
+- **ATENCIÓN HIS**: registra una atención por paciente y fecha con los campos del formato HIS (financiador, distrito, etnia, centro poblado, edad, PC/PAB, peso, talla, Hb, establecimiento y servicio N/C/R) y hasta 3 diagnósticos con búsqueda predictiva sobre los 15 082 códigos CIE-10 (`pct/cie10.json`).
+- **REGISTRO HIS**: arma el "Registro Diario de Atención y Otras Actividades de Salud" del mes (o de un día), con encabezado editable (establecimiento, UPS, responsable, digitador, lote), 5 pacientes por página en A4 horizontal, impresión y exportación a Excel.
+
+### Publicar PCT (una sola vez, crear el sitio)
+
+1. Consola Firebase → **Hosting** → al final de la página "Agregar otro sitio" → ID del sitio: `pct-huascar` (queda en `https://pct-huascar.web.app`).
+2. En Cloud Shell:
+
+```bash
+cd ~/MEDICIONOCULAR && git pull
+firebase deploy --project medicion-ocular --only hosting:pct,firestore:rules
+```
+
+Para publicar solo la app ocular: `firebase deploy --project medicion-ocular --only hosting:ocular`. Para ambas: `firebase deploy --project medicion-ocular --only hosting,firestore:rules`.

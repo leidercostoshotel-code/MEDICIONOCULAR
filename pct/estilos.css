@@ -1,0 +1,214 @@
+/* ======================= FIREBASE / ACCESO ======================= */
+.syncStatus{margin-left:auto;font-size:12px;color:#cfd8dc;align-self:center;white-space:nowrap}.syncStatus.ok{color:#8ef58e}.syncStatus.off{color:#ffd54f}.syncStatus.err{color:#ff8a80}
+.salir{margin-left:8px;background:transparent;color:#fff;border:1px solid #fff;border-radius:4px;padding:4px 10px;font-size:12px}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+#login{position:fixed;inset:0;height:100%;height:100dvh;z-index:99;display:flex;align-items:center;justify-content:center;padding:16px;background:#8e1b1b url("img/fondo.svg") center/cover no-repeat;font-family:Inter,Arial,Helvetica,sans-serif;overflow:hidden;overscroll-behavior:contain;touch-action:none}
+#login form{touch-action:auto}
+body.login-abierto{overflow:hidden;position:fixed;inset:0;width:100%;overscroll-behavior:none}
+html{overscroll-behavior:none}
+#login form{background:rgba(255,255,255,.96);backdrop-filter:blur(6px);padding:32px 30px 22px;border-radius:16px;width:380px;max-width:100%;display:flex;flex-direction:column;gap:6px;box-shadow:0 24px 60px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.4)}
+.lg-marca{display:flex;align-items:center;gap:12px;margin-bottom:14px}.lg-marca img{width:46px;height:46px;border-radius:12px;box-shadow:0 4px 12px rgba(13,71,161,.35)}
+.lg-marca strong{display:block;font-size:16px;color:#b71c1c;letter-spacing:.2px}.lg-marca span{font-size:12px;color:#607d8b}
+#login h2{margin:0;font-size:22px;font-weight:700;color:#1a2b3c}.lg-sub{margin:0 0 14px;font-size:13px;color:#607d8b;line-height:1.4}
+#login label{font-size:12px;font-weight:600;color:#37474f;margin-top:6px}
+.lg-campo{display:flex;align-items:center;gap:8px;border:1.5px solid #cfd8dc;border-radius:10px;padding:0 10px;background:#fff;transition:border-color .15s,box-shadow .15s}
+.lg-campo:focus-within{border-color:#1e88e5;box-shadow:0 0 0 3px rgba(30,136,229,.18)}.lg-campo svg{width:18px;height:18px;color:#90a4ae;flex:none}
+.lg-campo input{flex:1;border:0;outline:0;padding:11px 0;font-size:16px;font-family:inherit;background:transparent;min-width:0}
+.lg-ojo{border:0;background:transparent;font-size:15px;padding:4px;color:#90a4ae;cursor:pointer}.lg-ojo:hover{color:#1e88e5}
+.lg-btn{margin-top:14px;padding:12px;border:0;border-radius:10px;background:linear-gradient(135deg,#1e88e5,#0d47a1);color:#fff;font-size:15px;font-weight:600;font-family:inherit;letter-spacing:.2px;box-shadow:0 8px 18px rgba(13,71,161,.3);transition:transform .1s,box-shadow .15s}
+.lg-btn:hover{box-shadow:0 10px 22px rgba(13,71,161,.4)}.lg-btn:active{transform:translateY(1px)}.lg-btn:disabled{opacity:.7;cursor:wait}
+#lgErr{color:#c62828;font-size:12.5px;min-height:16px;text-align:center;margin-top:4px}#lgErr:not(:empty){background:#ffebee;border-radius:8px;padding:8px 10px}
+.lg-pie{margin:10px 0 0;font-size:11px;color:#90a4ae;text-align:center}
+/* ======================= GENERAL ======================= */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#e9ecef;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#000}
+button{font-family:inherit;cursor:pointer}
+.topbar{background:#8e1b1b;color:#fff;display:flex;align-items:center;gap:10px;padding:8px 16px;position:sticky;top:0;z-index:50;box-shadow:0 2px 4px rgba(0,0,0,.25)}
+.topbar h1{font-size:15px;margin:0;font-weight:bold;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabs{display:flex;gap:4px}
+.tabs button{background:#2f6aa3;color:#fff;border:1px solid #6b9bd1;padding:7px 18px;font-weight:bold;font-size:13px;border-radius:4px 4px 0 0}
+.tabs button.active{background:#fff;color:#1F4E79;border-color:#fff}
+.view{display:none}
+.view.active{display:block}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 16px;background:#f8f9fa;border-bottom:1px solid #ccc}
+.toolbar .sep{flex:1}
+.btn{background:#fff;border:1px solid #9aa4ae;border-radius:3px;padding:6px 12px;font-size:12px;color:#222}
+.btn:hover{background:#eef3f8;border-color:#1F4E79}
+.btn.primary{background:#1F4E79;color:#fff;border-color:#1F4E79}
+.btn.primary:hover{background:#163a5c}
+.btn.danger{color:#b00020;border-color:#d9a0a8}
+.btn.warn{background:#fff3cd;border-color:#e0c46c}
+.toolbar input[type=text]{padding:6px 8px;border:1px solid #9aa4ae;border-radius:3px;font-size:12px;min-width:240px}
+.toolbar label.file{display:inline-block}
+.toolbar input[type=file]{display:none}
+.status{font-size:11px;color:#555;margin-left:6px}
+#msg{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:4px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+#msg.show{opacity:.95}
+
+/* ======================= DATOS ======================= */
+#datosWrap{height:calc(100vh - 92px);overflow:auto;background:#fff;margin:0;font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:10pt}
+table.datos{border-collapse:separate;border-spacing:0;table-layout:fixed;font-family:inherit;font-size:10pt}
+table.datos th{position:sticky;top:0;z-index:5;background:#1F4E79;color:#fff;font-weight:bold;border:1px solid #D9D9D9;padding:5px 6px;text-align:center;white-space:nowrap;font-size:10pt}
+table.datos td{border:1px solid #D9D9D9;padding:0;white-space:nowrap;height:24px;overflow:hidden;text-overflow:ellipsis}
+table.datos td.calc{background:#f3f6fa;padding:2px 6px;color:#333;text-align:center}
+table.datos td.num{text-align:center;padding:2px 6px;font-weight:bold;background:#fafafa}
+table.datos tr:hover td{background:#f5f9ff}
+table.datos tr:hover td.calc{background:#e9f0f9}
+table.datos input,table.datos select{width:100%;height:24px;border:0;padding:2px 6px;font-family:inherit;font-size:10pt;background:transparent;outline:none;color:#000}
+table.datos input:focus,table.datos select:focus{background:#fff8d6;box-shadow:inset 0 0 0 2px #1F4E79}
+table.datos input.invalid{background:#ffe0e0}
+table.datos td.actions{text-align:center;padding:0 4px}
+table.datos td.actions button{border:0;background:transparent;color:#b00020;font-size:14px;padding:2px 6px}
+table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
+.w-num{width:52px}.w-hc{width:80px}.w-dni{width:100px}.w-ap{width:140px}.w-nom{width:190px}.w-sexo{width:90px}.w-fn{width:105px}
+.w-peso{width:70px}.w-imc{width:60px}.w-edad{width:55px}.w-full{width:300px}.w-od{width:55px}.w-ao{width:240px}.w-ag{width:240px}.w-obs{width:220px}
+.empty{padding:30px;text-align:center;color:#777}
+
+/* ======================= EVALUACIÓN (HOJA A4) ======================= */
+#evalWrap{padding:14px 0 40px}
+.sheet{width:210mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:8.2pt;line-height:1.15;color:#000}
+.sheet .pagina{position:relative;min-height:297mm;background:#fff;padding:9mm 10mm 8mm 10mm;box-shadow:0 0 8px rgba(0,0,0,.3);margin-bottom:14px;box-sizing:border-box}
+.sheet .pagina::after{content:"Página " counter(pag) " de 2";position:absolute;right:10mm;bottom:3.5mm;font-size:6.5pt;color:#555}
+.sheet{counter-reset:pag}.sheet .pagina{counter-increment:pag}
+.sheet .pagina+.pagina{padding-top:16mm}
+.sheet table{border-collapse:collapse;table-layout:fixed;width:100%}
+.sheet td,.sheet th{padding:0 1px;font-weight:normal;vertical-align:middle;overflow:hidden;white-space:nowrap}
+.sheet .b{font-weight:bold}
+.sheet .c{text-align:center}
+.sheet .r{text-align:right}
+.sheet .l{text-align:left}
+.sheet .bx{border:1px solid #000}
+.sheet .bt{border-top:1px solid #000}.sheet .bb{border-bottom:1px solid #000}.sheet .bl{border-left:1px solid #000}.sheet .br{border-right:1px solid #000}
+.sheet .bx2{border:2px solid #000}
+.sheet .ul{border-bottom:1px solid #000}
+.sheet .hdr td{border:1px solid #000}
+.sheet .grid td{border:1px solid #000}
+/* campos */
+.sheet input.f,.sheet textarea.f{width:100%;border:0;background:transparent;font:inherit;color:#000;padding:0 1px;outline:none;height:100%;min-height:3.4mm}
+.sheet input.f:focus{background:#fff7cc}
+.sheet input.f.auto{background:#f2f2f2;color:#000}
+.sheet input.f.auto:focus{background:#e6e6e6}
+.sheet .ulf{border-bottom:1px solid #000;display:block}
+.sheet .chk{display:block;width:100%;height:100%;min-height:3.4mm;text-align:center;font-weight:bold;cursor:pointer;user-select:none;line-height:3.4mm}
+.sheet .chk:hover{background:#fff7cc}
+.sheet .chk.on::after{content:"X"}
+.sheet .chk.dxsel{position:relative;display:inline-block;width:3.8mm;min-height:0;height:3.4mm;line-height:3.4mm;box-sizing:border-box;font-weight:normal}
+.sheet .chk.dxsel.on{font-weight:bold}
+.sheet .chk.dxsel.on::after{content:"X";position:absolute;left:0;right:0;top:-.2mm;font-size:10pt;font-weight:bold;line-height:3.4mm;text-align:center;color:#000}
+.sheet .nbox{display:inline-block;width:9mm;height:5.2mm;border:2px solid #000;text-align:center;font-weight:bold;font-size:9pt}
+.sheet .nbox input{width:100%;height:100%;border:0;text-align:center;font:inherit;font-weight:bold;outline:none;background:#fffbe6;padding:0}
+.sheet .nbox input:focus{background:#fff2a8}
+.sheet .vtxt{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;white-space:nowrap;font-size:6.4pt;letter-spacing:0;max-height:100%}
+.sheet .sec{font-weight:bold;font-size:8pt}
+.sheet .small{font-size:7pt}
+.sheet .h11{font-size:8.6pt}
+.sheet .h12{font-size:9pt}
+.sheet .sp{height:1.8mm}
+.sheet .sp2{height:1.4mm}
+.sheet .spacer{height:2.4mm}
+.sheet .logo{height:10mm;display:block}
+.sheet .eyes{display:block;height:17mm;margin:.5mm auto 0}
+.sheet .wrap{white-space:normal;line-height:1.05}
+.sheet .navnote{position:absolute;top:2mm;right:10mm;font-size:6.5pt;color:#777}
+.sheet td.hrow{height:4.4mm}
+.sheet .sym td{height:6mm}
+.sheet .sym td.symtxt{white-space:normal;line-height:1;font-size:7pt;padding:0 .5mm}
+.sheet .r4 td{height:5.4mm}
+.savedTag{font-size:11px;color:#1a7f37;font-weight:bold}
+.evalInfo{font-size:12px;color:#333}
+
+/* ======================= IMPRESIÓN ======================= */
+/* @page definido más abajo (horizontal) */
+@media print{
+  html,body{background:#fff}
+  .topbar,.toolbar,#msg,.no-print{display:none!important}
+  #evalWrap{padding:0}
+  .sheet{margin:0;width:210mm}
+  .sheet .pagina{box-shadow:none;margin:0;min-height:0;height:297mm;padding:8mm 10mm 6mm 10mm;overflow:hidden;page-break-after:always;break-after:page}
+  .sheet .pagina:last-child{page-break-after:auto;break-after:auto}
+  .sheet .pagina+.pagina{padding-top:16mm}
+  .sheet .navnote{display:none}
+  .sheet .nbox{visibility:hidden}
+  .sheet input::placeholder{color:transparent}
+  .sheet input.f.auto,.sheet input.f:focus{background:transparent}
+  .sheet .nbox input{background:transparent}
+  .sheet .chk:hover{background:transparent}
+}
+/* Antecedentes oftalmológicos (OD / OI) y generales (P / F): patología + casillas */
+.ao-cell{display:flex;align-items:center;gap:5px;width:100%;padding-right:8px;box-sizing:border-box;overflow:hidden}.ao-cell select{flex:1 1 0;width:auto;min-width:0;padding-right:0}
+.ao-cell label{flex:none;display:flex;align-items:center;gap:2px;font-size:11px;font-weight:bold;color:#0d47a1;white-space:nowrap;cursor:pointer;user-select:none}
+.ao-cell input[type=checkbox]{flex:none;width:15px;height:15px;margin:0;padding:0;accent-color:#1e88e5;cursor:pointer}
+/* Búsqueda predictiva de pacientes (pestaña EVALUACIÓN) */
+.bq{position:relative;display:flex;align-items:center;min-width:340px;flex:0 1 420px;background:#fff;border:1.5px solid #cfd8dc;border-radius:8px;padding:0 8px;height:30px}
+.bq:focus-within{border-color:#1e88e5;box-shadow:0 0 0 3px rgba(30,136,229,.18)}
+.bq svg{width:16px;height:16px;color:#90a4ae;flex:none}
+.bq input{flex:1;border:0;outline:0;background:transparent;font:inherit;font-size:13px;padding:0 6px;min-width:0}
+.bq-lista{display:none;position:absolute;top:calc(100% + 4px);left:-1px;right:-1px;background:#fff;border:1px solid #cfd8dc;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.18);z-index:60;max-height:320px;overflow:auto;padding:4px}
+.bq-item{display:grid;grid-template-columns:52px 1fr auto;gap:10px;align-items:center;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px}
+.bq-item:hover,.bq-item.act{background:#e3f2fd}
+.bq-n{font-weight:bold;color:#0d47a1;white-space:nowrap}.bq-nom{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bq-dni{color:#607d8b;font-size:12px;white-space:nowrap}.bq-dni b{color:#2e7d32;font-weight:600}
+.bq-item mark{background:#fff59d;color:inherit;padding:0;border-radius:2px}
+.bq-vacio{padding:10px 12px;color:#90a4ae;font-size:13px}
+/* Menú predictivo flotante (diagnósticos y otros campos) */
+.mp-lista{display:none;position:fixed;z-index:200;background:#fff;border:1px solid #cfd8dc;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.2);padding:4px;max-height:260px;overflow:auto;font-family:Arial,Helvetica,sans-serif;font-size:13px}
+.mp-item{padding:7px 12px;border-radius:6px;cursor:pointer;white-space:nowrap;color:#1a2b3c}.mp-item:hover,.mp-item.act{background:#e3f2fd}
+.mp-item mark{background:#fff59d;color:inherit;padding:0;border-radius:2px}
+/* Calendario del campo FECHA */
+.sheet .fecha-wrap{position:relative;display:flex;align-items:center;height:100%}
+.sheet .fecha-wrap input.f{flex:1;min-width:0}
+.sheet .cal{flex:none;border:0;background:transparent;font-size:9pt;line-height:1;padding:0 2px;cursor:pointer;color:#1e88e5}.sheet .cal:hover{color:#0d47a1}
+.sheet .cal-oculto{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+/* Aviso de nueva versión */
+.actualizar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:150;display:flex;align-items:center;gap:12px;max-width:calc(100% - 24px);background:#1a2b3c;color:#fff;padding:12px 14px 12px 16px;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);font-family:Inter,Arial,Helvetica,sans-serif;font-size:14px;animation:subir .3s ease-out}
+.actualizar button{border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;background:#1e88e5;color:#fff;cursor:pointer;white-space:nowrap}.actualizar button:hover{background:#1565c0}
+.actualizar .luego{background:transparent;padding:4px 6px;color:#b0bec5;font-weight:normal}.actualizar .luego:hover{color:#fff;background:transparent}
+@keyframes subir{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* ======================= PCT · ATENCIÓN HIS ======================= */
+#atWrap{padding:14px 16px 60px;max-width:1180px;margin:0 auto}
+.tarjeta{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.08);padding:16px 18px;margin-bottom:14px}
+.ficha-cab{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:flex-start}
+.ficha-nombre{font-size:17px;font-weight:bold;color:#0d47a1}.ficha-sub{font-size:13px;color:#546e7a;margin-top:2px}
+.ficha-lista{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.ficha-lbl{font-size:12px;color:#78909c;margin-right:4px}
+.chip{border:1px solid #90caf9;background:#e3f2fd;color:#0d47a1;border-radius:14px;padding:4px 10px;font-size:12px;cursor:pointer}.chip.act{background:#1e88e5;color:#fff;border-color:#1e88e5}.chip.nuevo{background:#fff;border-style:dashed;color:#546e7a}
+.grupo{margin-bottom:14px}.grupo h3{margin:0 0 8px;font-size:14px;color:#1a2b3c;border-bottom:1px solid #eceff1;padding-bottom:6px}.grupo h3 small{font-weight:normal;color:#78909c;margin-left:8px}
+.campos{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 14px}
+.campos label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#37474f}
+.campos input,.campos select,.dxtab input{border:1px solid #cfd8dc;border-radius:6px;padding:7px 8px;font:inherit;font-size:13px;background:#fff;min-width:0;width:100%}
+.campos input:focus,.campos select:focus,.dxtab input:focus{outline:none;border-color:#1e88e5;box-shadow:0 0 0 3px rgba(30,136,229,.15)}
+.campos input.auto{background:#f1f3f4;color:#455a64}
+.fila{display:flex;gap:6px;align-items:center}.fila>input{flex:1}.fila>select{width:64px}
+.ncr .chk{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px solid #cfd8dc;border-radius:6px;font-weight:bold;color:#455a64;background:#fff;cursor:pointer;position:relative;min-height:0;line-height:1}
+.ncr .chk.on{background:#1e88e5;border-color:#1e88e5;color:#fff}.ncr .chk.on::after{content:none}
+.dxtab{width:100%;border-collapse:collapse}.dxtab th{font-size:11px;color:#546e7a;text-align:left;padding:4px 6px;font-weight:600}.dxtab td{padding:3px 4px}.dxtab td.c{text-align:center;font-weight:bold;color:#78909c}
+.fecha-wrap{position:relative;display:flex;align-items:center;gap:4px}.fecha-wrap input{flex:1}
+.cal{flex:none;border:0;background:transparent;font-size:16px;line-height:1;padding:0 2px;cursor:pointer;color:#1e88e5}
+.cal-oculto{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+.mp-item{display:flex;gap:10px;align-items:baseline}.cie-cod{font-weight:bold;color:#0d47a1;min-width:56px}.cie-txt{white-space:normal}
+.toolbar .lbl{display:flex;align-items:center;gap:6px;font-size:12px;color:#37474f;font-weight:600}
+.toolbar .lbl input,.toolbar .lbl select{border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font:inherit;font-size:13px;background:#fff}
+.toolbar input.corto{width:80px}.toolbar input.corto2{width:140px}.toolbar input.cfg{width:220px}
+.cfgbar{background:#eceff1}
+table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.datos td.calc a:hover{text-decoration:underline}
+
+/* ======================= PCT · REGISTRO HIS (hoja A4 horizontal) ======================= */
+#regWrap{padding:14px 0 40px;overflow:auto}
+.his{width:297mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt;color:#000;counter-reset:pag}
+.his .pagina{position:relative;width:297mm;min-height:210mm;background:#fff;padding:7mm 8mm;box-sizing:border-box;box-shadow:0 0 8px rgba(0,0,0,.3);margin-bottom:14px}
+.his table{border-collapse:collapse;table-layout:fixed;width:100%}
+.his td,.his th{border:1px solid #000;padding:0 1mm;height:4.2mm;overflow:hidden;white-space:nowrap;vertical-align:middle;font-weight:normal}
+.his .c{text-align:center}.his .b{font-weight:bold}.his .lbl{font-size:6.5pt;font-weight:bold}.his .small{font-size:6.5pt}
+.his .hcab td{border:0}.his .hcab .lbl{border:1px solid #000}.his .hcab .tit{text-align:center;padding:1mm}.his .hcab .tit img{height:9mm;display:inline-block;vertical-align:middle;margin-right:3mm}.his .hcab .tit div{display:inline-block;vertical-align:middle;text-align:left;line-height:1.25;white-space:normal;max-width:95mm}.his .hcab .grande{font-size:9.5pt}
+.his .hcab .firma{border:1px solid #000;height:14mm}
+.his .hdatos{margin-top:1.5mm}.his .hdatos th{font-size:6.5pt;font-weight:bold;background:#f2f2f2}.his .hdatos td{height:5mm}
+.his .hreg{margin-top:1.5mm}.his .hreg .nums td{height:3.2mm;font-size:6pt;text-align:center;font-weight:bold;background:#f2f2f2}
+.his .hreg .th td{font-size:5.6pt;font-weight:bold;text-align:center;white-space:normal;line-height:1.05;height:5mm;background:#f7f7f7}
+.his .hreg .bn td{border-top:2px solid #000}.his .hreg .bn .nom{font-weight:bold;font-size:8pt}
+.his .hreg .dx{white-space:normal;line-height:1.05;font-size:6.8pt}.his .hreg .cod{font-weight:bold}
+.his .pie{position:absolute;right:8mm;bottom:3mm;font-size:6.5pt;color:#555}
+@page{size:A4 landscape;margin:0}
+@media print{
+  #atencion,#datos{display:none!important}#registro{display:block!important}#regWrap{padding:0;overflow:visible}
+  .his .pagina{box-shadow:none;margin:0;width:297mm;height:210mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
+  .cfgbar{display:none!important}
+}

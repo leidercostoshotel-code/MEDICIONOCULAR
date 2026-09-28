@@ -2,7 +2,8 @@
 // La app compara este valor para avisar cuando hay una versión nueva.
 const fs = require('fs');
 const path = require('path');
-const destino = path.join(__dirname, '..', 'public', 'version.json');
+const carpeta = process.argv[2] || 'public';
+const destino = path.join(__dirname, '..', carpeta, 'version.json');
 const datos = { v: Date.now(), fecha: new Date().toISOString() };
 fs.writeFileSync(destino, JSON.stringify(datos));
-console.log('version.json ->', datos.fecha);
+console.log(carpeta + '/version.json ->', datos.fecha);
