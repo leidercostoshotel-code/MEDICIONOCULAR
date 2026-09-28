@@ -4,7 +4,6 @@ document.body.insertAdjacentHTML("afterbegin",`
   <h1>PCT · Paciente con Tuberculosis</h1>
   <div class="tabs">
     <button id="tabDatos" class="active" onclick="showView('datos')">DATOS</button>
-    <button id="tabAtencion" onclick="showView('atencion')">ATENCIÓN HIS</button>
     <button id="tabRegistro" onclick="showView('registro')">REGISTRO HIS</button>
     <span id="syncStatus" class="syncStatus"></span>
     <button id="btnSalir" class="salir" onclick="Sync.cerrarSesion()" style="display:none">Salir</button>
@@ -37,74 +36,15 @@ document.body.insertAdjacentHTML("afterbegin",`
   </div>
 </div>
 
-<!-- ======================= VISTA ATENCIÓN HIS ======================= -->
-<div id="atencion" class="view">
-  <div class="toolbar">
-    <div class="bq"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input id="buscarPac" type="search" placeholder="Buscar paciente: DNI, N° Reg, HC o apellidos y nombres" autocomplete="off" spellcheck="false"><div id="buscarLista" class="bq-lista" role="listbox"></div></div>
-    <span class="evalInfo" id="evalInfo"></span>
-    <span class="savedTag" id="savedTag"></span>
-    <span class="sep"></span>
-    <button class="btn" onclick="nuevaAtencion()">+ Nueva atención</button>
-    <button class="btn danger" onclick="eliminarAtencion()">Eliminar</button>
-    <button class="btn primary" onclick="guardarAtencion()">💾 Guardar atención</button>
-  </div>
-  <div id="atWrap">
-    <div class="tarjeta" id="fichaPac">
-      <div class="ficha-cab"><div><div class="ficha-nombre" id="fpNombre">Busque o elija un paciente</div><div class="ficha-sub" id="fpSub">Los datos de DNI, historia clínica, edad y sexo se toman de la pestaña DATOS.</div></div><div class="ficha-lista" id="fpLista"></div></div>
-    </div>
-    <div class="tarjeta" id="formAt">
-      <div class="grupo">
-        <h3>Atención</h3>
-        <div class="campos">
-          <label>Fecha de atención<span class="fecha-wrap"><input class="f" data-f="fecha" placeholder="dd/mm/aaaa" inputmode="numeric"><button type="button" class="cal" id="btnCal" title="Elegir fecha">📅</button><input type="date" id="calFecha" class="cal-oculto" tabindex="-1"></span></label>
-          <label>Turno<select class="f" data-f="turno"><option value="M">M · Mañana</option><option value="T">T · Tarde</option><option value="N">N · Noche</option></select></label>
-          <label>Financiador<input class="f" data-f="financia" placeholder="2"></label>
-          <label>Distrito de procedencia<input class="f" data-f="distrito"></label>
-          <label>Etnia<input class="f" data-f="etnia" placeholder="58"></label>
-          <label>Centro poblado<input class="f" data-f="cpoblado"></label>
-          <label>Gestante / Puérpera<select class="f" data-f="gestante"><option value=""></option><option>G</option><option>P</option></select></label>
-          <label>Edad<span class="fila"><input class="f auto" data-auto="edad" readonly tabindex="-1"><select class="f" data-f="edadU" title="A: años · M: meses · D: días"><option>A</option><option>M</option><option>D</option></select></span></label>
-        </div>
-      </div>
-      <div class="grupo">
-        <h3>Evaluación antropométrica</h3>
-        <div class="campos">
-          <label>Perímetro cefálico (PC)<input class="f" data-f="pc" inputmode="decimal"></label>
-          <label>Perímetro abdominal (PAB)<input class="f" data-f="pab" inputmode="decimal"></label>
-          <label>Peso (kg)<input class="f" data-f="peso" inputmode="decimal"></label>
-          <label>Talla (m)<input class="f" data-f="talla" inputmode="decimal"></label>
-          <label>Hemoglobina (Hb)<input class="f" data-f="hb" inputmode="decimal"></label>
-          <label>Fecha de Hb<input class="f" data-f="fechaHb" placeholder="dd/mm/aaaa"></label>
-          <label>Fecha de regla<input class="f" data-f="fechaRegla" placeholder="dd/mm/aaaa"></label>
-          <label>Establecimiento<span class="fila ncr"><span class="chk dxsel" data-f="est_n" title="Nuevo">N</span><span class="chk dxsel" data-f="est_c" title="Continuador">C</span><span class="chk dxsel" data-f="est_r" title="Reingreso">R</span></span></label>
-          <label>Servicio<span class="fila ncr"><span class="chk dxsel" data-f="ser_n" title="Nuevo">N</span><span class="chk dxsel" data-f="ser_c" title="Continuador">C</span><span class="chk dxsel" data-f="ser_r" title="Reingreso">R</span></span></label>
-        </div>
-      </div>
-      <div class="grupo">
-        <h3>Diagnósticos / actividades <small>escriba parte del nombre o el código CIE-10 y elija de la lista</small></h3>
-        <table class="dxtab">
-          <thead><tr><th style="width:28px">#</th><th>Diagnóstico, motivo de consulta o actividad</th><th style="width:96px">Tipo</th><th style="width:60px">Lab 1</th><th style="width:60px">Lab 2</th><th style="width:60px">Lab 3</th><th style="width:100px">Código</th></tr></thead>
-          <tbody>
-            ${[1,2,3].map(n=>`<tr><td class="c">${n}</td><td><input class="f dxtxt" data-f="dx${n}_txt" autocomplete="off"></td><td><span class="fila ncr"><span class="chk dxsel" data-f="dx${n}_p" title="Presuntivo">P</span><span class="chk dxsel" data-f="dx${n}_d" title="Definitivo">D</span><span class="chk dxsel" data-f="dx${n}_r" title="Repetido">R</span></span></td><td><input class="f" data-f="dx${n}_l1"></td><td><input class="f" data-f="dx${n}_l2"></td><td><input class="f" data-f="dx${n}_l3"></td><td><input class="f" data-f="dx${n}_cie"></td></tr>`).join("")}
-          </tbody>
-        </table>
-      </div>
-      <div class="grupo">
-        <h3>Códigos propios <small>códigos o actividades que no están en la lista CIE-10; se guardan en la nube y aparecen en la búsqueda</small></h3>
-        <div class="codform"><input id="cpCod" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" style="text-transform:uppercase"><input id="cpTxt" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" style="text-transform:uppercase"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
-        <div id="cpLista" class="cplista"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ======================= VISTA REGISTRO HIS ======================= -->
 <div id="registro" class="view">
   <div class="toolbar">
     <label class="lbl">Año <input type="number" id="regAnio" class="corto" min="2020" max="2100"></label>
     <label class="lbl">Mes <select id="regMes"></select></label>
     <label class="lbl">Día <select id="regDia"><option value="">Todos</option></select></label>
+    <label class="lbl">Turno <select id="regTurno"><option value="M">M · Mañana</option><option value="T">T · Tarde</option><option value="N">N · Noche</option></select></label>
     <span class="status" id="regInfo"></span>
+    <span class="savedTag" id="savedTag"></span>
     <span class="sep"></span>
     <button class="btn" onclick="exportRegistroXLSX()">Exportar Excel</button>
     <button class="btn" onclick="window.print()">🖨 Imprimir / PDF</button>
@@ -115,7 +55,14 @@ document.body.insertAdjacentHTML("afterbegin",`
     <label class="lbl">Responsable <input id="cfgResp" class="cfg"></label>
     <label class="lbl">Digitador <input id="cfgDigit" class="cfg corto2"></label>
     <label class="lbl">Lote <input id="cfgLote" class="cfg corto"></label>
+    <span class="sep"></span>
+    <button class="btn" type="button" onclick="document.getElementById('cpPanel').classList.toggle('abierto')">Códigos propios</button>
   </div>
+  <div id="cpPanel" class="toolbar cfgbar cppanel no-print">
+    <div class="codform"><input id="cpCod" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" style="text-transform:uppercase"><input id="cpTxt" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" style="text-transform:uppercase"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
+    <div id="cpLista" class="cplista"></div>
+  </div>
+  <div class="ayuda no-print">Escriba el <b>N° Reg</b> del paciente en la casilla N° de cada bloque (o busque por nombre o DNI): se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla. En <b>Diagnóstico</b> escriba parte del nombre o el <b>código</b> y elija de la lista. Marque P/D/R y N/C/R con un clic. Todo se guarda automáticamente.</div>
   <div id="regWrap"><div id="hoja" class="his"></div></div>
 </div>
 
