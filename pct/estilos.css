@@ -114,7 +114,7 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .sheet .sym td{height:6mm}
 .sheet .sym td.symtxt{white-space:normal;line-height:1;font-size:7pt;padding:0 .5mm}
 .sheet .r4 td{height:5.4mm}
-.savedTag{font-size:11px;color:#1a7f37;font-weight:bold}
+.savedTag{font-size:11px;color:#666;font-weight:bold;background:#eef1f4;border-radius:12px;padding:3px 9px}.savedTag.ok{color:#1a7f37;background:#e6f4ea}
 .evalInfo{font-size:12px;color:#333}
 
 /* ======================= IMPRESIÓN ======================= */
