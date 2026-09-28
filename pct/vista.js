@@ -35,6 +35,7 @@ document.body.insertAdjacentHTML("afterbegin",`
     </table>
     <div id="emptyMsg" class="empty" style="display:none">No hay registros que coincidan con la búsqueda.</div>
   </div>
+  <div id="pagDatos" class="paginador no-print" style="display:none"></div>
 </div>
 
 <!-- ======================= VISTA REGISTRO HIS ======================= -->

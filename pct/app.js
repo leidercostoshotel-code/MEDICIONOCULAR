@@ -24,7 +24,10 @@ function num(v){if(v===""||v==null)return null;const n=parseFloat(String(v).repl
 function parseFecha(s){if(!s)return null;const m=String(s).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);if(!m)return null;let y=parseInt(m[3]);if(y<100)y+=y<30?2000:1900;const d=new Date(y,parseInt(m[2])-1,parseInt(m[1]));return isNaN(d)?null:d;}
 function fmtFecha(d){return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
 function hoy(){return fmtFecha(new Date());}
-function calcEdad(fn){const d=parseFecha(fn);if(!d)return "";const h=new Date();let e=h.getFullYear()-d.getFullYear();const m=h.getMonth()-d.getMonth();if(m<0||(m===0&&h.getDate()<d.getDate()))e--;return e<0?"":String(e);}
+function anioSolo(s){const m=String(s||"").trim().match(/^(\d{4})$/);return m?parseInt(m[1]):null;} // «2008» = solo año de nacimiento
+function fnValida(s){return !s||!!parseFecha(s)||!!anioSolo(s);}
+function anioEstimado(r){const e=parseInt(r&&r.edad);return isNaN(e)?"":String(new Date().getFullYear()-e);}
+function calcEdad(fn){const y=anioSolo(fn);if(y){const e=new Date().getFullYear()-y;return e<0||e>130?"":String(e);}const d=parseFecha(fn);if(!d)return "";const h=new Date();let e=h.getFullYear()-d.getFullYear();const m=h.getMonth()-d.getMonth();if(m<0||(m===0&&h.getDate()<d.getDate()))e--;return e<0?"":String(e);}
 function edadDe(r){return (r&&r.fn&&calcEdad(r.fn))||(r?String(r.edad||""):"");}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function normTxt(s){return String(s==null?"":s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"");}
@@ -53,15 +56,18 @@ function contarAt(r){let c=0;for(const id in atenciones){const a=atenciones[id];
 function renderDatos(){
   const q=document.getElementById('search').value.trim().toLowerCase();
   const tb=document.getElementById('tbodyDatos');
-  const rows=pacientes.map((r,i)=>({r,i})).filter(({r})=>{if(!q)return true;return normTxt([r.n,r.hc,r.dni,r.nom,r.sexo,r.dx,r.tto].join(" ")).includes(normTxt(q));});
+  const todas=pacientes.map((r,i)=>({r,i})).filter(({r})=>{if(!q)return true;return normTxt([r.n,r.hc,r.dni,r.nom,r.sexo,r.dx,r.tto].join(" ")).includes(normTxt(q));});
+  if(q!==renderDatos._q){renderDatos._q=q;pagDatos=1;} // nueva búsqueda: volver a la página 1
+  const totalPag=Math.max(1,Math.ceil(todas.length/FILAS_POR_PAGINA));if(pagDatos>totalPag)pagDatos=totalPag;if(pagDatos<1)pagDatos=1;
+  const rows=todas.slice((pagDatos-1)*FILAS_POR_PAGINA,pagDatos*FILAS_POR_PAGINA);
   tb.innerHTML=rows.map(({r,i})=>`
   <tr data-i="${i}" data-id="${esc(r.id)}">
     <td class="num"><input class="w-num" data-k="n" value="${esc(r.n)}" style="text-align:center;font-weight:bold"></td>
     <td><input data-k="nom" value="${esc(r.nom)}"></td>
     <td><input data-k="hc" value="${esc(r.hc)}"></td>
     <td><input data-k="dni" value="${esc(r.dni)}" maxlength="8" inputmode="numeric" class="${r.dni&&r.dni.length!==8?'invalid':''}"></td>
-    <td><span class="fn-wrap"><input data-k="fn" value="${esc(r.fn)}" placeholder="dd/mm/aaaa" class="${r.fn&&!parseFecha(r.fn)?'invalid':''}"><button type="button" class="cal-mini" tabindex="-1" title="Elegir fecha en el calendario (puede cambiar mes y año)">📅</button></span></td>
-    <td><input data-k="edad" value="${esc(edadDe(r))}" style="text-align:center" ${r.fn&&parseFecha(r.fn)?'readonly class="auto" title="Calculada desde la fecha de nacimiento"':''}></td>
+    <td><span class="fn-wrap"><input data-k="fn" value="${esc(r.fn)}" placeholder="${!r.fn&&anioEstimado(r)?'≈ '+anioEstimado(r):'dd/mm/aaaa'}" title="${!r.fn&&anioEstimado(r)?'Año aproximado según la edad ('+anioEstimado(r)+'). Escriba el año o la fecha completa.':'Fecha dd/mm/aaaa o solo el año'}" class="${!fnValida(r.fn)?'invalid':''}${!r.fn&&anioEstimado(r)?' estimado':''}"><button type="button" class="cal-mini" tabindex="-1" title="Elegir fecha en el calendario (puede cambiar mes y año)">📅</button></span></td>
+    <td><input data-k="edad" value="${esc(edadDe(r))}" style="text-align:center" ${r.fn&&calcEdad(r.fn)!==""?'readonly class="auto" title="Calculada desde la fecha o el año de nacimiento"':''}></td>
     <td><input data-k="sexo" value="${esc(r.sexo)}" class="mp" data-opc="sexo" style="text-align:center"></td>
     <td><input data-k="dx" value="${esc(r.dx)}" class="mp" data-opc="dx"></td>
     <td><input data-k="peso" value="${esc(r.peso)}" inputmode="decimal" style="text-align:center"></td>
@@ -70,17 +76,26 @@ function renderDatos(){
     <td class="calc" style="text-align:center"><a href="#" onclick="irAtencion('${esc(r.id)}');return false" title="Ver atenciones HIS de este paciente">${contarAt(r)} · abrir</a></td>
     <td class="actions"><button title="Eliminar fila" onclick="delRow(${i})">✕</button></td>
   </tr>`).join("");
-  document.getElementById('emptyMsg').style.display=rows.length?'none':'block';
-  document.getElementById('countInfo').textContent=`${rows.length} de ${pacientes.length} registros`;
+  document.getElementById('emptyMsg').style.display=todas.length?'none':'block';
+  document.getElementById('countInfo').textContent=todas.length>FILAS_POR_PAGINA?`${(pagDatos-1)*FILAS_POR_PAGINA+1}–${(pagDatos-1)*FILAS_POR_PAGINA+rows.length} de ${todas.length}${q?' encontrados':' registros'}`:`${todas.length} de ${pacientes.length} registros`;
+  pintarPaginador(totalPag,todas.length);
   tb.querySelectorAll('input.mp').forEach(el=>activarPredictivo(el,()=>opcionesDe(el.dataset.opc)));
 }
+const FILAS_POR_PAGINA=25;let pagDatos=1;
+function pintarPaginador(total,n){const pg=document.getElementById('pagDatos');if(!pg)return;document.getElementById('datos').classList.toggle('con-pag',total>1);if(total<=1){pg.innerHTML="";pg.style.display="none";return;}pg.style.display="";
+  const btn=(p,txt,cls)=>`<button type="button" class="pg${cls||''}${p===pagDatos?' act':''}" ${p<1||p>total?'disabled':''} onclick="irPagina(${p})">${txt}</button>`;
+  let nums=[];for(let p=1;p<=total;p++){if(p===1||p===total||Math.abs(p-pagDatos)<=2)nums.push(p);}
+  let h=btn(pagDatos-1,"‹ Anterior"," pg-nav");let prev=0;nums.forEach(p=>{if(p-prev>1)h+='<span class="pg-pts">…</span>';h+=btn(p,p);prev=p;});h+=btn(pagDatos+1,"Siguiente ›"," pg-nav");
+  pg.innerHTML=`<span class="pg-info">Página ${pagDatos} de ${total} · ${FILAS_POR_PAGINA} por página</span>`+h;}
+function irPagina(p){pagDatos=p;renderDatos();document.getElementById('datosWrap').scrollTop=0;}
 function opcionesDe(k){const base=k==='sexo'?OPC_SEXO:k==='dx'?OPC_DX:OPC_TTO;const usados=[...new Set(pacientes.map(r=>String(r[k]||"").trim()).filter(Boolean))];return [...new Set(base.concat(usados))];}
 document.getElementById('tbodyDatos').addEventListener('input',e=>{
   const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k)return;
   const r=pacientes[+tr.dataset.i];let v=el.value;
   if(el.dataset.k==='dni'){v=v.replace(/\D/g,"").slice(0,8);el.value=v;el.classList.toggle('invalid',v.length>0&&v.length!==8);}
   if(el.dataset.k==='n'){const n=parseInt(v);v=isNaN(n)?"":n;}
-  if(el.dataset.k==='fn'){el.classList.toggle('invalid',!!v&&!parseFecha(v));const ed=tr.querySelector('[data-k=edad]');if(parseFecha(v)){r.edad=calcEdad(v);ed.value=r.edad;ed.readOnly=true;ed.classList.add('auto');}else{ed.readOnly=false;ed.classList.remove('auto');}}
+  if(el.dataset.k==='fn'){el.classList.toggle('invalid',!fnValida(v));el.classList.remove('estimado');const ed=tr.querySelector('[data-k=edad]');const e=calcEdad(v);if(e!==""){r.edad=e;ed.value=e;ed.readOnly=true;ed.classList.add('auto');}else{ed.readOnly=false;ed.classList.remove('auto');if(!v)el.placeholder=anioEstimado(r)?'≈ '+anioEstimado(r):'dd/mm/aaaa';}}
+  if(el.dataset.k==='edad'&&!r.fn){const fi=tr.querySelector('[data-k=fn]');const y=parseInt(v);fi.placeholder=isNaN(y)?'dd/mm/aaaa':'≈ '+(new Date().getFullYear()-y);}
   r[el.dataset.k]=v;guardarPacientes();
 });
 // calendario para la fecha de nacimiento del padrón
@@ -90,12 +105,12 @@ document.getElementById('tbodyDatos').addEventListener('input',e=>{
     const r=b.getBoundingClientRect();cal.style.left=r.left+"px";cal.style.top=r.bottom+"px";try{cal.showPicker();}catch(x){cal.focus();cal.click();}});
   document.getElementById('tbodyDatos').addEventListener('dblclick',e=>{const i=e.target.closest('input[data-k=fn]');if(i)i.parentElement.querySelector('.cal-mini').click();});
   cal.addEventListener('change',()=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cal.value);if(!m||!destino)return;destino.value=m[3]+"/"+m[2]+"/"+m[1];destino.dispatchEvent(new Event('input',{bubbles:true}));});
-  document.getElementById('tbodyDatos').addEventListener('focusout',e=>{const i=e.target;if(i.dataset&&i.dataset.k==='fn'){const d=parseFecha(i.value);if(d){i.value=fmtFecha(d);i.dispatchEvent(new Event('input',{bubbles:true}));}}});
+  document.getElementById('tbodyDatos').addEventListener('focusout',e=>{const i=e.target;if(i.dataset&&i.dataset.k==='fn'){const d=anioSolo(i.value)?null:parseFecha(i.value);if(d){i.value=fmtFecha(d);i.dispatchEvent(new Event('input',{bubbles:true}));}}});
 })();
 function addRow(){
   const max=pacientes.reduce((m,r)=>Math.max(m,parseInt(r.n)||0),0);
   const r=nuevoRegistro();r.n=max+1;pacientes.push(r);guardarPacientes();
-  document.getElementById('search').value="";renderDatos();
+  document.getElementById('search').value="";pagDatos=Math.ceil(pacientes.length/FILAS_POR_PAGINA);renderDatos();
   const wrap=document.getElementById('datosWrap');wrap.scrollTop=wrap.scrollHeight;
   const last=document.querySelector('#tbodyDatos tr:last-child input[data-k=nom]');if(last)last.focus();
   msg("Fila N° "+r.n+" agregada");
@@ -175,11 +190,11 @@ DLG.addEventListener('mousedown',e=>{if(e.target===DLG){const b=DLG.querySelecto
 
 /* ======================= MENÚ PREDICTIVO (lista flotante) ======================= */
 const MP=document.createElement('div');MP.className='mp-lista no-print';document.body.appendChild(MP);
-let mpInput=null,mpItems=[],mpSel=-1,mpSilencio=false,mpOnPick=null;
+let mpInput=null,mpItems=[],mpSel=-1,mpSilencio=false,mpOnPick=null,mpNav=false;
 function mpMostrar(input,opciones,alElegir,render){
   if(mpSilencio)return;const q=input.value,toks=normTxt(q).trim().split(/\s+/).filter(Boolean);
   const lista=typeof opciones==='function'?opciones(q,toks):opciones;
-  mpItems=lista;mpInput=input;mpSel=0;mpOnPick=alElegir||null;
+  mpItems=lista;mpInput=input;mpSel=0;mpNav=false;mpOnPick=alElegir||null;
   if(!mpItems.length){mpOcultar();return;}
   MP.innerHTML=mpItems.map((o,i)=>`<div class="mp-item${i?'':' act'}" data-i="${i}">${render?render(o,q):resaltar(String(o),q)}</div>`).join("");
   const r=input.getBoundingClientRect();MP.style.left=Math.min(r.left,window.innerWidth-Math.max(r.width,300)-8)+"px";MP.style.top=(r.bottom+3)+"px";MP.style.minWidth=Math.max(r.width,300)+"px";MP.style.display="block";
@@ -187,16 +202,16 @@ function mpMostrar(input,opciones,alElegir,render){
 function mpOcultar(){MP.style.display="none";mpInput=null;}
 function mpElegir(i){const el=mpInput,v=mpItems[i];if(!el||v==null)return;const fn=mpOnPick;mpOcultar();mpSilencio=true;try{if(fn)fn(v,el);else{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));}}finally{mpSilencio=false;}}
 MP.addEventListener('mousedown',e=>{const it=e.target.closest('.mp-item');if(it){e.preventDefault();mpElegir(+it.dataset.i);}});
-function activarPredictivo(input,opciones,alElegir,render){
+function activarPredictivo(input,opciones,alElegir,render,opts){opts=opts||{};
   if(input.dataset.mp)return;input.dataset.mp="1";
-  const mostrar=()=>mpMostrar(input,opciones,alElegir,render);
-  input.addEventListener('focus',mostrar);input.addEventListener('input',mostrar);
+  const mostrar=()=>mpMostrar(input,opciones,alElegir,render);input._mpMostrar=mostrar;
+  if(!opts.sinFoco)input.addEventListener('focus',mostrar);input.addEventListener('input',mostrar);
   input.addEventListener('blur',()=>setTimeout(()=>{if(mpInput===input)mpOcultar();},150));
   input.addEventListener('keydown',e=>{
     if(MP.style.display!=="block"||mpInput!==input)return;
-    if(e.key==='ArrowDown'){e.preventDefault();mpSel=Math.min(mpItems.length-1,mpSel+1);}
-    else if(e.key==='ArrowUp'){e.preventDefault();mpSel=Math.max(0,mpSel-1);}
-    else if(e.key==='Enter'||e.key==='Tab'){if(e.key==='Enter')e.preventDefault();mpElegir(mpSel);return;}
+    if(e.key==='ArrowDown'){e.preventDefault();mpSel=Math.min(mpItems.length-1,mpSel+1);mpNav=true;}
+    else if(e.key==='ArrowUp'){e.preventDefault();mpSel=Math.max(0,mpSel-1);mpNav=true;}
+    else if(e.key==='Enter'||e.key==='Tab'){if(e.key==='Enter')e.preventDefault();let k=mpSel;if(!mpNav){const v=normTxt(input.value).trim();const ex=mpItems.findIndex(o=>Array.isArray(o)&&normTxt(String(o[0]))===v);if(ex>=0)k=ex;}mpElegir(k);return;}
     else if(e.key==='Escape'){mpOcultar();return;}
     else return;
     MP.querySelectorAll('.mp-item').forEach((el,i)=>el.classList.toggle('act',i===mpSel));
@@ -213,7 +228,8 @@ function buscarCIE(q,toks){
   if(!toks.length)return [];const out=[];const cod=toks[0].toUpperCase();
   codigosPropios().forEach(o=>{if(toks.every(t=>normTxt(o.c+" "+o.t).includes(t)))out.push([o.c,o.t,true]);});
   if(CIE)for(let i=0;i<CIE.length&&out.length<40;i++){const s=CIE_N[i];if(toks.every(t=>s.includes(t))){out.push(CIE[i]);}}
-  out.sort((a,b)=>{if(!!a[2]!==!!b[2])return a[2]?-1:1;const da=a[0].startsWith(cod),db=b[0].startsWith(cod);if(da!==db)return da?-1:1;return 0;});
+  const rk=o=>{const c=String(o[0]).toUpperCase();if(c===cod)return 0;if(c.startsWith(cod))return o[2]?1:2;return o[2]?3:4;};
+  out.sort((a,b)=>rk(a)-rk(b));
   return out.slice(0,12);
 }
 function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>${o[2]?'<span class="cie-propio">propio</span>':''}`;}
@@ -240,6 +256,7 @@ function elegirCIE(v,el){const tr=el.closest('tr');const txt=tr.querySelector('i
   txt.value=String(v[1]).toUpperCase();cod.value=v[0];guardarCelda(txt);guardarCelda(cod);}
 
 /* ======================= REGISTRO HIS EDITABLE (como el Excel) ======================= */
+const NOMBRE_TURNO={M:"Turno mañana",T:"Turno tarde",N:"Turno noche"};
 const CAB_AT=["FECHA","TURNO","N° REG","APELLIDOS Y NOMBRES","DNI","HC","EDAD","SEXO","FINANCIA","DISTRITO","ETNIA","C. POBLADO","GESTANTE","PC","PAB","PESO","TALLA","HB","F. HB","F. REGLA","ESTABLEC","SERVICIO","DX1","TIPO1","LAB1","CIE1","DX2","TIPO2","LAB2","CIE2","DX3","TIPO3","LAB3","CIE3"];
 function pacPorId(id){return pacientes.find(r=>r.id===id)||null;}
 function pacPorN(n){n=parseInt(n);if(isNaN(n))return null;return pacientes.find(r=>parseInt(r.n)===n)||null;}
@@ -260,7 +277,9 @@ document.querySelectorAll('.cfg').forEach(el=>el.addEventListener('input',()=>{c
 function periodo(){return {a:+document.getElementById('regAnio').value,m:+document.getElementById('regMes').value,d:document.getElementById('regDia').value};}
 function llenarDias(){const {a,m}=periodo(),sel=document.getElementById('regDia'),act=sel.value;const dias=new Set(Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m).map(x=>x.dia));
   sel.innerHTML=`<option value="">Todos los días</option>`+[...dias].sort((x,y)=>x-y).map(d=>`<option value="${d}">${String(d).padStart(2,"0")}</option>`).join("");if([...dias].includes(+act))sel.value=act;}
-function atencionesPeriodo(){const {a,m,d}=periodo();const todas=Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m);
+function turnoSel(){return document.getElementById('regTurno').value||"M";}
+// Cada turno es una hoja aparte: se muestran solo las atenciones del turno seleccionado (las demás quedan guardadas)
+function atencionesPeriodo(){const {a,m,d}=periodo();const t=turnoSel();const todas=Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m&&(x.turno||"M")===t);
   const conts={};todas.forEach(x=>{if(x.contDe&&atenciones[x.contDe]){(conts[x.contDe]=conts[x.contDe]||[]).push(x);}});
   const princ=todas.filter(x=>!(x.contDe&&atenciones[x.contDe])).filter(x=>!d||x.dia===+d).sort(ordenAt);
   const out=[];princ.forEach(x=>{out.push(x);(conts[x.id]||[]).sort(ordenAt).forEach(c=>out.push(c));});return out;}
@@ -272,7 +291,7 @@ function restaurarFocoHoja(f){if(!f||!f.id)return;const el=document.querySelecto
 let bloquesExtra=0; // secciones vacías adicionales pedidas con «Agregar sección»
 function renderRegistro(){
   const lista=atencionesPeriodo(),{a,m}=periodo();
-  document.getElementById('regInfo').textContent=`${lista.length} atención(es) · ${MESES_LARGO[m-1]} ${a}`;
+  document.getElementById('regInfo').textContent=`${lista.length} atención(es) · ${MESES_LARGO[m-1]} ${a} · ${NOMBRE_TURNO[turnoSel()]||turnoSel()}`;
   const bloques=lista.concat(Array(1+bloquesExtra).fill(null)); // siempre al menos un bloque vacío al final
   const paginas=[];for(let i=0;i<bloques.length;i+=BLOQUES_POR_PAGINA)paginas.push(bloques.slice(i,i+BLOQUES_POR_PAGINA));
   const f=focoHoja();
@@ -345,7 +364,7 @@ function asignarPaciente(bloque,pac){
   bloque.querySelectorAll('input.hi').forEach(i=>{const k=i.dataset.f;if(k==='npac')return;if(rec[k]!=null&&i.value!==String(rec[k]))i.value=rec[k];});
   bloque.querySelectorAll('.tg').forEach(t=>{const on=rec[t.dataset.f]==="X";t.classList.toggle('on',on);t.textContent=on?'X':t.dataset.f.split('_')[1].toUpperCase();});
   marcarGuardado();
-  llenarDias();document.getElementById('regInfo').textContent=`${atencionesPeriodo().length} atención(es) · ${MESES_LARGO[periodo().m-1]} ${periodo().a}`;
+  llenarDias();document.getElementById('regInfo').textContent=`${atencionesPeriodo().length} atención(es) · ${MESES_LARGO[periodo().m-1]} ${periodo().a} · ${NOMBRE_TURNO[turnoSel()]||turnoSel()}`;
   if(!document.querySelector('.bloque[data-nuevo]')){clearTimeout(asignarPaciente._t);asignarPaciente._t=setTimeout(renderRegistro,0);}
 }
 function guardarCelda(el){
@@ -365,8 +384,7 @@ function renderPac(r,q){return `<span class="cie-cod">N° ${resaltar(String(r.n)
 function activarHoja(){
   const hoja=document.getElementById('hoja');
   hoja.querySelectorAll('input.npac').forEach(el=>activarPredictivo(el,sugerirPaciente,(r,inp)=>asignarPaciente(inp.closest('.bloque'),r),renderPac));
-  hoja.querySelectorAll('input.dxtxt').forEach(el=>{el.addEventListener('focus',cargarCIE,{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE);});
-  hoja.querySelectorAll('input.dxcod').forEach(el=>{el.addEventListener('focus',cargarCIE,{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE);});
+  hoja.querySelectorAll('input.dxtxt,input.dxcod').forEach(el=>{el.addEventListener('focus',()=>{const pr=cargarCIE();if(pr&&!CIE)pr.then(()=>{if(document.activeElement===el&&el.value.trim())el._mpMostrar();});},{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE,{sinFoco:true});});
 }
 document.getElementById('hoja').addEventListener('change',e=>{const el=e.target;if(!el.classList.contains('hi'))return;
   if(el.dataset.f==='npac'){const bl=el.closest('.bloque'),v=el.value.trim();
@@ -405,20 +423,18 @@ window.alCambiarAtenciones=()=>{if(document.getElementById('registro').classList
 window.alCambiarConfig=()=>{pintarConfig();pintarCodigos();if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
 function exportRegistroXLSX(){if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel.");return;}
   const lista=atencionesPeriodo();if(!lista.length){msg("No hay atenciones en el periodo");return;}
-  const {a,m}=periodo();const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}.xlsx`);}
+  const {a,m}=periodo();const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}_${turnoSel()}.xlsx`);}
 
 /* ======================= RELOJ Y TURNO AUTOMÁTICO ======================= */
 // Turno según la hora: M = 7:00 a 13:30 · T = 13:35 a 20:00 · fuera de ese horario = N
 function turnoActual(d){const min=d.getHours()*60+d.getMinutes();if(min>=7*60&&min<=13*60+34)return "M";if(min>=13*60+35&&min<=20*60)return "T";return "N";}
-const NOMBRE_TURNO={M:"Turno mañana",T:"Turno tarde",N:"Turno noche"};
-let turnoManual=false;document.getElementById('regTurno').addEventListener('change',()=>{turnoManual=true;pintarTurnoHoja();});
-function pintarTurnoHoja(){const t=document.getElementById('regTurno').value;document.querySelectorAll('#hoja .turno-cab').forEach(td=>{td.innerHTML='TURNO: &nbsp; '+["M","T","N"].map(x=>x+" "+(x===t?"☒":"☐")).join(" &nbsp; ");});}
+let turnoManual=false;document.getElementById('regTurno').addEventListener('change',()=>{turnoManual=true;if(document.getElementById('registro').classList.contains('active'))renderRegistro();});
 const DIAS_SEM=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 function tickReloj(){const d=new Date();const p2=n=>String(n).padStart(2,"0");
   document.getElementById('relojHora').textContent=`${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
   const ds=DIAS_SEM[d.getDay()];document.getElementById('relojFecha').textContent=`${ds.charAt(0).toUpperCase()+ds.slice(1)} ${d.getDate()} de ${MESES_LARGO[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
   const t=turnoActual(d);const rt=document.getElementById('relojTurno');rt.textContent=NOMBRE_TURNO[t];rt.dataset.t=t;
-  const sel=document.getElementById('regTurno');if(!turnoManual&&sel.value!==t){sel.value=t;pintarTurnoHoja();}}
+  const sel=document.getElementById('regTurno');if(!turnoManual&&sel.value!==t){sel.value=t;if(document.getElementById('registro').classList.contains('active')){renderRegistro();msg("Empieza el "+NOMBRE_TURNO[t].toLowerCase()+": hoja nueva (las atenciones del turno anterior quedan guardadas)");}}}
 tickReloj();setInterval(tickReloj,1000);
 
 /* ======================= INICIO ======================= */
