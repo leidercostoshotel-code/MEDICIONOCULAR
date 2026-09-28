@@ -68,7 +68,7 @@ function renderDatos(){
     <td><input data-k="nom" value="${esc(r.nom)}"></td>
     <td><input data-k="hc" value="${esc(r.hc)}"></td>
     <td><input data-k="dni" value="${esc(r.dni)}" maxlength="8" inputmode="numeric" class="${r.dni&&r.dni.length!==8?'invalid':''}"></td>
-    <td><input data-k="fn" value="${esc(r.fn)}" placeholder="dd/mm/aaaa" class="${r.fn&&!parseFecha(r.fn)?'invalid':''}"></td>
+    <td><span class="fn-wrap"><input data-k="fn" value="${esc(r.fn)}" placeholder="dd/mm/aaaa" class="${r.fn&&!parseFecha(r.fn)?'invalid':''}"><button type="button" class="cal-mini" tabindex="-1" title="Elegir fecha en el calendario (puede cambiar mes y año)">📅</button></span></td>
     <td><input data-k="edad" value="${esc(edadDe(r))}" style="text-align:center" ${r.fn&&parseFecha(r.fn)?'readonly class="auto" title="Calculada desde la fecha de nacimiento"':''}></td>
     <td><input data-k="sexo" value="${esc(r.sexo)}" class="mp" data-opc="sexo" style="text-align:center"></td>
     <td><input data-k="dx" value="${esc(r.dx)}" class="mp" data-opc="dx"></td>
@@ -91,6 +91,15 @@ document.getElementById('tbodyDatos').addEventListener('input',e=>{
   if(el.dataset.k==='fn'){el.classList.toggle('invalid',!!v&&!parseFecha(v));const ed=tr.querySelector('[data-k=edad]');if(parseFecha(v)){r.edad=calcEdad(v);ed.value=r.edad;ed.readOnly=true;ed.classList.add('auto');}else{ed.readOnly=false;ed.classList.remove('auto');}}
   r[el.dataset.k]=v;guardarPacientes();
 });
+// calendario para la fecha de nacimiento del padrón
+(function(){const cal=document.getElementById('calTabla');let destino=null;
+  document.getElementById('tbodyDatos').addEventListener('click',e=>{const b=e.target.closest('.cal-mini');if(!b)return;destino=b.parentElement.querySelector('input[data-k=fn]');
+    const d=parseFecha(destino.value)||new Date(2010,0,1);cal.value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+    const r=b.getBoundingClientRect();cal.style.left=r.left+"px";cal.style.top=r.bottom+"px";try{cal.showPicker();}catch(x){cal.focus();cal.click();}});
+  document.getElementById('tbodyDatos').addEventListener('dblclick',e=>{const i=e.target.closest('input[data-k=fn]');if(i)i.parentElement.querySelector('.cal-mini').click();});
+  cal.addEventListener('change',()=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(cal.value);if(!m||!destino)return;destino.value=m[3]+"/"+m[2]+"/"+m[1];destino.dispatchEvent(new Event('input',{bubbles:true}));});
+  document.getElementById('tbodyDatos').addEventListener('focusout',e=>{const i=e.target;if(i.dataset&&i.dataset.k==='fn'){const d=parseFecha(i.value);if(d){i.value=fmtFecha(d);i.dispatchEvent(new Event('input',{bubbles:true}));}}});
+})();
 function addRow(){
   const max=pacientes.reduce((m,r)=>Math.max(m,parseInt(r.n)||0),0);
   const r=nuevoRegistro();r.n=max+1;pacientes.push(r);guardarPacientes();
@@ -190,13 +199,22 @@ window.addEventListener('scroll',mpOcultar,true);window.addEventListener('resize
 /* ======================= CIE-10 (15 000 códigos, carga diferida) ======================= */
 let CIE=null,CIE_N=null,cieCargando=null;
 function cargarCIE(){if(CIE||cieCargando)return cieCargando;cieCargando=fetch('cie10.json').then(r=>r.json()).then(d=>{CIE=d;CIE_N=d.map(([c,t])=>normTxt(c+" "+t));return d;}).catch(()=>{cieCargando=null;msg("No se pudo cargar la lista CIE-10");return null;});return cieCargando;}
+function codigosPropios(){return Array.isArray(config.codigos)?config.codigos:[];}
 function buscarCIE(q,toks){
-  if(!CIE||!toks.length)return [];const out=[];const cod=toks[0].toUpperCase();
-  for(let i=0;i<CIE.length&&out.length<40;i++){const s=CIE_N[i];if(toks.every(t=>s.includes(t))){out.push(CIE[i]);}}
-  out.sort((a,b)=>{const da=a[0].startsWith(cod),db=b[0].startsWith(cod);if(da!==db)return da?-1:1;return 0;});
+  if(!toks.length)return [];const out=[];const cod=toks[0].toUpperCase();
+  codigosPropios().forEach(o=>{if(toks.every(t=>normTxt(o.c+" "+o.t).includes(t)))out.push([o.c,o.t,true]);});
+  if(CIE)for(let i=0;i<CIE.length&&out.length<40;i++){const s=CIE_N[i];if(toks.every(t=>s.includes(t))){out.push(CIE[i]);}}
+  out.sort((a,b)=>{if(!!a[2]!==!!b[2])return a[2]?-1:1;const da=a[0].startsWith(cod),db=b[0].startsWith(cod);if(da!==db)return da?-1:1;return 0;});
   return out.slice(0,12);
 }
-function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>`;}
+function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>${o[2]?'<span class="cie-propio">propio</span>':''}`;}
+function pintarCodigos(){const li=document.getElementById('cpLista');const lst=codigosPropios();
+  li.innerHTML=lst.length?lst.map((o,i)=>`<span class="cpchip"><b>${esc(o.c)}</b> ${esc(o.t)}<button type="button" title="Quitar" onclick="quitarCodigo(${i})">✕</button></span>`).join(""):'<span class="ficha-lbl">Aún no hay códigos propios.</span>';}
+function agregarCodigo(){const c=document.getElementById('cpCod').value.trim().toUpperCase(),t=document.getElementById('cpTxt').value.trim();
+  if(!c||!t){alert("Escriba el código y su descripción.");return;}
+  const lst=codigosPropios().filter(o=>o.c!==c);lst.push({c,t});config.codigos=lst;guardarConfig();pintarCodigos();
+  document.getElementById('cpCod').value="";document.getElementById('cpTxt').value="";msg("Código "+c+" agregado");}
+function quitarCodigo(i){const lst=codigosPropios();const o=lst[i];if(!o||!confirm(`¿Quitar el código ${o.c} · ${o.t}?`))return;lst.splice(i,1);config.codigos=lst;guardarConfig();pintarCodigos();}
 function elegirCIE(v,el){const m=/^dx(\d)_txt$/.exec(el.dataset.f);el.value=v[1];if(m){const c=document.querySelector(`#formAt [data-f="dx${m[1]}_cie"]`);if(c)c.value=v[0];}marcarCambio();}
 document.querySelectorAll('#formAt .dxtxt').forEach(el=>{el.addEventListener('focus',cargarCIE,{once:true});activarPredictivo(el,(q,toks)=>buscarCIE(q,toks),elegirCIE,renderCIE);});
 
@@ -261,7 +279,7 @@ function eliminarAtencion(){if(!atActual||!atenciones[atActual]){msg("No hay una
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key.toLowerCase()==='s'&&document.getElementById('atencion').classList.contains('active')){e.preventDefault();guardarAtencion();}});
 window.alCambiarPacientes=()=>{if(pacActual)pacActual=pacPorId(pacActual.id)||pacActual;pintarFicha();};
 window.alCambiarAtenciones=()=>{pintarFicha();if(document.getElementById('registro').classList.contains('active'))renderRegistro();if(document.getElementById('datos').classList.contains('active'))renderDatos();};
-window.alCambiarConfig=()=>{pintarConfig();if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
+window.alCambiarConfig=()=>{pintarConfig();pintarCodigos();if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
 
 /* ======================= CALENDARIO PARA LA FECHA ======================= */
 (function(){const txt=document.querySelector('#formAt [data-f="fecha"]'),cal=document.getElementById('calFecha'),btn=document.getElementById('btnCal');
@@ -330,4 +348,4 @@ function exportRegistroXLSX(){if(typeof XLSX==="undefined"){alert("No se pudo ca
   const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}.xlsx`);}
 
 /* ======================= INICIO ======================= */
-cargar();renderDatos();escribirForm(null);pintarConfig();
+cargar();renderDatos();escribirForm(null);pintarConfig();pintarCodigos();

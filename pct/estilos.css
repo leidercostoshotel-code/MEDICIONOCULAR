@@ -212,3 +212,10 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
   .his .pagina{box-shadow:none;margin:0;width:297mm;height:210mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
   .cfgbar{display:none!important}
 }
+/* Calendario en la tabla DATOS y códigos propios */
+.fn-wrap{display:flex;align-items:center;height:100%}.fn-wrap input{flex:1;min-width:0}
+.cal-mini{flex:none;border:0;background:transparent;font-size:13px;padding:0 4px;cursor:pointer;opacity:.55}.cal-mini:hover{opacity:1}
+#calTabla{position:fixed}
+.codform{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.codform input{border:1px solid #cfd8dc;border-radius:6px;padding:7px 8px;font:inherit;font-size:13px}#cpCod{width:140px}#cpTxt{flex:1;min-width:220px}
+.cplista{display:flex;flex-wrap:wrap;gap:6px}.cpchip{display:inline-flex;align-items:center;gap:6px;background:#fff3e0;border:1px solid #ffcc80;color:#5d4037;border-radius:14px;padding:3px 6px 3px 10px;font-size:12px}.cpchip button{border:0;background:transparent;color:#b00020;cursor:pointer;font-size:12px;padding:0 2px}
+.cie-propio{margin-left:auto;font-size:10px;background:#ffe0b2;color:#5d4037;border-radius:8px;padding:1px 6px}
