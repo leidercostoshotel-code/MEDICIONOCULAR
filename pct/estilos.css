@@ -120,7 +120,7 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .evalInfo{font-size:12px;color:#333}
 
 /* ======================= IMPRESIÓN ======================= */
-/* @page definido más abajo (horizontal) */
+/* @page definido más abajo (A4 vertical, hoja reducida) */
 @media print{
   html,body{background:#fff}
   .topbar,.toolbar,#msg,.no-print{display:none!important}
@@ -208,10 +208,12 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
 .his .hreg .bn td{border-top:2px solid #000}.his .hreg .bn .nom{font-weight:bold;font-size:8pt}
 .his .hreg .dx{white-space:normal;line-height:1.05;font-size:6.8pt}.his .hreg .cod{font-weight:bold}
 .his .pie{position:absolute;right:8mm;bottom:3mm;font-size:6.5pt;color:#555}
-@page{size:A4 landscape;margin:0}
+@page{size:A4 portrait;margin:0}
 @media print{
   #atencion,#datos{display:none!important}#registro{display:block!important}#regWrap{padding:0;overflow:visible}
-  .his .pagina{box-shadow:none;margin:0;width:297mm;height:210mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
+  /* la hoja (297mm de ancho) se reduce al 70% para caber en A4 vertical: 10 secciones por página */
+  .his .pagina{zoom:.7;box-shadow:none;margin:0;width:297mm;height:424mm;padding:8mm 8mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
+  .his .hreg .bloque td{height:6.6mm}
   .cfgbar{display:none!important}
 }
 /* Calendario en la tabla DATOS y códigos propios */

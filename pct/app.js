@@ -9,7 +9,7 @@ const OPC_TTO = ["con","sensible","ECA MDR","ECA BLC MDR","ESQ Modif","Esquema A
 const MESES = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SET","OCT","NOV","DIC"];
 const MESES_LARGO = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Setiembre","Octubre","Noviembre","Diciembre"];
 const LS_PAC = "pct_pacientes_v1", LS_AT = "pct_atenciones_v1", LS_CFG = "pct_config_v1";
-const BLOQUES_POR_PAGINA = 5;
+const BLOQUES_POR_PAGINA = 10;
 
 let pacientes = [];
 let atenciones = {};
