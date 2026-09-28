@@ -44,8 +44,10 @@ document.body.insertAdjacentHTML("afterbegin",`
     <label class="lbl">Día <select id="regDia"><option value="">Todos</option></select></label>
     <label class="lbl">Turno <select id="regTurno"><option value="M">M · Mañana</option><option value="T">T · Tarde</option><option value="N">N · Noche</option></select></label>
     <span class="status" id="regInfo"></span>
-    <span class="savedTag" id="savedTag"></span>
+    <span class="savedTag" id="savedTag" title="Todo lo que escribe se guarda solo">Se guarda solo</span>
     <span class="sep"></span>
+    <button class="btn" onclick="agregarSeccion()" title="Añade otra sección vacía al final de la hoja">＋ Agregar sección</button>
+    <button class="btn primary" onclick="guardarTodo()" title="Guarda ahora (también se guarda automáticamente)">💾 Guardar</button>
     <button class="btn" onclick="exportRegistroXLSX()">Exportar Excel</button>
     <button class="btn" onclick="window.print()">🖨 Imprimir / PDF</button>
   </div>
@@ -62,7 +64,7 @@ document.body.insertAdjacentHTML("afterbegin",`
     <div class="codform"><input id="cpCod" placeholder="CÓDIGO (EJ. 9940301)" maxlength="12" style="text-transform:uppercase"><input id="cpTxt" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN TUBERCULOSIS)" style="text-transform:uppercase"><button type="button" class="btn primary" onclick="agregarCodigo()">+ Agregar código</button></div>
     <div id="cpLista" class="cplista"></div>
   </div>
-  <div class="ayuda no-print">Escriba el <b>N° Reg</b> del paciente en la casilla N° de cada bloque (o busque por nombre o DNI): se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla. En <b>Diagnóstico</b> escriba parte del nombre o el <b>código</b> y elija de la lista. Marque P/D/R y N/C/R con un clic. Todo se guarda automáticamente.</div>
+  <div class="ayuda no-print">Escriba el <b>N° Reg</b> del paciente en la casilla N° de cada bloque (o busque por nombre o DNI): se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla. En <b>Diagnóstico</b> escriba parte del nombre o el <b>código</b> y elija de la lista. Marque P/D/R y N/C/R con un clic. Use <b>＋ Agregar sección</b> para más pacientes y la <b>✕</b> de cada sección para quitarla. Todo se guarda automáticamente (el botón <b>Guardar</b> lo confirma).</div>
   <div id="regWrap"><div id="hoja" class="his"></div></div>
 </div>
 
