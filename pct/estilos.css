@@ -212,7 +212,8 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
 @media print{
   #atencion,#datos{display:none!important}#registro{display:block!important}#regWrap{padding:0;overflow:visible}
   /* la hoja (297mm de ancho) se reduce al 70% para caber en A4 vertical: 10 secciones por página */
-  .his .pagina{zoom:.7;box-shadow:none;margin:0;width:297mm;height:424mm;padding:8mm 8mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
+  .his{zoom:.7;width:297mm;margin:0}.ayuda{display:none!important}
+  .his .pagina{box-shadow:none;margin:0;width:297mm;height:424mm;padding:8mm 8mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
   .his .hreg .bloque td{height:6.6mm}
   .cfgbar{display:none!important}
 }
@@ -233,3 +234,20 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
 .ayuda{max-width:297mm;margin:0 auto 10px;padding:8px 14px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;font-size:12.5px;color:#5d4037}
 .cppanel{display:none;flex-direction:column;align-items:stretch;gap:8px}.cppanel.abierto{display:flex}
 @media print{.his input.hi{background:transparent!important;box-shadow:none!important}.his .tg{background:transparent!important}.his .bloque[data-nuevo] .nom::before{content:none}.his .no-print{display:none!important}}
+
+/* Diálogos propios */
+.dlg-fondo{position:fixed;inset:0;background:rgba(20,30,40,.45);display:none;align-items:center;justify-content:center;z-index:400;padding:16px;backdrop-filter:blur(2px)}
+.dlg-fondo.abierto{display:flex;animation:dlgIn .15s ease-out}
+@keyframes dlgIn{from{opacity:0}to{opacity:1}}
+.dlg{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.35);width:min(440px,100%);padding:22px 22px 18px;display:grid;grid-template-columns:44px 1fr;gap:6px 14px;font-family:Arial,Helvetica,sans-serif;animation:dlgPop .18s ease-out}
+@keyframes dlgPop{from{transform:translateY(10px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.dlg-ico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:22px;background:#e3f2fd;color:#1F4E79}
+.dlg[data-tipo=peligro] .dlg-ico{background:#fdecea;color:#b00020}.dlg[data-tipo=info] .dlg-ico{background:#fff8e1;color:#8a6d00}.dlg[data-tipo=ok] .dlg-ico{background:#e6f4ea;color:#1a7f37}
+.dlg-tit{margin:0 0 4px;font-size:17px;color:#1a2b3c}.dlg-txt{margin:0;font-size:13.5px;line-height:1.45;color:#44525f;white-space:pre-line}
+.dlg-btns{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}
+.dlg-btn{border:1px solid #cfd8dc;background:#fff;color:#37474f;border-radius:8px;padding:9px 16px;font:inherit;font-size:13.5px;cursor:pointer}.dlg-btn:hover{background:#f1f4f6}
+.dlg-btn.primario{background:#1F4E79;border-color:#1F4E79;color:#fff}.dlg-btn.primario:hover{background:#163a5c}
+.dlg-btn.peligro{background:#b00020;border-color:#b00020;color:#fff}.dlg-btn.peligro:hover{background:#8e001a}
+.dlg-btn:focus-visible{outline:3px solid #90caf9;outline-offset:1px}
+@media (max-width:480px){.dlg{grid-template-columns:1fr}.dlg-ico{display:none}.dlg-btns .dlg-btn{flex:1}}
+@media print{.dlg-fondo{display:none!important}}
