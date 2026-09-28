@@ -32,6 +32,8 @@ button{font-family:inherit;cursor:pointer}
 .view.active{display:block}
 .toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 16px;background:#f8f9fa;border-bottom:1px solid #ccc}
 .toolbar .sep{flex:1}
+#registro>.toolbar:first-child{position:sticky;top:var(--tb,48px);z-index:40;box-shadow:0 2px 4px rgba(0,0,0,.12)}
+@media print{#registro>.toolbar:first-child{position:static}}
 .btn{background:#fff;border:1px solid #9aa4ae;border-radius:3px;padding:6px 12px;font-size:12px;color:#222}
 .btn:hover{background:#eef3f8;border-color:#1F4E79}
 .btn.primary{background:#1F4E79;color:#fff;border-color:#1F4E79}
