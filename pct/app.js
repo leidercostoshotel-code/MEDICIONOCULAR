@@ -262,8 +262,11 @@ function renderRegistro(){
   const paginas=[];for(let i=0;i<bloques.length;i+=BLOQUES_POR_PAGINA)paginas.push(bloques.slice(i,i+BLOQUES_POR_PAGINA));
   const f=focoHoja();
   document.getElementById('hoja').innerHTML=paginas.map((bl,pi)=>paginaHIS(bl,pi+1,paginas.length,a,m)).join("");
-  activarHoja();restaurarFocoHoja(f);
+  activarHoja();restaurarFocoHoja(f);asegurarBloqueVacio();
 }
+// Siempre debe haber una sección vacía al final para poder empezar a registrar
+function asegurarBloqueVacio(){const h=document.getElementById('hoja');if(h.querySelector('.bloque[data-nuevo]'))return;const tablas=h.querySelectorAll('.hreg');const t=tablas[tablas.length-1];if(!t)return;t.insertAdjacentHTML('beforeend',bloqueHIS(null,h.querySelectorAll('.bloque').length+1));activarHoja();}
+new MutationObserver(()=>{clearTimeout(asegurarBloqueVacio._t);asegurarBloqueVacio._t=setTimeout(asegurarBloqueVacio,50);}).observe(document.getElementById('hoja'),{childList:true,subtree:true});
 function cab(v){return esc(v==null?"":v);}
 function paginaHIS(bloques,np,total,anio,mes){
   const ini=(np-1)*BLOQUES_POR_PAGINA;const {d}=periodo();const fecha=d?String(d).padStart(2,"0")+"/"+String(mes).padStart(2,"0")+"/"+anio:"";
