@@ -8,6 +8,13 @@ service cloud.firestore {
     match /evaluaciones/{id} {
       allow read, write: if request.auth != null;
     }
+    // Salud Ocular · REGISTRO HIS
+    match /his_atenciones/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /his_config/{id} {
+      allow read, write: if request.auth != null;
+    }
     // PCT · Paciente con Tuberculosis
     match /pct_pacientes/{id} {
       allow read, write: if request.auth != null;

@@ -1,7 +1,7 @@
 /* Service worker: permite instalar la app y abrirla sin conexión.
    Archivos propios: primero red, si falla usa la copia guardada. Librerías externas: copia guardada y actualización en segundo plano. */
-const CACHE='salud-ocular-v1';
-const PROPIOS=['/','/index.html','/estilos.css','/vista.js','/app.js','/firebase-config.js','/firebase-sync.js','/favicon.svg','/img/fondo.svg','/manifest.json','/icons/icon-192.png','/icons/icon-512.png'];
+const CACHE='salud-ocular-v2';
+const PROPIOS=['/','/index.html','/estilos.css','/vista.js','/app.js','/his.js','/his.css','/img/logo-minsa.jpg','/firebase-config.js','/firebase-sync.js','/favicon.svg','/img/fondo.svg','/manifest.json','/icons/icon-192.png','/icons/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(PROPIOS)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{

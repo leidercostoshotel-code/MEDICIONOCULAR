@@ -15,7 +15,7 @@ Los datos se guardan en el navegador y, si Firebase está configurado, también 
 | `public/firebase-sync.js` | Sincronización con Firestore y pantalla de acceso |
 | `firebase.json`, `.firebaserc` | Configuración de Firebase Hosting |
 | `firestore.rules` | Reglas de seguridad: solo usuarios con sesión iniciada |
-| `.github/workflows/deploy.yml` | Publicación automática al hacer push a `main` (opcional) |
+| `.github/workflows/deploy.yml` | Publicación automática (sitios y reglas) al fusionar en `main` (requiere el secreto `FIREBASE_SERVICE_ACCOUNT`) |
 
 ## Paso 1 · Crear el proyecto en Firebase
 
@@ -45,39 +45,31 @@ firebase login
 firebase deploy
 ```
 
-Opción B, automático desde GitHub:
+Opción B, automático desde GitHub (publicación automática):
 
-1. En la consola de Firebase: **Configuración → Cuentas de servicio → Generar nueva clave privada** (descarga un JSON).
-2. En GitHub: **Settings → Secrets and variables → Actions → New repository secret**, nombre `FIREBASE_SERVICE_ACCOUNT`, valor = todo el contenido del JSON.
-3. Cada push a `main` publica la app en `https://medicion-ocular.web.app`.
+Se configura una sola vez. Después, cada vez que se fusiona un cambio en `main`, GitHub publica los dos sitios (`medicion-ocular.web.app` y `pct-huascar.web.app`) y las reglas de Firestore.
 
-## Cómo se guardan los datos
-
-- Colección `pacientes`: un documento por fila del padrón (campos N°, DNI, apellidos, etc.).
-- Colección `evaluaciones`: un documento por N° de paciente con los campos de la hoja.
-- Si no hay internet, se guarda en el navegador y se sube al reconectar.
-- La primera vez que la nube está vacía, se suben los datos que ya estaban en el navegador.
-
-## Instalar en Android / generar APK
-
-La app es una PWA (instalable, con ícono propio y funciona sin conexión). Hay dos formas de llevarla a Android:
-
-**Opción rápida, sin APK**: en el celular abra <https://medicion-ocular.web.app> en Chrome, menú ⋮ → "Instalar aplicación" (o "Añadir a pantalla de inicio"). Queda como una app más, a pantalla completa.
-
-**Opción con APK (para repartir el archivo)**, desde Cloud Shell:
+1. En Cloud Shell, crear una cuenta de servicio con permiso de administrador de Firebase y su clave:
 
 ```bash
-npm install -g @bubblewrap/cli
-mkdir -p ~/apk && cd ~/apk
-bubblewrap init --manifest https://medicion-ocular.web.app/manifest.json
-bubblewrap build
+gcloud iam service-accounts create github-publicar --project medicion-ocular --display-name "Publicar desde GitHub"
+gcloud projects add-iam-policy-binding medicion-ocular --member "serviceAccount:github-publicar@medicion-ocular.iam.gserviceaccount.com" --role roles/firebase.admin
+gcloud iam service-accounts keys create clave.json --iam-account github-publicar@medicion-ocular.iam.gserviceaccount.com
+cat clave.json
 ```
 
-`bubblewrap init` pregunta si instala el JDK y el Android SDK (responda Y a ambos) y luego los datos de la app; se puede aceptar todo con Enter. Al final pide crear una clave de firma: anote la contraseña. `bubblewrap build` genera `app-release-signed.apk` (para instalar en celulares) y `app-release-bundle.aab` (para Google Play), y muestra la huella SHA-256 del certificado.
+2. En GitHub: **Settings → Secrets and variables → Actions → New repository secret**, nombre `FIREBASE_SERVICE_ACCOUNT`, valor = todo el contenido de `clave.json`.
+3. Borrar la clave de Cloud Shell: `rm clave.json`. No la pegue en chats ni la suba al repositorio.
 
-Para que la app abra a pantalla completa, sin la barra del navegador, copie esa huella en `public/.well-known/assetlinks.json` (reemplazando `PEGAR_SHA256`) y vuelva a publicar con `firebase deploy --only hosting`.
+## REGISTRO HIS de salud ocular
 
-Para descargar la APK desde Cloud Shell: menú ⋮ de la terminal → "Descargar" → `apk/app-release-signed.apk`.
+Pestaña **REGISTRO HIS** de `https://medicion-ocular.web.app` (archivos `public/his.js` y `public/his.css`), con la misma mecánica que el Registro HIS de PCT y las fórmulas de la pestaña HIS de la plantilla Excel ocular:
+
+- En cada sección se escribe el **N°** del paciente de DATOS (o se busca por nombre / DNI) y se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla.
+- Por defecto cada sección lleva **1. Examen de los ojos y de la visión** (Z010, tipo D, VALOR LAB «ALT» si OD u OI > 35, si no «N») y **2. Determinación de la agudeza visual** (99173, tipo D, VALOR LAB = OD y OI). Esos valores se actualizan solos desde DATOS.
+- En el predictivo de diagnósticos aparecen primero los códigos de salud ocular (Z010, 99173, H527 trastorno de la refracción con «RF» si OD u OI ≥ 50, 9940116 consejería en salud ocular), luego los códigos propios y los 15 082 de CIE-10 (`public/cie10.json`).
+- Igual que PCT: secciones de continuación (N° 0), orden de llegada, una hoja por turno con reloj y turno automático, 10 secciones por página en A4 vertical con encabezado completo solo en páginas impares, diálogos propios, códigos propios con búsqueda y edición, exportación a Excel.
+- Se guarda en el navegador y en Firestore, colecciones `his_atenciones` y `his_config` (por eso hay que publicar también las reglas).
 
 ## Sistema PCT (Paciente con Tuberculosis)
 
