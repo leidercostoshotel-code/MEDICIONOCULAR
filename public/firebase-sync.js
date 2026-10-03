@@ -1,16 +1,16 @@
-/* Sincronización con Firestore (pacientes y evaluaciones). Guardado local siempre; la nube cuando está configurada. */
+/* Sincronización con Firestore (pacientes, evaluaciones y REGISTRO HIS). Guardado local siempre; la nube cuando está configurada. */
 (function(){
   const cfg=window.FIREBASE_CONFIG||{},opt=Object.assign({requiereLogin:true},window.APP_CONFIG||{});
   const st=document.getElementById('syncStatus'),lg=document.getElementById('login'),salir=document.getElementById('btnSalir');
   const estado=(t,c)=>{st.textContent=t;st.className='syncStatus '+(c||'');};
-  const S=window.Sync={programarPacientes(){},programarEvaluaciones(){},entrar(e){e.preventDefault();},cerrarSesion(){}};
+  const S=window.Sync={programarPacientes(){},programarEvaluaciones(){},programarAtenciones(){},programarConfig(){},entrar(e){e.preventDefault();},cerrarSesion(){}};
   if(!cfg.apiKey||/^PEGAR/.test(cfg.apiKey)){estado("Sin Firebase · guardado solo en este navegador","off");return;}
   if(typeof firebase==="undefined"){estado("No se pudo cargar Firebase · guardado local","err");return;}
   firebase.initializeApp(cfg);
   const db=firebase.firestore(),auth=firebase.auth();
   try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
-  const colPac=db.collection('pacientes'),colEval=db.collection('evaluaciones');
-  let cachePac={},cacheEval={},tPac=null,tEval=null,escribiendo=0,paros=[],semilla=false;
+  const colPac=db.collection('pacientes'),colEval=db.collection('evaluaciones'),colAt=db.collection('his_atenciones'),docCfg=db.collection('his_config').doc('general');
+  let cachePac={},cacheEval={},cacheAt={},cacheCfg=null,tPac=null,tEval=null,tAt=null,tCfg=null,escribiendo=0,paros=[],semilla=false,semillaAt=false;
 
   async function ejecutar(col,ops){ // ops: {id,data} para guardar, {id,del:true} para borrar; lotes de 400
     for(let i=0;i<ops.length;i+=400){const b=db.batch();ops.slice(i,i+400).forEach(o=>o.del?b.delete(col.doc(o.id)):b.set(col.doc(o.id),o.data));await b.commit();}
@@ -25,6 +25,12 @@
   }
   function subirPacientes(){tPac=null;const a={};pacientes.forEach(r=>{if(!r.id)r.id=uid();a[r.id]=JSON.stringify(r);});return reconciliar(colPac,cachePac,a);}
   function subirEvaluaciones(){tEval=null;const a={};for(const n in evaluaciones)a[String(n)]=JSON.stringify({n:parseInt(n),campos:evaluaciones[n]});return reconciliar(colEval,cacheEval,a);}
+  // REGISTRO HIS (his.js): atenciones y configuración de la hoja
+  const H=()=>window.HIS;
+  function subirAtenciones(){tAt=null;if(!H())return;const at=H().atenciones(),a={};for(const id in at)a[id]=JSON.stringify(Object.assign({},at[id],{id}));return reconciliar(colAt,cacheAt,a);}
+  function subirConfig(){tCfg=null;if(!H())return;const c=H().config(),j=JSON.stringify(c);if(j===cacheCfg)return;cacheCfg=j;escribiendo++;docCfg.set(c).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);}
+  S.programarAtenciones=()=>{clearTimeout(tAt);tAt=setTimeout(subirAtenciones,300);};
+  S.programarConfig=()=>{clearTimeout(tCfg);tCfg=setTimeout(subirConfig,600);};
   S.programarPacientes=()=>{clearTimeout(tPac);tPac=setTimeout(subirPacientes,600);};
   S.programarEvaluaciones=()=>{clearTimeout(tEval);tEval=setTimeout(subirEvaluaciones,300);};
 
@@ -40,6 +46,23 @@
     pacientes=lista;try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){}
     const f=focoActual();renderDatos();restaurarFoco(f);
     if(document.getElementById('evaluacion').classList.contains('active'))setAutos(buscarPaciente(numActual));
+    if(H())H().alCambiarPacientes();
+  }
+  function aplicarAtenciones(snap){
+    if(!H())return;const remoto={},obj={};snap.forEach(d=>{obj[d.id]=Object.assign({},d.data(),{id:d.id});remoto[d.id]=JSON.stringify(obj[d.id]);});
+    if(!snap.metadata.fromCache&&!semillaAt){semillaAt=true;if(!snap.size&&Object.keys(H().atenciones()).length){cacheAt={};subirAtenciones();return;}}
+    cacheAt=remoto;
+    if(snap.metadata.hasPendingWrites||tAt||escribiendo)return;
+    if(JSON.stringify(obj)===JSON.stringify(H().atenciones()))return;
+    H().recibirAtenciones(obj);
+  }
+  function aplicarConfig(snap){
+    if(!H())return;
+    if(!snap.exists){if(!snap.metadata.fromCache&&cacheCfg==null){cacheCfg="";subirConfig();}return;}
+    const j=JSON.stringify(snap.data());cacheCfg=j;
+    if(snap.metadata.hasPendingWrites||tCfg||escribiendo)return;
+    if(j===JSON.stringify(H().config()))return;
+    H().recibirConfig(snap.data());
   }
   function aplicarEvaluaciones(snap){
     const remoto={},obj={};snap.forEach(d=>{const v=d.data();obj[d.id]=v.campos||{};remoto[d.id]=JSON.stringify({n:parseInt(d.id),campos:obj[d.id]});});
@@ -55,6 +78,8 @@
     parar();estado("Conectando…");
     paros.push(colPac.onSnapshot({includeMetadataChanges:true},s=>{aplicarPacientes(s);if(!s.metadata.fromCache&&!s.metadata.hasPendingWrites)estado("☁ Sincronizado","ok");},e=>{console.error(e);estado("Sin permiso o sin conexión · guardado local","err");}));
     paros.push(colEval.onSnapshot({includeMetadataChanges:true},aplicarEvaluaciones,e=>console.error(e)));
+    paros.push(colAt.onSnapshot({includeMetadataChanges:true},aplicarAtenciones,e=>console.error(e)));
+    paros.push(docCfg.onSnapshot({includeMetadataChanges:true},aplicarConfig,e=>console.error(e)));
   }
   function parar(){paros.forEach(f=>f());paros=[];}
   window.addEventListener('offline',()=>estado("Sin conexión · se guarda local y se sube al reconectar","off"));

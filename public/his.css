@@ -1,0 +1,108 @@
+/* Salud Ocular · REGISTRO HIS: hoja editable como el Excel (misma mecánica que PCT). */
+/* Barra fija bajo el encabezado al bajar por la hoja */
+#registro>.toolbar:first-child{position:sticky;top:var(--tb,48px);z-index:40;box-shadow:0 2px 4px rgba(0,0,0,.12)}
+@media print{#registro>.toolbar:first-child{position:static}}
+#registro .toolbar .lbl{display:flex;align-items:center;gap:6px;font-size:12px;color:#37474f;font-weight:600}
+#registro .toolbar .lbl input,#registro .toolbar .lbl select{border:1px solid #cfd8dc;border-radius:6px;padding:5px 8px;font:inherit;font-size:13px;background:#fff}
+#registro .toolbar input.corto{width:80px}#registro .toolbar input.corto2{width:140px}#registro .toolbar input.cfg{width:220px}
+#registro .cfgbar{background:#eceff1}
+.his-mp .mp-item{display:flex;gap:10px;align-items:baseline}.cie-cod{font-weight:bold;color:#0d47a1;min-width:56px}.cie-txt{white-space:normal}
+.his-mp .mp-item{white-space:normal}
+
+/* ======================= REGISTRO HIS (hoja; en impresión A4 vertical) ======================= */
+#regWrap{padding:14px 0 40px;overflow:auto}
+.his{width:297mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;font-size:7.5pt;color:#000;counter-reset:pag}
+.his .pagina{position:relative;width:297mm;min-height:210mm;background:#fff;padding:7mm 8mm;box-sizing:border-box;box-shadow:0 0 8px rgba(0,0,0,.3);margin-bottom:14px}
+.his table{border-collapse:collapse;table-layout:fixed;width:100%}
+.his td,.his th{border:1px solid #000;padding:0 1mm;height:4.2mm;overflow:hidden;white-space:nowrap;vertical-align:middle;font-weight:normal}
+.his .c{text-align:center}.his .b{font-weight:bold}.his .lbl{font-size:6.5pt;font-weight:bold}.his .small{font-size:6.5pt}
+.his .hcab td{border:0;height:5.5mm}.his .hcab .rot{font-size:6.5pt;font-weight:bold;text-align:left;padding-left:1mm}.his .hcab .caja{border:1px solid #000;text-align:center;font-size:8pt;font-weight:bold}.his .hcab .tit{text-align:center;padding:1mm;vertical-align:middle}.his .hcab .tit img{display:none}.his .hcab .tit div{display:block;margin:0 auto;text-align:center;line-height:1.35;white-space:normal;max-width:130mm;font-size:8pt}.his .hcab .minsa{font-size:13pt;letter-spacing:.3px}.his .hcab .grande{font-size:10pt}
+.his .hcab .tn{border:1px solid #000;text-align:center;font-size:7pt;font-weight:bold}.his .hcab .tn-num{font-size:6pt;font-weight:normal}.his .hcab .turno-cab.on{font-size:8.5pt}
+.his .hcab .firma{border:1px solid #000;height:11mm;vertical-align:top;text-align:center}.his .hcab .firma-tit{font-size:5.5pt;font-weight:bold;border-bottom:1px solid #000;padding:.3mm 0}.his .logo-linea{text-align:left;margin:0 0 1.5mm}.his .logo-linea img{height:9mm;display:block}
+.his .hdatos{margin-top:1.5mm}.his .hdatos th i{font-style:normal;font-weight:normal;font-size:5.5pt;vertical-align:top;margin-right:1mm}.his .hdatos th{font-size:6.5pt;font-weight:bold;background:#f2f2f2}.his .hdatos td{height:5mm}
+.his .hreg{margin-top:1.5mm}.his .hreg .nums td{height:3.2mm;font-size:6pt;text-align:center;font-weight:bold;background:#f2f2f2}
+.his .hreg .th td{font-size:5.6pt;font-weight:bold;text-align:center;white-space:normal;line-height:1.05;height:5mm;background:#f7f7f7}
+.his .hreg .bn td{border-top:2px solid #000}.his .hreg .bn .nom{font-weight:bold;font-size:8pt}
+.his .hreg .dx{white-space:normal;line-height:1.05;font-size:6.8pt}.his .hreg .cod{font-weight:bold}
+.his .pie{position:absolute;right:8mm;bottom:3mm;font-size:6.5pt;color:#555}
+@page{size:A4 portrait;margin:0}
+@media print{
+  /* imprimir la hoja que se está viendo: REGISTRO HIS o EVALUACIÓN */
+  body.ver-his #evaluacion,body.ver-his #datos{display:none!important}body.ver-his #registro{display:block!important}body:not(.ver-his) #registro{display:none!important}
+  #regWrap{padding:0;overflow:visible}
+  /* la hoja (297mm de ancho) se reduce al 70% para caber en A4 vertical: 10 secciones por página */
+  .his{zoom:.7;width:297mm;margin:0}.ayuda{display:none!important}
+  .his .pagina{box-shadow:none;margin:0;width:297mm;height:424mm;padding:8mm 8mm;page-break-after:always;break-after:page;overflow:hidden}.his .pagina:last-child{page-break-after:auto;break-after:auto}
+  .his .hreg .bloque td{height:6.5mm;font-size:8pt}.his .hreg .bloque .lbl{font-size:6.5pt}
+  .his .hreg .bloque input.hi,.his .hreg .bloque [data-auto],.his .hreg .bloque .tg,.his .hreg .bn .nom{font-size:10pt}
+  .his .hreg .bloque .dx input.hi{font-size:9pt}.his .hreg .bloque input.dxcod{font-size:9pt}.his .hreg .bloque input.lab{font-size:8.5pt;padding:0;letter-spacing:-.2px}.his .hreg .bloque td:has(>input.lab){padding:0 .3mm}
+  .his .hdatos td{font-size:8.5pt}.his .hcab .lbl{font-size:8pt}
+  #registro .cfgbar{display:none!important}
+}
+.codform{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.codform input{border:1px solid #cfd8dc;border-radius:6px;padding:7px 8px;font:inherit;font-size:13px}#cpCod{width:140px}#cpTxt{flex:1;min-width:220px}
+.cplista{display:flex;flex-wrap:wrap;gap:6px}.cpchip{display:inline-flex;align-items:center;gap:6px;background:#fff3e0;border:1px solid #ffcc80;color:#5d4037;border-radius:14px;padding:3px 6px 3px 10px;font-size:12px}.cpchip button{border:0;background:transparent;color:#b00020;cursor:pointer;font-size:12px;padding:0 2px}
+.cie-propio{margin-left:auto;font-size:10px;background:#ffe0b2;color:#5d4037;border-radius:8px;padding:1px 6px}
+/* Hoja HIS editable */
+.his input.hi{width:100%;height:100%;min-height:3.8mm;border:0;background:transparent;font:inherit;color:#000;padding:0 .5mm;outline:none;box-sizing:border-box}
+.his input.hi.c{text-align:center}.his input.hi.b{font-weight:bold}.his input.hi:focus{background:#fff7cc;box-shadow:inset 0 0 0 1.5px #1e88e5}
+.his input.npac{font-size:8.5pt}.his .bloque.cont .nom::before{content:"continuación de N° " attr(data-cont-de) " (sin nombre ni datos: pertenece al paciente anterior)";color:#90a4ae;font-weight:normal;font-style:italic;font-size:7pt}.his .bloque.cont .bn td:first-child{background:#f4f6f8}.his .npac-bloq{font-size:7pt;color:#90a4ae;cursor:not-allowed}.his .bloque[data-nuevo] .nom::before{content:"← escriba el N° Reg (o nombre / DNI)";color:#90a4ae;font-weight:normal;font-style:italic}
+.his .tg{display:inline-block;width:100%;cursor:pointer;user-select:none;text-align:center;border-radius:2px}.his .tg:hover{background:#e3f2fd}.his .tg.on{font-weight:bold;background:#fff3c4}
+.his .quitar{border:0;background:transparent;color:#b00020;cursor:pointer;font-size:9pt;padding:0}.his .quitar:disabled{color:#ccc;cursor:default}
+.his .hreg col:last-child{}.his table.hreg{width:calc(100% - 0mm)}
+.cppanel{display:none;flex-direction:column;align-items:stretch;gap:8px}.cppanel.abierto{display:flex}
+@media print{.his input.hi{background:transparent!important;box-shadow:none!important}.his .tg{background:transparent!important}.his .bloque[data-nuevo] .nom::before,.his .bloque.cont .nom::before{content:none}.his .bloque.cont .bn td:first-child{background:transparent}.his .npac-bloq{display:none}.his .no-print{display:none!important}}
+
+/* Diálogos propios */
+.dlg-fondo{position:fixed;inset:0;background:rgba(20,30,40,.45);display:none;align-items:center;justify-content:center;z-index:400;padding:16px;backdrop-filter:blur(2px)}
+.dlg-fondo.abierto{display:flex;animation:dlgIn .15s ease-out}
+@keyframes dlgIn{from{opacity:0}to{opacity:1}}
+.dlg{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.35);width:min(440px,100%);padding:22px 22px 18px;display:grid;grid-template-columns:44px 1fr;gap:6px 14px;font-family:Arial,Helvetica,sans-serif;animation:dlgPop .18s ease-out}
+@keyframes dlgPop{from{transform:translateY(10px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.dlg-ico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:22px;background:#e3f2fd;color:#1F4E79}
+.dlg[data-tipo=peligro] .dlg-ico{background:#fdecea;color:#b00020}.dlg[data-tipo=info] .dlg-ico{background:#fff8e1;color:#8a6d00}.dlg[data-tipo=ok] .dlg-ico{background:#e6f4ea;color:#1a7f37}
+.dlg-tit{margin:0 0 4px;font-size:17px;color:#1a2b3c}.dlg-txt{margin:0;font-size:13.5px;line-height:1.45;color:#44525f;white-space:pre-line}
+.dlg-btns{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}
+.dlg-btn{border:1px solid #cfd8dc;background:#fff;color:#37474f;border-radius:8px;padding:9px 16px;font:inherit;font-size:13.5px;cursor:pointer}.dlg-btn:hover{background:#f1f4f6}
+.dlg-btn.primario{background:#1F4E79;border-color:#1F4E79;color:#fff}.dlg-btn.primario:hover{background:#163a5c}
+.dlg-btn.peligro{background:#b00020;border-color:#b00020;color:#fff}.dlg-btn.peligro:hover{background:#8e001a}
+.dlg-btn:focus-visible{outline:3px solid #90caf9;outline-offset:1px}
+@media (max-width:480px){.dlg{grid-template-columns:1fr}.dlg-ico{display:none}.dlg-btns .dlg-btn{flex:1}}
+@media print{.dlg-fondo{display:none!important}}
+
+/* Reloj de la barra superior */
+.reloj{display:flex;align-items:center;gap:10px;padding:4px 14px;border-radius:10px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;font-family:Arial,Helvetica,sans-serif;white-space:nowrap;margin-right:6px}
+.reloj-hora{font-size:22px;font-weight:bold;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1}
+.reloj-info{display:flex;flex-direction:column;gap:2px;line-height:1.1}
+.reloj-fecha{font-size:11px;opacity:.9}
+.reloj-turno{font-size:10.5px;font-weight:bold;padding:1px 7px;border-radius:9px;background:#fff3c4;color:#5d4037;align-self:flex-start}
+.reloj-turno[data-t=T]{background:#e3f2fd;color:#0d47a1}.reloj-turno[data-t=N]{background:#3949ab;color:#fff}
+@media (max-width:760px){.reloj-info{display:none}.reloj{padding:4px 10px}.reloj-hora{font-size:18px}}
+@media (max-width:480px){.reloj{display:none}}
+
+/* Secciones en pantalla: letra más grande (12pt); la impresión mantiene su tamaño */
+@media screen{
+  .his .hreg .bloque td{height:6.8mm}
+  .his .hreg .bloque input.hi,.his .hreg .bloque [data-auto],.his .hreg .bloque .tg{font-size:12pt}
+  .his .hreg .bn .nom{font-size:12pt}
+  .his .hreg .bloque .dx{font-size:12pt}
+  .his input.npac{font-size:12pt}
+  .his .hreg .bloque input.dxcod{font-size:11pt;letter-spacing:-.2px}
+  .his .hreg .bloque input.lab{font-size:10.5pt;padding:0;letter-spacing:-.3px}.his .hreg .bloque td:has(>input.lab){padding:0 .3mm}
+}
+.his .hreg .bloque input.hi{text-transform:uppercase}
+
+/* Códigos propios: búsqueda y edición */
+.codbusca{display:flex;align-items:center;gap:10px;margin-bottom:8px}.codbusca input{border:1px solid #cfd8dc;border-radius:6px;padding:7px 8px;font:inherit;font-size:13px;flex:1;max-width:420px}
+.cpchip .cp-edit{color:#1F4E79}.cpchip.editando{background:#e3f2fd;border-color:#90caf9;color:#0d47a1}
+.cpchip mark{background:#ffe082;padding:0}
+
+/* Valores de laboratorio automáticos desde DATOS (OD / OI), como las fórmulas del Excel */
+.his input.hi.auto{color:#0d47a1;cursor:default}.his input.hi.auto:focus{background:transparent;box-shadow:none}
+@media screen{.his td:has(>input.hi.auto){background:#eef5fc}}
+.his-mp .cie-ocular{margin-left:auto;font-size:10px;background:#dbeafe;color:#0d47a1;border-radius:8px;padding:1px 6px}
+#regSaved{font-size:11px;color:#666;font-weight:bold;background:#eef1f4;border-radius:12px;padding:3px 9px}#regSaved.ok{color:#1a7f37;background:#e6f4ea}
+/* Diagnóstico en dos líneas cuando el texto es largo */
+.his textarea.hi{width:100%;height:100%;border:0;background:transparent;font:inherit;color:#000;padding:0 .5mm;outline:none;box-sizing:border-box;resize:none;overflow:hidden;white-space:normal;line-height:1.05;display:block;text-transform:uppercase}
+.his textarea.hi:focus{background:#fff7cc;box-shadow:inset 0 0 0 1.5px #1e88e5}
+@media screen{.his .hreg .bloque textarea.dxtxt{font-size:12pt;height:6.6mm}}
+@media print{.his .hreg .bloque textarea.dxtxt{font-size:8pt!important;line-height:1.02;height:6.3mm;background:transparent!important;box-shadow:none!important}}
