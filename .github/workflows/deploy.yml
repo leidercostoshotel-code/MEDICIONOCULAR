@@ -1,9 +1,13 @@
-name: Publicar en Firebase Hosting
+name: Publicar en Firebase (Hosting y reglas)
 
 on:
   push:
     branches: [main, master]
   workflow_dispatch:
+
+concurrency:
+  group: publicar-firebase
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -13,13 +17,21 @@ jobs:
       - name: Verificar secreto
         id: chk
         env:
-          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT_MEDICION_OCULAR }}
         run: |
-          if [ -z "$SA" ]; then echo "listo=false" >> "$GITHUB_OUTPUT"; echo "Falta el secreto FIREBASE_SERVICE_ACCOUNT; no se publica."; else echo "listo=true" >> "$GITHUB_OUTPUT"; fi
-      - name: Desplegar
+          if [ -z "$SA" ]; then echo "listo=false" >> "$GITHUB_OUTPUT"; echo "::warning::Falta el secreto FIREBASE_SERVICE_ACCOUNT; no se publica (ver README, «Publicación automática»)."; else echo "listo=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/setup-node@v4
         if: steps.chk.outputs.listo == 'true'
-        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
+          node-version: 22
+      - name: Publicar sitios (ocular y PCT) y reglas de Firestore
+        if: steps.chk.outputs.listo == 'true'
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT_MEDICION_OCULAR }}
+        run: |
+          trap 'rm -f "$RUNNER_TEMP/sa.json"' EXIT
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx -y firebase-tools deploy --project medicion-ocular --only hosting --non-interactive
+          npx -y firebase-tools deploy --project medicion-ocular --only firestore:rules --non-interactive \
+            || echo "::warning::No se pudieron publicar las reglas de Firestore: la cuenta de servicio necesita el rol Administrador de Firebase."
