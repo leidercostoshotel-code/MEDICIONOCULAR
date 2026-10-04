@@ -59,7 +59,7 @@ function renderDatos(){
   <tr data-i="${i}" data-id="${esc(r.id)}">
     <td class="num"><input class="w-num" data-k="n" value="${esc(r.n)}" style="text-align:center;font-weight:bold"></td>
     <td><input data-k="hc" value="${esc(r.hc)}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" title="Solo números"></td>
-    <td><input data-k="dni" value="${esc(r.dni)}" maxlength="8" inputmode="numeric" class="${r.dni&&r.dni.length!==8?'invalid':''}"></td>
+    <td><input data-k="dni" value="${esc(r.dni)}" maxlength="8" inputmode="numeric" pattern="[0-9]*" autocomplete="off" title="Solo números (8 dígitos)" class="${r.dni&&r.dni.length!==8?'invalid':''}"></td>
     <td><input data-k="ap" value="${esc(r.ap)}"></td>
     <td><input data-k="am" value="${esc(r.am)}"></td>
     <td><input data-k="nom" value="${esc(r.nom)}"></td>
