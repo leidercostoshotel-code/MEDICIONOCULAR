@@ -58,7 +58,7 @@ function renderDatos(){
   const html=rows.map(({r,i})=>`
   <tr data-i="${i}" data-id="${esc(r.id)}">
     <td class="num"><input class="w-num" data-k="n" value="${esc(r.n)}" style="text-align:center;font-weight:bold"></td>
-    <td><input data-k="hc" value="${esc(r.hc)}"></td>
+    <td><input data-k="hc" value="${esc(r.hc)}" inputmode="numeric" pattern="[0-9]*" autocomplete="off" title="Solo números"></td>
     <td><input data-k="dni" value="${esc(r.dni)}" maxlength="8" inputmode="numeric" class="${r.dni&&r.dni.length!==8?'invalid':''}"></td>
     <td><input data-k="ap" value="${esc(r.ap)}"></td>
     <td><input data-k="am" value="${esc(r.am)}"></td>
@@ -84,6 +84,7 @@ function renderDatos(){
 document.getElementById('tbodyDatos').addEventListener('input',e=>{
   const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k||el.type==='checkbox')return;
   const r=pacientes[+tr.dataset.i];let v=el.value;
+  if(el.dataset.k==='hc'){const c=v.replace(/\D/g,"");if(c!==v){v=c;el.value=v;}} // HC: solo números
   if(el.dataset.k==='dni'){v=v.replace(/\D/g,"").slice(0,8);el.value=v;el.classList.toggle('invalid',v.length>0&&v.length!==8);}
   if(el.dataset.k==='n'){const n=parseInt(v);v=isNaN(n)?"":n;}
   if(el.dataset.k==='fn'){el.classList.toggle('invalid',!!v&&!parseFecha(v));}
