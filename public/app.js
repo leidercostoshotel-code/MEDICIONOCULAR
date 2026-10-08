@@ -3,8 +3,8 @@
 const DATA_INICIAL = [];
 const ANT_OFT = ["AMETROPÍA","BLEFARITIS","CATARATA","CONJUNTIVITIS","ESTRABISMO","GLAUCOMA","RETINOPATÍA","TRAUMATISMOS"];
 const ANT_GEN = ["ALERGIAS","CARDIOPATÍAS","COLAGENOPATÍAS","CONVULSIONES","DIABETES","ENDOCRINOPATÍAS","HIPERTENSIÓN","MIGRAÑA","NEUROPATÍAS","OPERACIONES","PSIQUIÁTRICOS","TEC / TRAUMA","TOXICOLOGÍA","TUBERCULOSIS","TUMORES"];
-const COLS = ["n","hc","dni","ap","am","nom","sexo","fn","peso","talla","imc","edad","nombre","od","oi","ao","ao_od","ao_oi","ag","ag_p","ag_f","obs"];
-const HEADERS = ["N°","HC","Número de Documento","Apellido Paterno","Apellido Materno","Nombres","Sexo","Fecha de Nacimiento","PESO","TALLA","IMC","Edad","Apellidos y Nombres","OD","OI","ANTECEDENTES OFTALMOLÓGICOS","AO OD","AO OI","ANTECEDENTES GENERALES","AG P","AG F","OBSERVACIÓN"];
+const COLS = ["n","hc","dni","ap","am","nom","sexo","fn","peso","talla","imc","edad","nombre","od","oi","resultado","ao","ao_od","ao_oi","ag","ag_p","ag_f","obs"];
+const HEADERS = ["N°","HC","Número de Documento","Apellido Paterno","Apellido Materno","Nombres","Sexo","Fecha de Nacimiento","PESO","TALLA","IMC","Edad","Apellidos y Nombres","OD","OI","RESULTADO","ANTECEDENTES OFTALMOLÓGICOS","AO OD","AO OI","ANTECEDENTES GENERALES","AG P","AG F","OBSERVACIÓN"];
 const LS_PAC = "salud_ocular_pacientes_v1";
 const LS_EVAL = "salud_ocular_evaluaciones_v1";
 
@@ -23,6 +23,9 @@ function parseFecha(s){ // dd/mm/aaaa
 }
 function calcEdad(fn){const d=parseFecha(fn);if(!d)return "";const h=new Date();let e=h.getFullYear()-d.getFullYear();const m=h.getMonth()-d.getMonth();if(m<0||(m===0&&h.getDate()<d.getDate()))e--;return e<0?"":String(e);}
 function calcIMC(p,t){const P=num(p),T=num(t);if(P==null||T==null||T<=0)return "";return (P/(T*T)).toFixed(2);}
+// Agudeza visual (fórmula de la plantilla Excel, hojas HC e HIS): ALTERADO si OD u OI es mayor que 35; sin medidas = vacío
+function calcResultado(r){const a=num(r.od),b=num(r.oi);if(a==null&&b==null)return "";return ((a!=null&&a>35)||(b!=null&&b>35))?"ALTERADO":"NO ALTERADO";}
+function celdaResultado(r){const v=calcResultado(r);return v?`<span class="res ${v==="ALTERADO"?"alt":"ok"}">${v}</span>`:"";}
 function calcNombre(r){return [r.ap,r.am,r.nom].map(x=>String(x||"").trim()).filter(Boolean).join(" ");}
 function hoy(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);}
@@ -52,7 +55,7 @@ function renderDatos(){
   const tb=document.getElementById('tbodyDatos');
   const rows=pacientes.map((r,i)=>({r,i})).filter(({r})=>{
     if(!q)return true;
-    const s=[r.n,r.hc,r.dni,r.ap,r.am,r.nom,calcNombre(r),r.sexo,r.fn,r.ao,r.ag,r.obs].join(" ").toLowerCase();
+    const s=[r.n,r.hc,r.dni,r.ap,r.am,r.nom,calcNombre(r),r.sexo,r.fn,calcResultado(r),r.ao,r.ag,r.obs].join(" ").toLowerCase();
     return s.includes(q);
   });
   const html=rows.map(({r,i})=>`
@@ -72,6 +75,7 @@ function renderDatos(){
     <td class="calc" data-c="nombre" style="text-align:left">${esc(calcNombre(r))}</td>
     <td><input data-k="od" value="${esc(r.od)}" inputmode="decimal" style="text-align:center"></td>
     <td><input data-k="oi" value="${esc(r.oi)}" inputmode="decimal" style="text-align:center"></td>
+    <td class="calc" data-c="resultado">${celdaResultado(r)}</td>
     <td><div class="ao-cell"><select data-k="ao"><option value=""></option>${ANT_OFT.map(a=>`<option ${r.ao===a?'selected':''}>${a}</option>`).join("")}</select><label title="Ojo derecho"><input type="checkbox" data-k="ao_od" ${r.ao_od==="X"?"checked":""}>OD</label><label title="Ojo izquierdo"><input type="checkbox" data-k="ao_oi" ${r.ao_oi==="X"?"checked":""}>OI</label></div></td>
     <td><div class="ao-cell"><select data-k="ag"><option value=""></option>${(ANT_GEN.includes(r.ag)||!r.ag?ANT_GEN:ANT_GEN.concat(r.ag)).map(a=>`<option ${r.ag===a?'selected':''}>${esc(a)}</option>`).join("")}</select><label title="Personales"><input type="checkbox" data-k="ag_p" ${r.ag_p==="X"?"checked":""}>P</label><label title="Familiares"><input type="checkbox" data-k="ag_f" ${r.ag_f==="X"?"checked":""}>F</label></div></td>
     <td><input data-k="obs" value="${esc(r.obs)}"></td>
@@ -92,6 +96,7 @@ document.getElementById('tbodyDatos').addEventListener('input',e=>{
   tr.querySelector('[data-c=imc]').textContent=calcIMC(r.peso,r.talla);
   tr.querySelector('[data-c=edad]').textContent=calcEdad(r.fn);
   tr.querySelector('[data-c=nombre]').textContent=calcNombre(r);
+  tr.querySelector('[data-c=resultado]').innerHTML=celdaResultado(r);
   guardarPacientes();
 });
 document.getElementById('tbodyDatos').addEventListener('change',e=>{ // selects y casillas OD/OI
@@ -139,7 +144,7 @@ function filasAPacientes(rows){
   for(const k in map){const j=hdr.findIndex(h=>map[k].includes(h));if(j>=0){idx[k]=j;hits++;}}
   let body=rows.slice(1);
   if(hits<4){ // sin encabezado reconocible: usar orden de columnas
-    body=rows;COLS.forEach((k,j)=>{idx[k]=j;});delete idx.imc;delete idx.edad;delete idx.nombre;
+    body=rows;COLS.forEach((k,j)=>{idx[k]=j;});delete idx.imc;delete idx.edad;delete idx.nombre;delete idx.resultado;
     if(isNaN(parseInt(rows[0][0])))body=rows.slice(1);
   }
   const out=[];
@@ -169,7 +174,7 @@ function importFile(inp){
     const rd=new FileReader();rd.onload=e=>done(parseCSV(e.target.result));rd.readAsText(f,"UTF-8");
   }
 }
-function filaExport(r){return [r.n,r.hc,r.dni,r.ap,r.am,r.nom,r.sexo,r.fn,r.peso,r.talla,calcIMC(r.peso,r.talla),calcEdad(r.fn),calcNombre(r),r.od,r.oi,r.ao,r.ao_od,r.ao_oi,r.ag,r.ag_p,r.ag_f,r.obs];}
+function filaExport(r){return [r.n,r.hc,r.dni,r.ap,r.am,r.nom,r.sexo,r.fn,r.peso,r.talla,calcIMC(r.peso,r.talla),calcEdad(r.fn),calcNombre(r),r.od,r.oi,calcResultado(r),r.ao,r.ao_od,r.ao_oi,r.ag,r.ag_p,r.ag_f,r.obs];}
 function descargar(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportCSV(){
   const q=v=>{v=String(v==null?"":v);return /[;"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
@@ -179,7 +184,7 @@ function exportCSV(){
 function exportXLSX(){
   if(typeof XLSX==="undefined"){msg("Sin librería Excel (sin conexión): se exporta CSV");exportCSV();return;}
   const aoa=[HEADERS].concat(pacientes.map(r=>filaExport(r).map((v,j)=>{ if([0,8,9,10,11,13,14].includes(j)){const n=num(v);return n==null?"":n;} return v;})));
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[6,8,14,16,16,24,8,14,8,8,8,6,34,6,6,26,7,7,26,6,6,26].map(w=>({wch:w}));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[6,8,14,16,16,24,8,14,8,8,8,6,34,6,6,14,26,7,7,26,6,6,26].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Datos");
   // Hoja de evaluaciones guardadas
   const evs=Object.keys(evaluaciones).sort((a,b)=>a-b);

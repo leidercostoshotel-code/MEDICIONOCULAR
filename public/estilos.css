@@ -165,3 +165,7 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .actualizar button{border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:600;background:#1e88e5;color:#fff;cursor:pointer;white-space:nowrap}.actualizar button:hover{background:#1565c0}
 .actualizar .luego{background:transparent;padding:4px 6px;color:#b0bec5;font-weight:normal}.actualizar .luego:hover{color:#fff;background:transparent}
 @keyframes subir{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}
+/* Columna RESULTADO (agudeza visual) en DATOS */
+.w-res{width:120px}
+.res{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;letter-spacing:.2px;white-space:nowrap}
+.res.alt{background:#fdecea;color:#b00020;border:1px solid #f5c2c7}.res.ok{background:#e6f4ea;color:#1a7f37;border:1px solid #b7dfc2}
