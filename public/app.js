@@ -181,17 +181,53 @@ function exportCSV(){
   const lines=[HEADERS.map(q).join(";")].concat(pacientes.map(r=>filaExport(r).map(q).join(";")));
   descargar(new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}),"Datos_Salud_Ocular.csv");msg("CSV exportado");
 }
-function exportXLSX(){
-  if(typeof XLSX==="undefined"){msg("Sin librería Excel (sin conexión): se exporta CSV");exportCSV();return;}
-  const aoa=[HEADERS].concat(pacientes.map(r=>filaExport(r).map((v,j)=>{ if([0,8,9,10,11,13,14].includes(j)){const n=num(v);return n==null?"":n;} return v;})));
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[6,8,14,16,16,24,8,14,8,8,8,6,34,6,6,14,26,7,7,26,6,6,26].map(w=>({wch:w}));
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Datos");
+/* Excel con formato (ExcelJS, incluido en lib/): encabezado en color, bordes, encabezado inmovilizado, filtros y RESULTADO en color */
+function cargarExcelJS(){if(window.ExcelJS)return Promise.resolve(window.ExcelJS);
+  return cargarExcelJS._p||(cargarExcelJS._p=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='lib/exceljs.min.js';
+    sc.onload=()=>window.ExcelJS?ok(window.ExcelJS):no(new Error('ExcelJS'));sc.onerror=()=>{cargarExcelJS._p=null;no(new Error('sin conexión'));};document.head.appendChild(sc);}));}
+async function excelConFormato(hojas,nombre){
+  const ExcelJS=await cargarExcelJS();const wb=new ExcelJS.Workbook();wb.creator="Salud Ocular";wb.created=new Date();
+  const relleno=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});const linea=c=>({style:'thin',color:{argb:c}});
+  const bordes={top:linea('FF9FB3C8'),left:linea('FF9FB3C8'),bottom:linea('FF9FB3C8'),right:linea('FF9FB3C8')};
+  for(const h of hojas){
+    const n=h.cab.length,ws=wb.addWorksheet(h.nombre,{views:[{state:'frozen',xSplit:h.fijarCols||0,ySplit:1,activeCell:'A2',showGridLines:true}]});
+    ws.columns=h.cab.map((t,j)=>({header:t,width:(h.anchos&&h.anchos[j])||14}));
+    h.filas.forEach(f=>ws.addRow(f.map(v=>v===""||v==null?null:v)));
+    const cab=ws.getRow(1);cab.height=34;
+    for(let j=1;j<=n;j++){const c=cab.getCell(j);c.fill=relleno('FF1F4E79');c.font={name:'Calibri',size:11,bold:true,color:{argb:'FFFFFFFF'}};
+      c.alignment={vertical:'middle',horizontal:'center',wrapText:true};c.border={top:linea('FF0D2F4F'),left:linea('FF0D2F4F'),bottom:{style:'medium',color:{argb:'FF0D2F4F'}},right:linea('FF0D2F4F')};}
+    for(let i=2;i<=ws.rowCount;i++){const row=ws.getRow(i);row.height=18;
+      for(let j=1;j<=n;j++){const c=row.getCell(j);c.border=bordes;c.font={name:'Calibri',size:11};
+        c.alignment={vertical:'middle',horizontal:(h.centrar||[]).includes(j-1)?'center':'left'};
+        if((h.calculadas||[]).includes(j-1))c.fill=relleno('FFEEF3F8');
+        if(h.formatos&&h.formatos[j-1])c.numFmt=h.formatos[j-1];}
+      if(h.resultado!=null){const c=row.getCell(h.resultado+1);
+        if(c.value==="ALTERADO"){c.fill=relleno('FFFDECEA');c.font={name:'Calibri',size:11,bold:true,color:{argb:'FFB00020'}};}
+        else if(c.value==="NO ALTERADO"){c.fill=relleno('FFE6F4EA');c.font={name:'Calibri',size:11,bold:true,color:{argb:'FF1A7F37'}};}}}
+    ws.autoFilter={from:{row:1,column:1},to:{row:1,column:n}};
+    ws.pageSetup={orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.3,right:.3,top:.4,bottom:.4,header:.2,footer:.2}};
+    ws.pageSetup.printTitlesRow='1:1';
+  }
+  const buf=await wb.xlsx.writeBuffer();
+  descargar(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),nombre);
+}
+const NUM_COLS=[0,8,9,10,11,13,14]; // N°, peso, talla, IMC, edad, OD, OI
+function filasDatosExcel(){return pacientes.map(r=>filaExport(r).map((v,j)=>{if(NUM_COLS.includes(j)){const x=num(v);return x==null?"":x;}return v;}));}
+async function exportXLSX(){
+  const hojas=[{nombre:"Datos",cab:HEADERS,filas:filasDatosExcel(),anchos:[6,10,14,16,16,24,9,13,9,9,8,7,36,7,7,15,24,7,7,24,6,6,28],
+    centrar:[0,1,2,6,7,8,9,10,11,13,14,15,17,18,20,21],calculadas:[10,11,12],resultado:15,formatos:{10:'0.00'}}];
   // Hoja de evaluaciones guardadas
   const evs=Object.keys(evaluaciones).sort((a,b)=>a-b);
   if(evs.length){const keys=[...new Set(evs.flatMap(k=>Object.keys(evaluaciones[k])))];
-    const ws2=XLSX.utils.aoa_to_sheet([["N°",...keys]].concat(evs.map(k=>[parseInt(k),...keys.map(x=>evaluaciones[k][x]||"")])));
-    XLSX.utils.book_append_sheet(wb,ws2,"Evaluaciones");}
-  XLSX.writeFile(wb,"Datos_Salud_Ocular.xlsx");msg("Excel exportado");
+    hojas.push({nombre:"Evaluaciones",cab:["N°",...keys],filas:evs.map(k=>[parseInt(k),...keys.map(x=>evaluaciones[k][x]||"")]),centrar:[0]});}
+  msg("Preparando Excel…");
+  try{await excelConFormato(hojas,"Datos_Salud_Ocular.xlsx");msg("Excel exportado");return;}
+  catch(e){console.error(e);}
+  // respaldo sin formato si no se pudo cargar ExcelJS
+  if(typeof XLSX==="undefined"){msg("Sin librería Excel (sin conexión): se exporta CSV");exportCSV();return;}
+  const wb=XLSX.utils.book_new();
+  hojas.forEach(h=>{const ws=XLSX.utils.aoa_to_sheet([h.cab].concat(h.filas));if(h.anchos)ws['!cols']=h.anchos.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,h.nombre);});
+  XLSX.writeFile(wb,"Datos_Salud_Ocular.xlsx");msg("Excel exportado (sin formato)");
 }
 
 /* ======================= EVALUACIÓN OCULAR ======================= */
