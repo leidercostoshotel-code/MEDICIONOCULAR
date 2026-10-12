@@ -3,7 +3,7 @@
   const cfg=window.FIREBASE_CONFIG||{},opt=Object.assign({requiereLogin:true},window.APP_CONFIG||{});
   const st=document.getElementById('syncStatus'),lg=document.getElementById('login'),salir=document.getElementById('btnSalir');
   const estado=(t,c)=>{st.textContent=t;st.className='syncStatus '+(c||'');};
-  const S=window.Sync={programarPacientes(){},programarEvaluaciones(){},programarAtenciones(){},programarConfig(){},entrar(e){e.preventDefault();},cerrarSesion(){}};
+  const S=window.Sync={programarPacientes(){},programarEvaluaciones(){},programarAtenciones(){},programarConfig(){},subirPendiente(){},entrar(e){e.preventDefault();},cerrarSesion(){}};
   if(!cfg.apiKey||/^PEGAR/.test(cfg.apiKey)){estado("Sin Firebase · guardado solo en este navegador","off");return;}
   if(typeof firebase==="undefined"){estado("No se pudo cargar Firebase · guardado local","err");return;}
   firebase.initializeApp(cfg);
@@ -33,6 +33,7 @@
   S.programarConfig=()=>{clearTimeout(tCfg);tCfg=setTimeout(subirConfig,600);};
   S.programarPacientes=()=>{clearTimeout(tPac);tPac=setTimeout(subirPacientes,600);};
   S.programarEvaluaciones=()=>{clearTimeout(tEval);tEval=setTimeout(subirEvaluaciones,300);};
+  S.subirPendiente=()=>{if(tEval){clearTimeout(tEval);subirEvaluaciones();}if(tPac){clearTimeout(tPac);subirPacientes();}};
 
   function focoActual(){const el=document.activeElement;const tr=el&&el.closest&&el.closest('#tbodyDatos tr');return tr?{id:tr.dataset.id,k:el.dataset.k,s:el.selectionStart}:null;}
   function restaurarFoco(f){if(!f)return;const el=document.querySelector(`#tbodyDatos tr[data-id="${f.id}"] [data-k="${f.k}"]`);if(el){el.focus();try{el.setSelectionRange(f.s,f.s);}catch(e){}}}

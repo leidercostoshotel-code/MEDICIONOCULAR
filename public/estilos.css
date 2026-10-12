@@ -141,7 +141,7 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .ao-cell label{flex:none;display:flex;align-items:center;gap:2px;font-size:11px;font-weight:bold;color:#0d47a1;white-space:nowrap;cursor:pointer;user-select:none}
 .ao-cell input[type=checkbox]{flex:none;width:15px;height:15px;margin:0;padding:0;accent-color:#1e88e5;cursor:pointer}
 /* Búsqueda predictiva de pacientes (pestaña EVALUACIÓN) */
-.bq{position:relative;display:flex;align-items:center;min-width:340px;flex:0 1 420px;background:#fff;border:1.5px solid #cfd8dc;border-radius:8px;padding:0 8px;height:30px}
+.bq{position:relative;display:flex;align-items:center;min-width:280px;flex:0 1 400px;background:#fff;border:1.5px solid #cfd8dc;border-radius:8px;padding:0 8px;height:30px}
 .bq:focus-within{border-color:#1e88e5;box-shadow:0 0 0 3px rgba(30,136,229,.18)}
 .bq svg{width:16px;height:16px;color:#90a4ae;flex:none}
 .bq input{flex:1;border:0;outline:0;background:transparent;font:inherit;font-size:13px;padding:0 6px;min-width:0}

@@ -45,14 +45,15 @@ document.body.insertAdjacentHTML("afterbegin",`
 <!-- ======================= VISTA EVALUACIÓN ======================= -->
 <div id="evaluacion" class="view">
   <div class="toolbar">
-    <button class="btn" onclick="navPaciente(-1)">◀ Anterior paciente</button>
-    <button class="btn" onclick="navPaciente(1)">Siguiente paciente ▶</button>
+    <button class="btn" onclick="navPaciente(-1)" title="Paciente anterior">◀ Anterior</button>
+    <button class="btn" onclick="navPaciente(1)" title="Paciente siguiente">Siguiente ▶</button>
     <div class="bq"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><input id="buscarPac" type="search" placeholder="Buscar paciente: DNI, N° o apellidos y nombres" autocomplete="off" spellcheck="false"><div id="buscarLista" class="bq-lista" role="listbox"></div></div>
     <span class="evalInfo" id="evalInfo"></span>
     <span class="savedTag" id="savedTag"></span>
     <span class="sep"></span>
     <button class="btn danger" onclick="limpiarEval()">Limpiar formulario</button>
     <button class="btn primary" onclick="guardarEval()">💾 Guardar evaluación</button>
+    <button class="btn" onclick="exportEvaluacionesXLSX()" title="Descargar en Excel todas las evaluaciones guardadas">📥 Excel</button>
     <button class="btn" onclick="window.print()">🖨 Imprimir / PDF</button>
   </div>
 
