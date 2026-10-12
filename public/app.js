@@ -11,6 +11,7 @@ const LS_EVAL = "salud_ocular_evaluaciones_v1";
 let pacientes = [];
 let evaluaciones = {};
 let numActual = null;
+let tAuto = null; // guardado automático pendiente de la evaluación
 
 /* ======================= UTILIDADES ======================= */
 function msg(t){const m=document.getElementById('msg');m.textContent=t;m.classList.add('show');clearTimeout(msg._t);msg._t=setTimeout(()=>m.classList.remove('show'),2200);}
@@ -216,18 +217,66 @@ function filasDatosExcel(){return pacientes.map(r=>filaExport(r).map((v,j)=>{if(
 async function exportXLSX(){
   const hojas=[{nombre:"Datos",cab:HEADERS,filas:filasDatosExcel(),anchos:[6,10,14,16,16,24,9,13,9,9,8,7,36,7,7,15,24,7,7,24,6,6,28],
     centrar:[0,1,2,6,7,8,9,10,11,13,14,15,17,18,20,21],calculadas:[10,11,12],resultado:15,formatos:{10:'0.00'}}];
-  // Hoja de evaluaciones guardadas
-  const evs=Object.keys(evaluaciones).sort((a,b)=>a-b);
-  if(evs.length){const keys=[...new Set(evs.flatMap(k=>Object.keys(evaluaciones[k])))];
-    hojas.push({nombre:"Evaluaciones",cab:["N°",...keys],filas:evs.map(k=>[parseInt(k),...keys.map(x=>evaluaciones[k][x]||"")]),centrar:[0]});}
+  const he=hojaEvaluaciones();if(he)hojas.push(he); // evaluaciones guardadas, una fila por paciente
+  await descargarExcel(hojas,"Datos_Salud_Ocular.xlsx");
+}
+async function descargarExcel(hojas,nombre){
   msg("Preparando Excel…");
-  try{await excelConFormato(hojas,"Datos_Salud_Ocular.xlsx");msg("Excel exportado");return;}
+  try{await excelConFormato(hojas,nombre);msg("Excel exportado");return;}
   catch(e){console.error(e);}
   // respaldo sin formato si no se pudo cargar ExcelJS
   if(typeof XLSX==="undefined"){msg("Sin librería Excel (sin conexión): se exporta CSV");exportCSV();return;}
   const wb=XLSX.utils.book_new();
   hojas.forEach(h=>{const ws=XLSX.utils.aoa_to_sheet([h.cab].concat(h.filas));if(h.anchos)ws['!cols']=h.anchos.map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,h.nombre);});
-  XLSX.writeFile(wb,"Datos_Salud_Ocular.xlsx");msg("Excel exportado (sin formato)");
+  XLSX.writeFile(wb,nombre);msg("Excel exportado (sin formato)");
+}
+/* Excel de EVALUACIÓN OCULAR: una fila por evaluación guardada, con las secciones de la hoja en columnas legibles */
+const EX_SEC=[["PÁRPADOS",["INFLAMACIÓN","ENROJECIMIENTO","LAGRIMEO","ARDOR / ESCOZOR"]],["PESTAÑAS",["DESCAMACIÓN / ESCOZOR","CAÍDA","DESVIACIÓN"]],
+  ["CONJUNTIVA",["ENROJECIMIENTO","ARDOR / ESCOZOR","SECRECIÓN"]],["ESCLERÓTICA",["ENROJECIMIENTO / MANCHA","DOLOR OCULAR","SENSIBILIDAD A LA LUZ","LAGRIMEO / SEQUEDAD"]],
+  ["CÓRNEA",["OPACIDAD","DOLOR OCULAR","SENSIBILIDAD A LA LUZ","VISIÓN BORROSA"]],["IRIS",["VISIÓN BORROSA / DOBLE","DOLOR OCULAR"]],["PUPILA",["VISIÓN BORROSA / DOBLE","DOLOR OCULAR"]]];
+function evVacia(e){return !Object.keys(e).some(k=>k!=="ev_nombre"&&String(e[k]||"").trim()!=="");}
+function exUnir(a,sep){return a.map(x=>String(x==null?"":x).trim()).filter(Boolean).join(sep||"; ");}
+function exMarcas(e,lista,pre,sufs,etq){ // ANTECEDENTES: "AMETROPÍA (OD, OI)"
+  return exUnir(lista.map(a=>{const k=slug(a),m=sufs.filter(x=>e[`${pre}_${k}_${x}`]==="X");return m.length?`${a} (${m.map((x,i)=>etq[sufs.indexOf(x)]).join(", ")})`:"";}));
+}
+function exSeccion(e,s,items){ // III. EXAMEN OCULAR EXTERNO: lo marcado SI (u ojo descrito) y OTROS
+  const g=k=>String(e[k]||"").trim(),out=[];let no=false;
+  [...items,"OTROS"].forEach((nom,i)=>{const b=`s${s}_${i+1}`,si=e[b+"_si"]==="X",od=g(b+"_od"),oi=g(b+"_oi"),txt=nom==="OTROS"?g(b+"_txt"):"";
+    if(e[b+"_no"]==="X")no=true;
+    if(si||od||oi||txt){const ojos=exUnir([od&&"OD: "+od,oi&&"OI: "+oi],", ");out.push((nom==="OTROS"?"OTROS"+(txt?": "+txt:""):nom)+(ojos?` (${ojos})`:""));}});
+  return out.length?out.join("; "):(no?"Sin alteraciones":"");
+}
+function exDx(e,n){const g=k=>String(e[`dx${n}_${k}`]||"").trim();if(!g('txt')&&!g('cie'))return "";
+  const t=["p","d","r"].filter(k=>e[`dx${n}_${k}`]==="X").map(k=>k.toUpperCase()).join("/");
+  return exUnir([g('txt'),t,exUnir([g('v1'),g('v2'),g('v3')]," "),g('cie')&&"CIE "+g('cie')]," · ");}
+const EX_COLS=[ // [cabecera, ancho, valor, tipo] tipo: n = número, c = centrado, r = RESULTADO
+  ["N°",6,(e,r,n)=>n,"n"],["HC",10,(e,r)=>r.hc,"c"],["DNI",11,(e,r)=>r.dni,"c"],["Apellidos y Nombres",34,(e,r)=>calcNombre(r)],["Edad",6,(e,r)=>calcEdad(r.fn),"n"],["Sexo",8,(e,r)=>r.sexo,"c"],
+  ["OD",6,(e,r)=>r.od,"n"],["OI",6,(e,r)=>r.oi,"n"],["RESULTADO",15,(e,r)=>calcResultado(r),"r"],["Fecha evaluación",12,e=>e.fecha,"c"],
+  ["Antecedentes oftalmológicos",30,e=>exMarcas(e,ANT_OFT,"ao",["od","oi"],["OD","OI"])],["Antecedentes generales",30,e=>exMarcas(e,ANT_GEN,"ag",["p","f"],["P","F"])],
+  ["Especificar antecedentes",28,e=>exUnir([e.ant_especificar,e.ant_especificar2,e.ant_especificar3]," ")],
+  ["T°",6,e=>e.ef_t,"c"],["FR",6,e=>e.ef_fr,"c"],["FC",6,e=>e.ef_fc,"c"],["PA",8,e=>e.ef_pa,"c"],["SatO2",7,e=>e.ef_sat,"c"],["PAB",7,e=>e.ef_pab,"c"],
+  ["AV OD con lentes",9,e=>e.av_od_con,"c"],["AV OD estenopeico",10,e=>e.av_od_est,"c"],["AV OI con lentes",9,e=>e.av_oi_con,"c"],["AV OI estenopeico",10,e=>e.av_oi_est,"c"],
+  ...EX_SEC.map(([nom,it],i)=>[nom.charAt(0)+nom.slice(1).toLowerCase(),26,e=>exSeccion(e,i+1,it)]),
+  ...[1,2,3,4,5].map(n=>["Diagnóstico "+n,40,e=>exDx(e,n)]),
+  ["Plan de trabajo",28,e=>exUnir([e.plan1,e.plan2,e.plan3])],["Exámenes auxiliares",28,e=>exUnir([e.exa1,e.exa2,e.exa3])],
+  ["Tratamiento",11,e=>e.trat_si==="X"?"SI":e.trat_no==="X"?"NO":"","c"],
+  ["Medicamentos",40,e=>exUnir([1,2,3].map(i=>exUnir([e["med"+i],e["pres"+i],e["dosis"+i],e["dur"+i]]," - ")))],
+  ["Referencia",26,e=>exUnir([e.ref_eess&&"EE.SS: "+e.ref_eess,e.ref_hospital&&"HOSPITAL: "+e.ref_hospital,e.ref_instituto&&"INSTITUTO: "+e.ref_instituto])],
+  ["Evaluador",24,e=>e.ev_nombre],["Profesión",16,e=>e.ev_profesion],["EE.SS del evaluador",20,e=>e.ev_eess]];
+function hojaEvaluaciones(){
+  const ns=Object.keys(evaluaciones).map(k=>parseInt(k)).filter(n=>!isNaN(n)&&evaluaciones[n]&&!evVacia(evaluaciones[n])).sort((a,b)=>a-b);
+  if(!ns.length)return null;
+  let filas=ns.map(n=>{const e=evaluaciones[n],r=buscarPaciente(n)||{};
+    return EX_COLS.map(c=>{const v=c[2](e,r,n);if(c[3]==="n"){const x=num(v);return x==null?"":x;}return v==null?"":String(v).trim();});});
+  const usar=EX_COLS.map((c,j)=>j<10||filas.some(f=>f[j]!==""));// datos del paciente siempre; el resto solo si tiene algo
+  const cols=EX_COLS.filter((c,j)=>usar[j]);filas=filas.map(f=>f.filter((v,j)=>usar[j]));
+  return {nombre:"Evaluaciones",cab:cols.map(c=>c[0]),filas,anchos:cols.map(c=>c[1]),fijarCols:4,
+    centrar:cols.map((c,j)=>c[3]?j:-1).filter(j=>j>=0),resultado:cols.findIndex(c=>c[3]==="r")};
+}
+async function exportEvaluacionesXLSX(){
+  if(tAuto)guardarAhora();
+  const he=hojaEvaluaciones();if(!he){alert("Todavía no hay evaluaciones guardadas para exportar.");return;}
+  await descargarExcel([he],"Evaluaciones_Salud_Ocular.xlsx");
 }
 
 /* ======================= EVALUACIÓN OCULAR ======================= */
@@ -250,6 +299,7 @@ function escribirForm(o){
     if(el.classList.contains('chk'))el.classList.toggle('on',v==="X");else el.value=v;});
 }
 function cargarPaciente(n){
+  if(tAuto)guardarAhora(); // guardar lo escrito del paciente anterior antes de cambiar
   const r=buscarPaciente(n);numActual=r?parseInt(r.n):null;
   setAutos(r);
   const info=document.getElementById('evalInfo'),tag=document.getElementById('savedTag');
@@ -267,14 +317,21 @@ function cargarPaciente(n){
   autoDxTodos();
 }
 function slug(s){return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");}
+/* Guardado automático: cada cambio del formulario se guarda solo (antes se perdía al pasar a otro paciente sin pulsar Guardar) */
+function autoGuardar(){if(numActual==null)return;document.getElementById('savedTag').textContent="Guardando…";clearTimeout(tAuto);tAuto=setTimeout(guardarAhora,400);}
+function guardarAhora(){
+  clearTimeout(tAuto);tAuto=null;if(numActual==null)return;
+  evaluaciones[numActual]=leerForm();guardarEvaluaciones();
+  const d=new Date();document.getElementById('savedTag').textContent=`✔ Guardado ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
 function guardarEval(){
   if(numActual==null){alert("Primero escriba un N° de paciente válido.");return;}
-  evaluaciones[numActual]=leerForm();guardarEvaluaciones();
-  document.getElementById('savedTag').textContent="✔ Evaluación guardada";msg(`Evaluación del N° ${numActual} guardada`);
+  guardarAhora();msg(`Evaluación del N° ${numActual} guardada`);
 }
 function limpiarEval(){
-  if(numActual!=null&&evaluaciones[numActual]){
-    if(!confirm(`¿Borrar la evaluación guardada del N° ${numActual}?`))return;
+  const pend=tAuto!=null;clearTimeout(tAuto);tAuto=null;
+  if(numActual!=null&&(evaluaciones[numActual]||pend)){
+    if(!confirm(`¿Borrar la evaluación guardada del N° ${numActual}?`)){if(pend)guardarAhora();return;}
     delete evaluaciones[numActual];guardarEvaluaciones();
   }
   cargarPaciente(document.getElementById('numPac').value);msg("Formulario limpio");
@@ -389,7 +446,8 @@ document.getElementById('sheet').addEventListener('input',e=>{const m=/^dx(\d)_t
   btn.addEventListener('click',abrir);
   txt.addEventListener('dblclick',abrir);
   txt.addEventListener('blur',()=>{ // normalizar 5/9/26 -> 05/09/2026
-    const d=parseFecha(txt.value);if(d)txt.value=String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+    const d=parseFecha(txt.value);if(!d)return;const v=String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+    if(v!==txt.value){txt.value=v;autoGuardar();}
   });
 })();
 
@@ -398,7 +456,12 @@ document.getElementById('sheet').addEventListener('click',e=>{
   const c=e.target.closest('.chk');if(!c)return;c.classList.toggle('on');
   if(c.dataset.f==='trat_si'&&c.classList.contains('on'))document.querySelector('.chk[data-f=trat_no]').classList.remove('on');
   if(c.dataset.f==='trat_no'&&c.classList.contains('on'))document.querySelector('.chk[data-f=trat_si]').classList.remove('on');
+  autoGuardar();
 });
+['input','change'].forEach(t=>document.getElementById('sheet').addEventListener(t,e=>{if(e.target.dataset&&e.target.dataset.f)autoGuardar();}));
+// al salir de la app o cambiar de pestaña/aplicación en el celular: guardar y subir lo pendiente
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='hidden')return;if(tAuto)guardarAhora();if(window.Sync&&Sync.subirPendiente)Sync.subirPendiente();});
+window.addEventListener('pagehide',()=>{if(tAuto)guardarAhora();});
 document.addEventListener('keydown',e=>{
   if(e.ctrlKey&&e.key.toLowerCase()==='s'&&document.getElementById('evaluacion').classList.contains('active')){e.preventDefault();guardarEval();}
 });
