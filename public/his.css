@@ -106,3 +106,14 @@
 .his textarea.hi:focus{background:#fff7cc;box-shadow:inset 0 0 0 1.5px #1e88e5}
 @media screen{.his .hreg .bloque textarea.dxtxt{font-size:12pt;height:6.6mm}}
 @media print{.his .hreg .bloque textarea.dxtxt{font-size:8pt!important;line-height:1.02;height:6.3mm;background:transparent!important;box-shadow:none!important}}
+
+/* Ventana de códigos abierta desde la EVALUACIÓN (mismo panel que «Códigos propios» del REGISTRO HIS) */
+.cp-modal{z-index:390}
+.cp-modal.abierto~#msg,body:has(.cp-modal.abierto) #msg{z-index:395} /* el aviso «Código agregado» se ve sobre la ventana */
+.cpm{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.35);width:min(820px,100%);max-height:88vh;overflow:auto;padding:16px 18px 18px;animation:dlgPop .18s ease-out}
+.cpm-cab{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cpm-cab h3{margin:0;font-size:17px;color:#1a2b3c}
+.cpm-x{border:0;background:#f1f4f6;color:#37474f;border-radius:8px;width:34px;height:34px;font-size:16px;cursor:pointer}.cpm-x:hover{background:#e3e8ec}
+.cpm-ayuda{margin:6px 0 10px;font-size:12.5px;line-height:1.4;color:#5b6b7a}
+.cpm .cppanel{background:transparent;border:0;padding:0}
+#cpCie{flex:1;max-width:none;border:1.5px solid #90caf9;background:#f5faff}
