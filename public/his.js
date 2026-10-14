@@ -164,9 +164,9 @@ $('cpLista').addEventListener('click',e=>{const b=e.target.closest('button');if(
 /* ======================= FÓRMULAS DEL EXCEL (VALOR LAB desde DATOS) ======================= */
 function dxOcular(txt,cod){const k=normTxt(txt).trim(),c=String(cod||"").toUpperCase().replace(/\./g,"");
   return DX_OCULAR.find(o=>(k&&o.re.test(k))||(!k&&c&&o.c===c))||null;}
-// Excel HIS: Examen → =SI(O(OD>35;OI>35);"ALT";"N") · Agudeza → OD y OI · Trastorno de la refracción → RF si OD u OI ≥ 50
+// Examen → "ALT" si OD u OI ≥ 50 (mismo criterio que RESULTADO de DATOS), si no "N" · Agudeza → OD y OI · Trastorno de la refracción → RF si OD u OI ≥ 50
 function labsFormula(o,pac){const od=num(pac&&pac.od),oi=num(pac&&pac.oi);const hay=od!=null||oi!=null;
-  if(o.c==="Z010")return [hay?((od!=null&&od>35)||(oi!=null&&oi>35)?"ALT":"N"):"","",""];
+  if(o.c==="Z010")return [hay?((od!=null&&od>=50)||(oi!=null&&oi>=50)?"ALT":"N"):"","",""];
   if(o.c==="99173")return [od==null?"":String(pac.od).trim(),oi==null?"":String(pac.oi).trim(),""];
   if(o.c==="H527")return [(od!=null&&od>=50)||(oi!=null&&oi>=50)?"RF":"","",""];
   return null;}
