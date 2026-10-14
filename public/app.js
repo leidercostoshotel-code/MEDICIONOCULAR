@@ -3,8 +3,8 @@
 const DATA_INICIAL = [];
 const ANT_OFT = ["AMETROPÍA","BLEFARITIS","CATARATA","CONJUNTIVITIS","ESTRABISMO","GLAUCOMA","RETINOPATÍA","TRAUMATISMOS"];
 const ANT_GEN = ["ALERGIAS","CARDIOPATÍAS","COLAGENOPATÍAS","CONVULSIONES","DIABETES","ENDOCRINOPATÍAS","HIPERTENSIÓN","MIGRAÑA","NEUROPATÍAS","OPERACIONES","PSIQUIÁTRICOS","TEC / TRAUMA","TOXICOLOGÍA","TUBERCULOSIS","TUMORES"];
-const COLS = ["n","hc","dni","ap","am","nom","sexo","fn","peso","talla","imc","edad","nombre","od","oi","resultado","ao","ao_od","ao_oi","ag","ag_p","ag_f","obs"];
-const HEADERS = ["N°","HC","Número de Documento","Apellido Paterno","Apellido Materno","Nombres","Sexo","Fecha de Nacimiento","PESO","TALLA","IMC","Edad","Apellidos y Nombres","OD","OI","RESULTADO","ANTECEDENTES OFTALMOLÓGICOS","AO OD","AO OI","ANTECEDENTES GENERALES","AG P","AG F","OBSERVACIÓN"];
+const COLS = ["n","hc","dni","ap","am","nom","sexo","fn","t","fr","fc","pa","sat","peso","talla","imc","edad","nombre","od","oi","resultado","ao","ao_od","ao_oi","ag","ag_p","ag_f","obs"];
+const HEADERS = ["N°","HC","Número de Documento","Apellido Paterno","Apellido Materno","Nombres","Sexo","Fecha de Nacimiento","T","FR","FC","PA","SAT","PESO","TALLA","IMC","Edad","Apellidos y Nombres","OD","OI","RESULTADO","ANTECEDENTES OFTALMOLÓGICOS","AO OD","AO OI","ANTECEDENTES GENERALES","AG P","AG F","OBSERVACIÓN"];
 const LS_PAC = "salud_ocular_pacientes_v1";
 const LS_EVAL = "salud_ocular_evaluaciones_v1";
 
@@ -30,8 +30,13 @@ function celdaResultado(r){const v=calcResultado(r);return v?`<span class="res $
 function calcNombre(r){return [r.ap,r.am,r.nom].map(x=>String(x||"").trim()).filter(Boolean).join(" ");}
 function hoy(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);}
-function nuevoRegistro(){return {id:uid(),n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",peso:"",talla:"",od:"",oi:"",ao:"",ao_od:"",ao_oi:"",ag:"",ag_p:"",ag_f:"",obs:""};}
+function nuevoRegistro(){return {id:uid(),n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",t:"",fr:"",fc:"",pa:"",sat:"",peso:"",talla:"",od:"",oi:"",ao:"",ao_od:"",ao_oi:"",ag:"",ag_p:"",ag_f:"",obs:""};}
 function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o[k]=r[k];}o.id=String(o.id||uid());o.n=parseInt(o.n);if(isNaN(o.n))o.n="";o.dni=String(o.dni||"").replace(/\D/g,"");return o;}
+
+// Examen físico en DATOS: T, FR, FC, PA y SAT (los mismos de la hoja de evaluación, campos ef_*)
+const VITALES=["t","fr","fc","pa","sat"];
+function vital(r,k){const v=String(r[k]??"").trim();if(v)return v;const e=evaluaciones[r.n];return e?String(e["ef_"+k]??"").trim():"";} // evaluaciones antiguas: se muestra lo que ya tenían
+function normPA(v){return String(v).replace(/\s*[ .,\-*]\s*/g,"/").replace(/\/+/g,"/");} // 110.70 / 110 70 -> 110/70 (teclado numérico del celular)
 
 /* ======================= PERSISTENCIA ======================= */
 function cargar(){
@@ -69,6 +74,11 @@ function renderDatos(){
     <td><input data-k="nom" value="${esc(r.nom)}"></td>
     <td><select data-k="sexo"><option value=""></option><option ${r.sexo==='Hombre'?'selected':''}>Hombre</option><option ${r.sexo==='Mujer'?'selected':''}>Mujer</option></select></td>
     <td><input data-k="fn" value="${esc(r.fn)}" placeholder="dd/mm/aaaa" class="${r.fn&&!parseFecha(r.fn)?'invalid':''}"></td>
+    <td><input data-k="t" value="${esc(vital(r,'t'))}" inputmode="decimal" autocomplete="off" style="text-align:center" title="Temperatura (°C)"></td>
+    <td><input data-k="fr" value="${esc(vital(r,'fr'))}" inputmode="numeric" autocomplete="off" style="text-align:center" title="Frecuencia respiratoria"></td>
+    <td><input data-k="fc" value="${esc(vital(r,'fc'))}" inputmode="numeric" autocomplete="off" style="text-align:center" title="Frecuencia cardiaca"></td>
+    <td><input data-k="pa" value="${esc(vital(r,'pa'))}" inputmode="decimal" autocomplete="off" style="text-align:center" title="Presión arterial, ej. 110/70 (en el celular también 110.70)"></td>
+    <td><input data-k="sat" value="${esc(vital(r,'sat'))}" inputmode="numeric" autocomplete="off" style="text-align:center" title="Saturación de oxígeno (%)"></td>
     <td><input data-k="peso" value="${esc(r.peso)}" inputmode="decimal" style="text-align:center"></td>
     <td><input data-k="talla" value="${esc(r.talla)}" inputmode="decimal" style="text-align:center"></td>
     <td class="calc" data-c="imc">${calcIMC(r.peso,r.talla)}</td>
@@ -93,7 +103,9 @@ document.getElementById('tbodyDatos').addEventListener('input',e=>{
   if(el.dataset.k==='dni'){v=v.replace(/\D/g,"").slice(0,8);el.value=v;el.classList.toggle('invalid',v.length>0&&v.length!==8);}
   if(el.dataset.k==='n'){const n=parseInt(v);v=isNaN(n)?"":n;}
   if(el.dataset.k==='fn'){el.classList.toggle('invalid',!!v&&!parseFecha(v));}
+  if(el.dataset.k==='pa'){const c=normPA(v);if(c!==v){v=c;el.value=v;}}
   r[el.dataset.k]=v;
+  if(VITALES.includes(el.dataset.k)){const ev=evaluaciones[r.n];if(ev){ev["ef_"+el.dataset.k]=v;guardarEvaluaciones();}} // misma dato en la evaluación
   tr.querySelector('[data-c=imc]').textContent=calcIMC(r.peso,r.talla);
   tr.querySelector('[data-c=edad]').textContent=calcEdad(r.fn);
   tr.querySelector('[data-c=nombre]').textContent=calcNombre(r);
@@ -140,7 +152,7 @@ function filasAPacientes(rows){
   if(!rows.length)return [];
   const norm=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");
   const hdr=rows[0].map(norm);
-  const map={n:["n","no","num","numero","nro"],hc:["hc","historia","nhistoria","historiaclinica"],dni:["numerodedocumento","dni","documento","nrodocumento","numdoc"],ap:["apellidopaterno","appaterno","paterno"],am:["apellidomaterno","apmaterno","materno"],nom:["nombres","nombre"],sexo:["sexo","genero"],fn:["fechadenacimiento","fechanacimiento","fnac","nacimiento"],peso:["peso","pesokg"],talla:["talla","tallam"],od:["od","ojoderecho"],oi:["oi","ojoizquierdo"],ao:["antecedentesoftalmologicos","antecedentesoftamologicos","antoftalmologicos","oftalmologicos"],ao_od:["aood","antoftod","ojoderechoantecedente"],ao_oi:["aooi","antoftoi","ojoizquierdoantecedente"],ag:["antecedentesgenerales","antgenerales","generales"],ag_p:["agp","personales"],ag_f:["agf","familiares"],obs:["observacion","observaciones","obs"]};
+  const map={n:["n","no","num","numero","nro"],hc:["hc","historia","nhistoria","historiaclinica"],dni:["numerodedocumento","dni","documento","nrodocumento","numdoc"],ap:["apellidopaterno","appaterno","paterno"],am:["apellidomaterno","apmaterno","materno"],nom:["nombres","nombre"],sexo:["sexo","genero"],fn:["fechadenacimiento","fechanacimiento","fnac","nacimiento"],peso:["peso","pesokg"],talla:["talla","tallam"],od:["od","ojoderecho"],oi:["oi","ojoizquierdo"],ao:["antecedentesoftalmologicos","antecedentesoftamologicos","antoftalmologicos","oftalmologicos"],ao_od:["aood","antoftod","ojoderechoantecedente"],ao_oi:["aooi","antoftoi","ojoizquierdoantecedente"],ag:["antecedentesgenerales","antgenerales","generales"],ag_p:["agp","personales"],ag_f:["agf","familiares"],obs:["observacion","observaciones","obs"],t:["t","temperatura","temp"],fr:["fr","frecuenciarespiratoria"],fc:["fc","frecuenciacardiaca"],pa:["pa","presionarterial"],sat:["sat","saturacion","sato2","spo2"]};
   const idx={};let hits=0;
   for(const k in map){const j=hdr.findIndex(h=>map[k].includes(h));if(j>=0){idx[k]=j;hits++;}}
   let body=rows.slice(1);
@@ -175,7 +187,7 @@ function importFile(inp){
     const rd=new FileReader();rd.onload=e=>done(parseCSV(e.target.result));rd.readAsText(f,"UTF-8");
   }
 }
-function filaExport(r){return [r.n,r.hc,r.dni,r.ap,r.am,r.nom,r.sexo,r.fn,r.peso,r.talla,calcIMC(r.peso,r.talla),calcEdad(r.fn),calcNombre(r),r.od,r.oi,calcResultado(r),r.ao,r.ao_od,r.ao_oi,r.ag,r.ag_p,r.ag_f,r.obs];}
+function filaExport(r){return [r.n,r.hc,r.dni,r.ap,r.am,r.nom,r.sexo,r.fn,...VITALES.map(k=>vital(r,k)),r.peso,r.talla,calcIMC(r.peso,r.talla),calcEdad(r.fn),calcNombre(r),r.od,r.oi,calcResultado(r),r.ao,r.ao_od,r.ao_oi,r.ag,r.ag_p,r.ag_f,r.obs];}
 function descargar(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportCSV(){
   const q=v=>{v=String(v==null?"":v);return /[;"\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
@@ -212,11 +224,12 @@ async function excelConFormato(hojas,nombre){
   const buf=await wb.xlsx.writeBuffer();
   descargar(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),nombre);
 }
-const NUM_COLS=[0,8,9,10,11,13,14]; // N°, peso, talla, IMC, edad, OD, OI
-function filasDatosExcel(){return pacientes.map(r=>filaExport(r).map((v,j)=>{if(NUM_COLS.includes(j)){const x=num(v);return x==null?"":x;}return v;}));}
+const NUM_COLS=[0,13,14,15,16,18,19],VIT_COLS=[8,9,10,12]; // N°, peso, talla, IMC, edad, OD, OI | T, FR, FC, SAT (número solo si es un número)
+function filasDatosExcel(){return pacientes.map(r=>filaExport(r).map((v,j)=>{if(NUM_COLS.includes(j)){const x=num(v);return x==null?"":x;}
+  if(VIT_COLS.includes(j)&&/^\s*\d+([.,]\d+)?\s*%?\s*$/.test(v))return num(v);return v;}));}
 async function exportXLSX(){
-  const hojas=[{nombre:"Datos",cab:HEADERS,filas:filasDatosExcel(),anchos:[6,10,14,16,16,24,9,13,9,9,8,7,36,7,7,15,24,7,7,24,6,6,28],
-    centrar:[0,1,2,6,7,8,9,10,11,13,14,15,17,18,20,21],calculadas:[10,11,12],resultado:15,formatos:{10:'0.00'}}];
+  const hojas=[{nombre:"Datos",cab:HEADERS,filas:filasDatosExcel(),anchos:[6,10,14,16,16,24,9,13,7,6,6,9,6,9,9,8,7,36,7,7,15,24,7,7,24,6,6,28],
+    centrar:[0,1,2,6,7,8,9,10,11,12,13,14,15,16,18,19,20,22,23,25,26],calculadas:[15,16,17],resultado:20,formatos:{15:'0.00'}}];
   const he=hojaEvaluaciones();if(he)hojas.push(he); // evaluaciones guardadas, una fila por paciente
   await descargarExcel(hojas,"Datos_Salud_Ocular.xlsx");
 }
@@ -301,6 +314,9 @@ function escribirForm(o){
   syncTodoNo();
   if(ajustarParrafos()&&o&&numActual!=null)autoGuardar(); // texto antiguo de una sola línea: se reacomoda y se guarda así
 }
+function ponerVitales(r){ // T, FR, FC, PA y SAT escritos en DATOS pasan a la hoja; devuelve true si cambió algo
+  let c=false;if(r)VITALES.forEach(k=>{const v=String(r[k]??"").trim(),el=document.querySelector(`#sheet [data-f="ef_${k}"]`);if(v&&el.value!==v){el.value=v;c=true;}});return c;
+}
 function cargarPaciente(n){
   if(tAuto)guardarAhora(); // guardar lo escrito del paciente anterior antes de cambiar
   const r=buscarPaciente(n);numActual=r?parseInt(r.n):null;
@@ -317,6 +333,7 @@ function cargarPaciente(n){
     // marcar automáticamente el antecedente general elegido en DATOS (P = personales, F = familiares)
     if(r.ag){const key=slug(r.ag);const p=document.querySelector(`#sheet .chk[data-f="ag_${key}_p"]`),f=document.querySelector(`#sheet .chk[data-f="ag_${key}_f"]`);if(p&&r.ag_p==="X")p.classList.add('on');if(f&&r.ag_f==="X")f.classList.add('on');}
   }
+  if(ponerVitales(r)&&ev)autoGuardar(); // T, FR, FC, PA y SAT desde DATOS
   autoDxTodos();
 }
 function slug(s){return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");}
@@ -436,6 +453,12 @@ function autoDx(n,forzar){
 }
 function autoDxTodos(){for(let n=1;n<=5;n++)autoDx(n,false);}
 document.getElementById('sheet').addEventListener('input',e=>{const m=/^dx(\d)_txt$/.exec(e.target.dataset.f||"");if(m)autoDx(+m[1],true);});
+// T, FR, FC, PA y SAT escritos en la hoja también quedan en DATOS (y al revés: ver tbodyDatos)
+document.getElementById('sheet').addEventListener('input',e=>{const m=/^ef_(t|fr|fc|pa|sat)$/.exec(e.target.dataset.f||"");if(!m)return;
+  const el=e.target;if(m[1]==='pa'){const c=normPA(el.value);if(c!==el.value)el.value=c;}
+  const r=buscarPaciente(numActual);if(!r)return;r[m[1]]=el.value.trim();guardarPacientes();
+  const cel=document.querySelector(`#tbodyDatos tr[data-id="${CSS.escape(String(r.id))}"] [data-k="${m[1]}"]`);if(cel)cel.value=r[m[1]];
+});
 
 /* ======================= ESPECIFICAR: líneas que funcionan como un solo párrafo ======================= */
 // Al escribir, las palabras que no entran pasan solas a la línea siguiente (y vuelven al borrar);
