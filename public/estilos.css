@@ -96,6 +96,8 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .sheet .todoNo{float:right;display:inline-flex;align-items:center;gap:4px;margin-right:1mm;padding:1px 7px;border:1px solid #9fb3c8;border-radius:4px;background:#eef3f8;color:#1f4e79;font:bold 8pt Arial,Helvetica,sans-serif;text-transform:none;cursor:pointer;user-select:none}
 .sheet .todoNo:hover{background:#dde8f3}
 .sheet .todoNo input{margin:0;cursor:pointer}
+.sheet .cieAdmin{float:right;margin:0 1mm 0 0;padding:1px 8px;border:1px solid #9fb3c8;border-radius:4px;background:#eef3f8;color:#1f4e79;font:bold 8pt Arial,Helvetica,sans-serif;cursor:pointer}
+.sheet .cieAdmin:hover{background:#dde8f3}
 .sheet .chk.dxsel{position:relative;display:inline-block;width:3.8mm;min-height:0;height:3.4mm;line-height:3.4mm;box-sizing:border-box;font-weight:normal}
 .sheet .chk.dxsel.on{font-weight:bold}
 .sheet .chk.dxsel.on::after{content:"X";position:absolute;left:0;right:0;top:-.2mm;font-size:10pt;font-weight:bold;line-height:3.4mm;text-align:center;color:#000}
