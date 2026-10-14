@@ -297,6 +297,7 @@ function escribirForm(o){
   document.querySelectorAll('#sheet input[data-f^="dx"][readonly]').forEach(el=>campoLibre(el,false));
   campos().forEach(el=>{const v=o&&o[el.dataset.f]!=null?o[el.dataset.f]:(el.dataset.f==='ev_nombre'?"Dra. Mari Alva Mas":"");
     if(el.classList.contains('chk'))el.classList.toggle('on',v==="X");else el.value=v;});
+  if(ajustarParrafos()&&o&&numActual!=null)autoGuardar(); // texto antiguo de una sola línea: se reacomoda y se guarda así
 }
 function cargarPaciente(n){
   if(tAuto)guardarAhora(); // guardar lo escrito del paciente anterior antes de cambiar
@@ -433,6 +434,56 @@ function autoDx(n,forzar){
 }
 function autoDxTodos(){for(let n=1;n<=5;n++)autoDx(n,false);}
 document.getElementById('sheet').addEventListener('input',e=>{const m=/^dx(\d)_txt$/.exec(e.target.dataset.f||"");if(m)autoDx(+m[1],true);});
+
+/* ======================= ESPECIFICAR: varias líneas que funcionan como un solo párrafo ======================= */
+// Al escribir, las palabras que no entran pasan solas a la línea siguiente (y vuelven al borrar);
+// si el texto no cabe en todas las líneas, la letra se achica lo necesario para que se vean todas las palabras.
+function parrafoFluido(nombres){
+  const L=nombres.map(f=>document.querySelector(`#sheet [data-f="${f}"]`)),n=L.length,ctx=document.createElement('canvas').getContext('2d');
+  const base=L.map(el=>parseFloat(getComputedStyle(el).fontSize)),fam=getComputedStyle(L[0]).fontFamily;
+  const cabe=(i,t,k)=>{ctx.font=`${base[i]*k}px ${fam}`;return ctx.measureText(t.trimEnd()).width<=L[i].clientWidth-4;};
+  function cortar(T,k,forzar){ // reparte el texto en las líneas; null si no entra con ese tamaño de letra
+    const out=[];let r=T;
+    for(let i=0;i<n;i++){
+      if(r==null){out.push("");continue;}
+      if(cabe(i,r,k)||(forzar&&i===n-1)){out.push(r);r=null;continue;}
+      if(i===n-1)return null;
+      let p=-1;for(let j=r.indexOf(" ");j>=0;j=r.indexOf(" ",j+1)){if(cabe(i,r.slice(0,j),k))p=j;else break;}
+      if(p<0){if(!forzar)return null;p=r.indexOf(" ");if(p<0){out.push(r);r=null;continue;}}
+      out.push(r.slice(0,p));r=r.slice(p+1);
+    }
+    return out;
+  }
+  function ajustar(activo){ // activo = línea donde está el cursor (null al cargar un paciente)
+    if(!L[0].clientWidth)return false; // vista oculta: no se puede medir
+    const v=L.map(el=>el.value);let c=null;
+    if(activo!=null){c=L[activo].selectionStart??v[activo].length;for(let i=0;i<activo;i++)if(v[i]!=="")c+=v[i].length+1;}
+    let T=v.filter(x=>x!=="").join(" ");const ini=T.length-T.trimStart().length;T=T.slice(ini);
+    if(c!=null)c=Math.max(0,Math.min(T.length,c-ini));
+    let k=1,ls=null;for(;k>=.6;k=Math.round((k-.04)*100)/100){ls=cortar(T,k,false);if(ls)break;}
+    if(!ls){k=.6;ls=cortar(T,k,true);}
+    let cambio=false;
+    L.forEach((el,i)=>{if(el.value!==ls[i]){el.value=ls[i];cambio=true;}el.style.fontSize=k<1?(base[i]*k).toFixed(2)+"px":"";});
+    if(c!=null&&cambio){let st=0,j=0;for(;j<n-1;j++){if(c<=st+ls[j].length)break;st+=ls[j].length+1;}
+      const el=L[j],pos=Math.min(c-st,ls[j].length);if(document.activeElement!==el)el.focus();el.setSelectionRange(pos,pos);}
+    return cambio;
+  }
+  L.forEach((el,i)=>{
+    el.addEventListener('input',()=>ajustar(i));
+    el.addEventListener('keydown',e=>{ // moverse entre líneas como en un solo cuadro de texto
+      const a=el.selectionStart,b=el.selectionEnd;if(a!==b||e.shiftKey||e.ctrlKey||e.altKey)return;
+      const ir=(j,pos)=>{e.preventDefault();const x=L[j];x.focus();pos=Math.min(pos,x.value.length);x.setSelectionRange(pos,pos);return x;};
+      if(e.key==='Backspace'&&a===0&&i>0){const x=ir(i-1,1e9);if(x.value){x.value=x.value.slice(0,-1);x.dispatchEvent(new Event('input',{bubbles:true}));}}
+      else if(e.key==='ArrowLeft'&&a===0&&i>0)ir(i-1,1e9);
+      else if(e.key==='ArrowRight'&&a===el.value.length&&i<n-1)ir(i+1,0);
+      else if(e.key==='ArrowUp'&&i>0)ir(i-1,a);
+      else if((e.key==='ArrowDown'||e.key==='Enter')&&i<n-1)ir(i+1,e.key==='Enter'?0:a);
+    });
+  });
+  return ajustar;
+}
+const PARRAFOS=[parrafoFluido(["ant_especificar","ant_especificar2","ant_especificar3"])];
+function ajustarParrafos(){return PARRAFOS.map(f=>f(null)).some(Boolean);}
 
 /* ======================= CALENDARIO PARA LA FECHA ======================= */
 (function(){
