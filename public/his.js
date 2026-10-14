@@ -68,6 +68,7 @@ $('evaluacion').insertAdjacentHTML('afterend',`
     <button class="btn" type="button" id="cpAbrir">Códigos propios</button>
   </div>
   <div id="cpPanel" class="toolbar cfgbar cppanel no-print">
+    <div class="codbusca"><input id="cpCie" placeholder="🔎 Buscar en la lista CIE-10 para agregar (código o nombre)…" autocomplete="off" spellcheck="false"></div>
     <form class="codform" id="cpForm" autocomplete="off"><input id="cpCod" name="cp-cod-nohist" placeholder="CÓDIGO (EJ. 9940116)" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><input id="cpTxt" name="cp-txt-nohist" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN SALUD OCULAR)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><button type="submit" class="btn primary" id="cpBtn">+ Agregar código</button><button type="button" class="btn" id="cpCancelar" style="display:none">Cancelar</button></form>
     <div class="codbusca"><input id="cpBuscar" placeholder="🔎 Buscar código o descripción…" autocomplete="off"><span id="cpCuenta" class="status"></span></div>
     <div id="cpLista" class="cplista"></div>
@@ -133,7 +134,8 @@ function buscarCIE(q,toks){
   DX_OCULAR.forEach(o=>{if(toks.every(t=>normTxt(o.c+" "+o.t).includes(t)))add([o.c,o.t,'ocular']);});
   codigosPropios().forEach(o=>{if(toks.every(t=>normTxt(o.c+" "+o.t).includes(t)))add([o.c,o.t,'propio']);});
   if(CIE)for(let i=0;i<CIE.length&&out.length<40;i++){if(toks.every(t=>CIE_N[i].includes(t)))add(CIE[i]);}
-  const rk=o=>{const c=String(o[0]).toUpperCase();const extra=o[2]?0:1;if(c===cod)return 0;if(c.startsWith(cod))return 1+extra;return 3+extra;};
+  const qn=toks.join(" "); // primero: código exacto, nombre exacto, código que empieza igual, nombre que empieza igual
+  const rk=o=>{const c=String(o[0]).toUpperCase(),d=normTxt(o[1]).replace(/\.$/,"").trim();const extra=o[2]?0:1;if(c===cod)return 0;if(d===qn)return .5;if(c.startsWith(cod))return 1+extra;if(d.startsWith(qn))return 2+extra;return 3+extra;};
   out.sort((a,b)=>rk(a)-rk(b));return out.slice(0,12);
 }
 function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>${o[2]==='propio'?'<span class="cie-propio">propio</span>':o[2]==='ocular'?'<span class="cie-ocular">salud ocular</span>':''}`;}
@@ -160,6 +162,30 @@ $('cpForm').addEventListener('submit',e=>{e.preventDefault();agregarCodigo();});
 $('cpCancelar').addEventListener('click',cancelarEdicionCodigo);
 $('cpBuscar').addEventListener('input',pintarCodigos);
 $('cpLista').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.ed!=null)editarCodigo(+b.dataset.ed);else if(b.dataset.qu!=null)quitarCodigo(+b.dataset.qu);});
+
+// buscar en la lista CIE-10 desde el panel: al elegir se llenan código y descripción para agregarlo (y editarlo si quiere)
+$('cpCie').addEventListener('focus',()=>cargarCIE(),{once:true});
+activarPredictivo($('cpCie'),buscarCIE,v=>{$('cpCie').value="";$('cpCod').value=String(v[0]).toUpperCase();$('cpTxt').value=String(v[1]).toUpperCase().replace(/\.$/,"");$('cpTxt').focus();},renderCIE,{sinFoco:true});
+$('cpCie').addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault();});
+
+/* Ventana de códigos (la abre la hoja de EVALUACIÓN): usa el mismo panel de códigos propios del REGISTRO HIS */
+const CPM=document.createElement('div');CPM.className='dlg-fondo cp-modal no-print';
+CPM.innerHTML='<div class="cpm" role="dialog" aria-modal="true"><div class="cpm-cab"><h3>Códigos de diagnóstico · CIE-10 / HIS</h3><button type="button" class="cpm-x" title="Cerrar (Esc)">✕</button></div><p class="cpm-ayuda">Busque en los 15 082 códigos CIE-10 y agréguelos, o cree sus propios códigos. Los códigos propios aparecen primero al buscar diagnósticos en la EVALUACIÓN y en el REGISTRO HIS; si usa un código de la lista CIE-10, su descripción reemplaza a la oficial.</p><div class="cpm-cuerpo"></div></div>';
+document.body.appendChild(CPM);
+let cpCasa=null;
+function abrirCodigos(){if(cpCasa)return;const p=$('cpPanel');cpCasa={padre:p.parentNode,sig:p.nextSibling,abierto:p.classList.contains('abierto')};
+  CPM.querySelector('.cpm-cuerpo').appendChild(p);p.classList.add('abierto');CPM.classList.add('abierto');pintarCodigos();cargarCIE();setTimeout(()=>$('cpCie').focus(),60);}
+function cerrarCodigos(){const p=$('cpPanel');if(cpCasa){cpCasa.padre.insertBefore(p,cpCasa.sig);p.classList.toggle('abierto',cpCasa.abierto);cpCasa=null;}mpOcultar();CPM.classList.remove('abierto');}
+CPM.querySelector('.cpm-x').addEventListener('click',cerrarCodigos);
+CPM.addEventListener('mousedown',e=>{if(e.target===CPM)cerrarCodigos();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&CPM.classList.contains('abierto')&&!DLG.classList.contains('abierto')&&MP.style.display!=="block")cerrarCodigos();});
+// Predictivo de diagnósticos para la hoja de EVALUACIÓN: vacío = salud ocular + propios; al escribir = búsqueda en todo
+function sugeridosCIE(){return DX_OCULAR.map(o=>[o.c,o.t,'ocular']).concat(codigosPropios().map(o=>[o.c,o.t,'propio']));}
+function predictivoCIE(input,alElegir){
+  input.addEventListener('focus',()=>{const pr=cargarCIE();if(pr&&!CIE)pr.then(()=>{if(document.activeElement===input&&input.value.trim())input._mpMostrar();});
+    if(!input.value.trim())setTimeout(()=>{if(document.activeElement===input&&!input.value.trim())input._mpMostrar();},0);});
+  activarPredictivo(input,(q,toks)=>toks.length?buscarCIE(q,toks):sugeridosCIE(),alElegir,renderCIE,{sinFoco:true});
+}
 
 /* ======================= FÓRMULAS DEL EXCEL (VALOR LAB desde DATOS) ======================= */
 function dxOcular(txt,cod){const k=normTxt(txt).trim(),c=String(cod||"").toUpperCase().replace(/\./g,"");
@@ -380,6 +406,7 @@ window.HIS={
   recibirAtenciones(obj){atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}if(activa()){llenarDias();renderRegistro();}},
   recibirConfig(c){config=Object.assign({},config,c);try{localStorage.setItem(LS_CFG,JSON.stringify(config));}catch(e){}pintarConfig();pintarCodigos();if(activa())renderRegistro();},
   alCambiarPacientes(){if(activa())renderRegistro();},
+  predictivoCIE,abrirCodigos,cerrarCodigos,
   LS_AT,LS_CFG
 };
 cargar();pintarConfig();pintarCodigos();
