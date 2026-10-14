@@ -60,6 +60,7 @@ cat clave.json
 
 2. En GitHub: **Settings → Secrets and variables → Actions → New repository secret**, nombre `FIREBASE_SERVICE_ACCOUNT`, valor = todo el contenido de `clave.json`.
 3. Borrar la clave de Cloud Shell: `rm clave.json`. No la pegue en chats ni la suba al repositorio.
+4. Comprobar: en la pestaña **Actions** del repositorio, cada fusión en `main` crea una ejecución «Publicar en Firebase (Hosting y reglas)». Con el secreto configurado, el paso «Publicar sitios (ocular y PCT) y reglas de Firestore» aparece en verde (no «skipped») y la app muestra el aviso de nueva versión. Ya no hace falta `firebase deploy` desde Cloud Shell.
 
 ## REGISTRO HIS de salud ocular
 
