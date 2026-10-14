@@ -62,11 +62,15 @@ function showView(v){
 function renderDatos(){
   const q=document.getElementById('search').value.trim().toLowerCase();
   const tb=document.getElementById('tbodyDatos');
-  const rows=pacientes.map((r,i)=>({r,i})).filter(({r})=>{
+  const todas=pacientes.map((r,i)=>({r,i})).filter(({r})=>{
     if(!q)return true;
     const s=[r.n,r.hc,r.dni,r.ap,r.am,r.nom,calcNombre(r),r.sexo,r.fn,calcResultado(r),r.ao,r.ag,r.obs].join(" ").toLowerCase();
     return s.includes(q);
   });
+  // paginación de 50 en 50 (igual que en PCT)
+  if(q!==renderDatos._q){renderDatos._q=q;pagDatos=1;} // nueva búsqueda: volver a la página 1
+  const totalPag=Math.max(1,Math.ceil(todas.length/FILAS_POR_PAGINA));if(pagDatos>totalPag)pagDatos=totalPag;if(pagDatos<1)pagDatos=1;
+  const rows=todas.slice((pagDatos-1)*FILAS_POR_PAGINA,pagDatos*FILAS_POR_PAGINA);
   const html=rows.map(({r,i})=>`
   <tr data-i="${i}" data-id="${esc(r.id)}">
     <td class="num"><input class="w-num" data-k="n" value="${esc(r.n)}" style="text-align:center;font-weight:bold"></td>
@@ -96,9 +100,17 @@ function renderDatos(){
     <td class="actions"><button title="Eliminar fila" onclick="delRow(${i})">✕</button></td>
   </tr>`).join("");
   tb.innerHTML=html;
-  document.getElementById('emptyMsg').style.display=rows.length?'none':'block';
-  document.getElementById('countInfo').textContent=`${rows.length} de ${pacientes.length} registros`;
+  document.getElementById('emptyMsg').style.display=todas.length?'none':'block';
+  document.getElementById('countInfo').textContent=todas.length>FILAS_POR_PAGINA?`${(pagDatos-1)*FILAS_POR_PAGINA+1}–${(pagDatos-1)*FILAS_POR_PAGINA+rows.length} de ${todas.length}${q?' encontrados':' registros'}`:`${todas.length} de ${pacientes.length} registros`;
+  pintarPaginador(totalPag);
 }
+const FILAS_POR_PAGINA=50;let pagDatos=1;
+function pintarPaginador(total){const pg=document.getElementById('pagDatos');if(!pg)return;document.getElementById('datos').classList.toggle('con-pag',total>1);if(total<=1){pg.innerHTML="";pg.style.display="none";return;}pg.style.display="";
+  const btn=(p,txt,cls)=>`<button type="button" class="pg${cls||''}${p===pagDatos?' act':''}" ${p<1||p>total?'disabled':''} onclick="irPagina(${p})">${txt}</button>`;
+  let nums=[];for(let p=1;p<=total;p++){if(p===1||p===total||Math.abs(p-pagDatos)<=2)nums.push(p);}
+  let h=btn(pagDatos-1,"‹ Anterior"," pg-nav");let prev=0;nums.forEach(p=>{if(p-prev>1)h+='<span class="pg-pts">…</span>';h+=btn(p,p);prev=p;});h+=btn(pagDatos+1,"Siguiente ›"," pg-nav");
+  pg.innerHTML=`<span class="pg-info">Página ${pagDatos} de ${total} · ${FILAS_POR_PAGINA} por página</span>`+h;}
+function irPagina(p){pagDatos=p;renderDatos();document.getElementById('datosWrap').scrollTop=0;}
 document.getElementById('tbodyDatos').addEventListener('input',e=>{
   const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k||el.type==='checkbox')return;
   const r=pacientes[+tr.dataset.i];let v=el.value;
@@ -125,7 +137,7 @@ document.getElementById('tbodyDatos').addEventListener('change',e=>{ // selects 
 function addRow(){
   const max=pacientes.reduce((m,r)=>Math.max(m,parseInt(r.n)||0),0);
   const r=nuevoRegistro();r.n=max+1;pacientes.push(r);guardarPacientes();
-  document.getElementById('search').value="";renderDatos();
+  document.getElementById('search').value="";renderDatos._q="";pagDatos=Math.ceil(pacientes.length/FILAS_POR_PAGINA);renderDatos(); // ir a la última página
   const wrap=document.getElementById('datosWrap');wrap.scrollTop=wrap.scrollHeight;
   const last=document.querySelector('#tbodyDatos tr:last-child input[data-k=hc]');if(last)last.focus();
   msg("Fila N° "+r.n+" agregada");
