@@ -296,8 +296,9 @@ function leerForm(){
 function escribirForm(o){
   document.querySelectorAll('#sheet input[data-f^="dx"][readonly]').forEach(el=>campoLibre(el,false));
   PARRAFOS.forEach(P=>P.preparar(o)); // líneas extra de ESPECIFICAR
-  campos().forEach(el=>{const v=o&&o[el.dataset.f]!=null?o[el.dataset.f]:(el.dataset.f==='ev_nombre'?"Dra. Mari Alva Mas":"");
+  campos().forEach(el=>{const f=el.dataset.f,v=o&&o[f]!=null?o[f]:(f==='ev_nombre'?"Dra. Mari Alva Mas":esNo(f)?"X":""); // evaluación nueva: NO marcado en el examen externo
     if(el.classList.contains('chk'))el.classList.toggle('on',v==="X");else el.value=v;});
+  syncTodoNo();
   if(ajustarParrafos()&&o&&numActual!=null)autoGuardar(); // texto antiguo de una sola línea: se reacomoda y se guarda así
 }
 function cargarPaciente(n){
@@ -501,6 +502,18 @@ function parrafoFluido(prefijo,fijas,max){
 const PARRAFOS=[parrafoFluido("ant_especificar",["ant_especificar","ant_especificar2","ant_especificar3"],12)];
 function ajustarParrafos(){return PARRAFOS.map(P=>P.ajustar(null)).some(Boolean);}
 
+/* ======================= III. EXAMEN OCULAR EXTERNO: NO marcado por defecto ======================= */
+// En una evaluación nueva todos los signos/síntomas vienen con NO (la mayoría de pacientes está bien);
+// el control "Todo NO" marca o quita todos a la vez y los que tienen SI no se tocan.
+function esNo(f){return /^s\d+_\d+_no$/.test(f||"");}
+function chkNo(){return [...document.querySelectorAll('#sheet .chk[data-f]')].filter(c=>esNo(c.dataset.f));}
+function parSiNo(c){const m=/^(s\d+_\d+)_(si|no)$/.exec(c.dataset.f||"");return m?document.querySelector(`#sheet .chk[data-f="${m[1]}_${m[2]==="si"?"no":"si"}"]`):null;}
+function syncTodoNo(){const ok=chkNo().every(c=>c.classList.contains('on')||parSiNo(c).classList.contains('on'));document.querySelectorAll('#sheet .todoNo input').forEach(x=>x.checked=ok);}
+document.querySelectorAll('#sheet .todoNo input').forEach(x=>x.addEventListener('change',()=>{
+  chkNo().forEach(c=>c.classList.toggle('on',x.checked&&!parSiNo(c).classList.contains('on')));
+  syncTodoNo();autoGuardar();msg(x.checked?"NO marcado en todo el examen externo":"Se quitaron todos los NO");
+}));
+
 /* ======================= CALENDARIO PARA LA FECHA ======================= */
 (function(){
   const txt=document.querySelector('#sheet [data-f="fecha"]'),cal=document.getElementById('calFecha'),btn=document.getElementById('btnCal');
@@ -523,7 +536,8 @@ document.getElementById('sheet').addEventListener('click',e=>{
   const c=e.target.closest('.chk');if(!c)return;c.classList.toggle('on');
   if(c.dataset.f==='trat_si'&&c.classList.contains('on'))document.querySelector('.chk[data-f=trat_no]').classList.remove('on');
   if(c.dataset.f==='trat_no'&&c.classList.contains('on'))document.querySelector('.chk[data-f=trat_si]').classList.remove('on');
-  autoGuardar();
+  const par=parSiNo(c);if(par&&c.classList.contains('on'))par.classList.remove('on'); // SI y NO del mismo signo se excluyen
+  syncTodoNo();autoGuardar();
 });
 ['input','change'].forEach(t=>document.getElementById('sheet').addEventListener(t,e=>{if(e.target.dataset&&e.target.dataset.f)autoGuardar();}));
 // al salir de la app o cambiar de pestaña/aplicación en el celular: guardar y subir lo pendiente
