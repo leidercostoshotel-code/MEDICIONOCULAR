@@ -125,20 +125,26 @@ function activarPredictivo(input,opciones,alElegir,render,opts){opts=opts||{};
 window.addEventListener('scroll',e=>{if(e.target!==mpInput)mpOcultar();},true);window.addEventListener('resize',mpOcultar);
 
 /* ======================= CÓDIGOS: salud ocular + propios + CIE-10 ======================= */
-let CIE=null,CIE_N=null,cieCargando=null;
-function cargarCIE(){if(CIE||cieCargando)return cieCargando;cieCargando=fetch('cie10.json').then(r=>r.json()).then(d=>{CIE=d;CIE_N=d.map(([c,t])=>normTxt(c+" "+t));return d;}).catch(()=>{cieCargando=null;msg("No se pudo cargar la lista CIE-10");return null;});return cieCargando;}
+let CIE=null,CIE_N=null,cieCargando=null,MINSA=[],MINSA_N=[];
+// cie10.json: los 15 082 CIE-10 · codigos-salud-ocular.json: CIE-10 y CPMS más frecuentes del Manual de Registro y Codificación HIS
+// del MINSA, Componente de Salud Ocular y Prevención de la Ceguera (págs. 6 y 7), con sus descripciones
+function cargarCIE(){if(CIE||cieCargando)return cieCargando;
+  cieCargando=Promise.all([fetch('cie10.json').then(r=>r.json()),fetch('codigos-salud-ocular.json').then(r=>r.json()).catch(()=>[])])
+    .then(([d,m])=>{CIE=d;CIE_N=d.map(([c,t])=>normTxt(c+" "+t));MINSA=m;MINSA_N=m.map(([c,t])=>normTxt(c+" "+t));return d;})
+    .catch(()=>{cieCargando=null;msg("No se pudo cargar la lista CIE-10");return null;});return cieCargando;}
 function codigosPropios(){return Array.isArray(config.codigos)?config.codigos.map(o=>({c:String(o.c||'').toUpperCase(),t:String(o.t||'').toUpperCase()})):[];}
 function buscarCIE(q,toks){
   if(!toks.length)return [];const out=[],vistos=new Set();const cod=toks[0].toUpperCase();
-  const add=(o)=>{const k=String(o[0]).toUpperCase();if(vistos.has(k))return;vistos.add(k);out.push(o);};
+  const add=(o)=>{const k=String(o[0]).toUpperCase().replace(/\./g,"");if(vistos.has(k))return;vistos.add(k);out.push(o);}; // 99401.16 = 9940116
   DX_OCULAR.forEach(o=>{if(toks.every(t=>normTxt(o.c+" "+o.t).includes(t)))add([o.c,o.t,'ocular']);});
   codigosPropios().forEach(o=>{if(toks.every(t=>normTxt(o.c+" "+o.t).includes(t)))add([o.c,o.t,'propio']);});
+  MINSA.forEach((o,i)=>{if(toks.every(t=>MINSA_N[i].includes(t)))add([o[0],o[1],'minsa',o[2]]);});
   if(CIE)for(let i=0;i<CIE.length&&out.length<40;i++){if(toks.every(t=>CIE_N[i].includes(t)))add(CIE[i]);}
   const qn=toks.join(" "); // primero: código exacto, nombre exacto, código que empieza igual, nombre que empieza igual
   const rk=o=>{const c=String(o[0]).toUpperCase(),d=normTxt(o[1]).replace(/\.$/,"").trim();const extra=o[2]?0:1;if(c===cod)return 0;if(d===qn)return .5;if(c.startsWith(cod))return 1+extra;if(d.startsWith(qn))return 2+extra;return 3+extra;};
   out.sort((a,b)=>rk(a)-rk(b));return out.slice(0,12);
 }
-function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>${o[2]==='propio'?'<span class="cie-propio">propio</span>':o[2]==='ocular'?'<span class="cie-ocular">salud ocular</span>':''}`;}
+function renderCIE(o,q){return `<span class="cie-cod">${resaltar(o[0],q)}</span><span class="cie-txt">${resaltar(o[1],q)}</span>${o[2]==='propio'?'<span class="cie-propio">propio</span>':o[2]==='ocular'?'<span class="cie-ocular">salud ocular</span>':o[2]==='minsa'?`<span class="cie-minsa">${o[3]==='cpms'?'CPMS':'CIE-10'} · MINSA ocular</span>`:''}`;}
 let cpEditando=null;
 function pintarCodigos(){const li=$('cpLista');const lst=codigosPropios();const q=normTxt($('cpBuscar').value||"").trim();
   const vis=lst.map((o,i)=>[o,i]).filter(([o])=>!q||normTxt(o.c+" "+o.t).includes(q));
@@ -170,7 +176,7 @@ $('cpCie').addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault();
 
 /* Ventana de códigos (la abre la hoja de EVALUACIÓN): usa el mismo panel de códigos propios del REGISTRO HIS */
 const CPM=document.createElement('div');CPM.className='dlg-fondo cp-modal no-print';
-CPM.innerHTML='<div class="cpm" role="dialog" aria-modal="true"><div class="cpm-cab"><h3>Códigos de diagnóstico · CIE-10 / HIS</h3><button type="button" class="cpm-x" title="Cerrar (Esc)">✕</button></div><p class="cpm-ayuda">Busque en los 15 082 códigos CIE-10 y agréguelos, o cree sus propios códigos. Los códigos propios aparecen primero al buscar diagnósticos en la EVALUACIÓN y en el REGISTRO HIS; si usa un código de la lista CIE-10, su descripción reemplaza a la oficial.</p><div class="cpm-cuerpo"></div></div>';
+CPM.innerHTML='<div class="cpm" role="dialog" aria-modal="true"><div class="cpm-cab"><h3>Códigos de diagnóstico · CIE-10 / HIS</h3><button type="button" class="cpm-x" title="Cerrar (Esc)">✕</button></div><p class="cpm-ayuda">Busque en los 15 082 códigos CIE-10 (y los CIE-10 / CPMS del Manual HIS de Salud Ocular del MINSA) y agréguelos, o cree sus propios códigos. Los códigos propios aparecen primero al buscar diagnósticos en la EVALUACIÓN y en el REGISTRO HIS; si usa un código de la lista CIE-10, su descripción reemplaza a la oficial.</p><div class="cpm-cuerpo"></div></div>';
 document.body.appendChild(CPM);
 let cpCasa=null;
 function abrirCodigos(){if(cpCasa)return;const p=$('cpPanel');cpCasa={padre:p.parentNode,sig:p.nextSibling,abierto:p.classList.contains('abierto')};
