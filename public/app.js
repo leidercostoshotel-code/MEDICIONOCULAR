@@ -24,8 +24,8 @@ function parseFecha(s){ // dd/mm/aaaa
 }
 function calcEdad(fn){const d=parseFecha(fn);if(!d)return "";const h=new Date();let e=h.getFullYear()-d.getFullYear();const m=h.getMonth()-d.getMonth();if(m<0||(m===0&&h.getDate()<d.getDate()))e--;return e<0?"":String(e);}
 function calcIMC(p,t){const P=num(p),T=num(t);if(P==null||T==null||T<=0)return "";return (P/(T*T)).toFixed(2);}
-// Agudeza visual (fórmula de la plantilla Excel, hojas HC e HIS): ALTERADO si OD u OI es mayor que 35; sin medidas = vacío
-function calcResultado(r){const a=num(r.od),b=num(r.oi);if(a==null&&b==null)return "";return ((a!=null&&a>35)||(b!=null&&b>35))?"ALTERADO":"NO ALTERADO";}
+// Agudeza visual: ALTERADO si OD u OI es mayor o igual a 50 (criterio indicado por el establecimiento); sin medidas = vacío
+function calcResultado(r){const a=num(r.od),b=num(r.oi);if(a==null&&b==null)return "";return ((a!=null&&a>=50)||(b!=null&&b>=50))?"ALTERADO":"NO ALTERADO";}
 function celdaResultado(r){const v=calcResultado(r);return v?`<span class="res ${v==="ALTERADO"?"alt":"ok"}">${v}</span>`:"";}
 function calcNombre(r){return [r.ap,r.am,r.nom].map(x=>String(x||"").trim()).filter(Boolean).join(" ");}
 function hoy(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}

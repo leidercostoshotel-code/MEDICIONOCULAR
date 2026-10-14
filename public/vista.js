@@ -32,7 +32,7 @@ document.body.insertAdjacentHTML("afterbegin",`
           <th class="w-ap">Apellido Paterno</th><th class="w-ap">Apellido Materno</th><th class="w-nom">Nombres</th>
           <th class="w-sexo">Sexo</th><th class="w-fn">Fecha de Nacimiento</th><th title="Temperatura (°C)">T</th><th title="Frecuencia respiratoria">FR</th><th title="Frecuencia cardiaca">FC</th><th title="Presión arterial">PA</th><th title="Saturación de oxígeno (%)">SAT</th><th class="w-peso">PESO (kg)</th><th class="w-peso">TALLA (m)</th>
           <th class="w-imc">IMC</th><th class="w-edad">Edad</th><th class="w-full">Apellidos y Nombres</th>
-          <th class="w-od">OD</th><th class="w-od">OI</th><th class="w-res" title="ALTERADO si OD u OI es mayor que 35 (fórmula de la plantilla Excel)">RESULTADO</th><th class="w-ao" title="Antecedentes oftalmológicos">ANT. OFT.</th>
+          <th class="w-od">OD</th><th class="w-od">OI</th><th class="w-res" title="ALTERADO si OD u OI es mayor o igual a 50">RESULTADO</th><th class="w-ao" title="Antecedentes oftalmológicos">ANT. OFT.</th>
           <th class="w-ag" title="Antecedentes generales">ANT. GEN.</th><th class="w-obs">OBSERVACIÓN</th><th style="width:40px"></th>
         </tr>
       </thead>
