@@ -204,7 +204,7 @@ document.body.insertAdjacentHTML("afterbegin",`
     <div class="sp"></div>
     <table>
       <colgroup><col style="width:5.2mm"><col style="width:5.3mm"><col></colgroup>
-      <tr><td></td><td class="sec">III.</td><td class="sec">EXAMEN OCULAR EXTERNO: <span style="font-weight:bold">(señale y describa lo que se encuentra alguna alteracion)</span></td></tr>
+      <tr><td></td><td class="sec">III.</td><td class="sec">EXAMEN OCULAR EXTERNO: <span style="font-weight:bold">(señale y describa lo que se encuentra alguna alteracion)</span><label class="todoNo no-print" title="Marca NO en todos los signos y síntomas (los que tienen SI no cambian). Desmarque para quitar todos los NO."><input type="checkbox" checked> Todo NO</label></td></tr>
     </table>
     <table>
       <colgroup><col style="width:50mm"><col style="width:23.8mm"><col style="width:9mm"><col style="width:25.5mm"><col></colgroup>
@@ -235,7 +235,7 @@ document.body.insertAdjacentHTML("afterbegin",`
   </div>
 
   <div class="pagina">
-    <div class="sec" style="margin:0 0 2mm 1mm">III. EXAMEN OCULAR EXTERNO (continuación)</div>
+    <div class="sec" style="margin:0 0 2mm 1mm">III. EXAMEN OCULAR EXTERNO (continuación)<label class="todoNo no-print" title="Marca NO en todos los signos y síntomas (los que tienen SI no cambian). Desmarque para quitar todos los NO."><input type="checkbox" checked> Todo NO</label></div>
     <table class="grid sym">
       <colgroup><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:32mm"><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:59.5mm"><col style="width:77.5mm"></colgroup>
       <tr style="font-size:7pt">
