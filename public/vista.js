@@ -264,7 +264,7 @@ document.body.insertAdjacentHTML("afterbegin",`
     <table class="grid">
       <colgroup><col style="width:112.3mm"><col style="width:5.25mm"><col style="width:5.25mm"><col style="width:25.6mm"><col style="width:5.55mm"><col style="width:5.25mm"><col style="width:8.95mm"><col style="width:22.1mm"></colgroup>
       <tr class="r4" style="border:2px solid #000">
-        <td class="b" style="font-size:8pt;border-left-width:2px;border-top-width:2px">IV. DIAGNÓSTICOS:</td>
+        <td class="b" style="font-size:8pt;border-left-width:2px;border-top-width:2px">IV. DIAGNÓSTICOS:<button type="button" class="cieAdmin no-print" onclick="window.HIS&&HIS.abrirCodigos()" title="Buscar en CIE-10, agregar y editar códigos propios">⚙ Códigos CIE-10</button></td>
         <td colspan="6" class="b c small" style="border-top-width:2px">TIPO DE DIAGNOSTICO</td>
         <td class="b c small" style="border-top-width:2px;border-right-width:2px">CODIGO CIE - 10</td>
       </tr>
