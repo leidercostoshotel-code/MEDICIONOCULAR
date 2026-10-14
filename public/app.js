@@ -414,10 +414,10 @@ const DX_CIE={"examen de los ojos y de la vision":"Z01.0","determinacion de la a
 const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p","consejeria en salud ocular":"d"}; // marca automática P / D / R
 // Búsqueda de diagnósticos por código o nombre: salud ocular, códigos propios y los 15 082 de CIE-10 (his.js)
 const DX_ETIQUETA={Z010:DX_OPCIONES[0],"99173":DX_OPCIONES[1],H527:DX_OPCIONES[2],"9940116":DX_OPCIONES[3]};
-function codCIE(c){c=String(c||"").toUpperCase().replace(/\s/g,"");return /^[A-Z]\d{2}[0-9A-Z]+$/.test(c)?c.slice(0,3)+"."+c.slice(3):c;} // H527 -> H52.7 (como en la hoja)
+function codCIE(c){c=String(c||"").toUpperCase().replace(/\s/g,"");return /^[A-Z]\d{2}[0-9A-Z]+$/.test(c)?c.slice(0,3)+"."+c.slice(3):c;} // H527 -> H52.7 (como en la hoja); CPMS sin cambios
 function elegirDxEval(v,el){ // v = [código, descripción, origen]
-  const n=+/^dx(\d)_/.exec(el.dataset.f)[1],g=k=>document.querySelector(`#sheet [data-f="dx${n}_${k}"]`),c=String(v[0]).toUpperCase().replace(/\./g,"");
-  g('txt').value=DX_ETIQUETA[c]||String(v[1]).trim().replace(/\.$/,"");g('cie').value=codCIE(c);
+  const n=+/^dx(\d)_/.exec(el.dataset.f)[1],g=k=>document.querySelector(`#sheet [data-f="dx${n}_${k}"]`),cod=String(v[0]).toUpperCase().trim(),c=cod.replace(/\./g,"");
+  g('txt').value=DX_ETIQUETA[c]||String(v[1]).trim().replace(/\.$/,"");g('cie').value=codCIE(cod); // CPMS con punto (92015.01) se deja igual
   autoDx(n,true);autoGuardar();
 }
 document.addEventListener('DOMContentLoaded',()=>{if(!window.HIS||!HIS.predictivoCIE)return;
