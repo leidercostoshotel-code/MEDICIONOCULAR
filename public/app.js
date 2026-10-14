@@ -30,12 +30,15 @@ function celdaResultado(r){const v=calcResultado(r);return v?`<span class="res $
 function calcNombre(r){return [r.ap,r.am,r.nom].map(x=>String(x||"").trim()).filter(Boolean).join(" ");}
 function hoy(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
 function uid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);}
-function nuevoRegistro(){return {id:uid(),n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",t:"",fr:"",fc:"",pa:"",sat:"",peso:"",talla:"",od:"",oi:"",ao:"",ao_od:"",ao_oi:"",ag:"",ag_p:"",ag_f:"",obs:""};}
+function nuevoRegistro(){return {id:uid(),n:"",hc:"",dni:"",ap:"",am:"",nom:"",sexo:"",fn:"",t:"",fr:"",fc:"",pa:"",sat:"",vd:"",peso:"",talla:"",od:"",oi:"",ao:"",ao_od:"",ao_oi:"",ag:"",ag_p:"",ag_f:"",obs:""};}
 function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o[k]=r[k];}o.id=String(o.id||uid());o.n=parseInt(o.n);if(isNaN(o.n))o.n="";o.dni=String(o.dni||"").replace(/\D/g,"");return o;}
 
 // Examen físico en DATOS: T, FR, FC, PA y SAT (los mismos de la hoja de evaluación, campos ef_*)
 const VITALES=["t","fr","fc","pa","sat"];
-function vital(r,k){const v=String(r[k]??"").trim();if(v)return v;const e=evaluaciones[r.n];return e?String(e["ef_"+k]??"").trim():"";} // evaluaciones antiguas: se muestra lo que ya tenían
+const VIT_DEF={t:"36",fr:"18",fc:"75",sat:"99%"}; // valores por defecto (se pueden cambiar); PA sin valor por defecto
+// valor que se muestra: lo escrito en DATOS; si no, lo de una evaluación antigua; si la fila nunca se tocó, el valor por defecto
+function vital(r,k){const v=String(r[k]??"").trim();if(v)return v;const e=evaluaciones[r.n],ev=e?String(e["ef_"+k]??"").trim():"";if(ev)return ev;return r.vd?"":(VIT_DEF[k]||"");}
+function fijarVitales(r){if(r.vd)return;VITALES.forEach(k=>{if(!String(r[k]??"").trim())r[k]=vital(r,k);});r.vd=1;} // al editar por primera vez: los valores por defecto quedan escritos (y luego se pueden borrar)
 function normPA(v){return String(v).replace(/\s*[ .,\-*]\s*/g,"/").replace(/\/+/g,"/");} // 110.70 / 110 70 -> 110/70 (teclado numérico del celular)
 
 /* ======================= PERSISTENCIA ======================= */
@@ -104,6 +107,7 @@ document.getElementById('tbodyDatos').addEventListener('input',e=>{
   if(el.dataset.k==='n'){const n=parseInt(v);v=isNaN(n)?"":n;}
   if(el.dataset.k==='fn'){el.classList.toggle('invalid',!!v&&!parseFecha(v));}
   if(el.dataset.k==='pa'){const c=normPA(v);if(c!==v){v=c;el.value=v;}}
+  if(VITALES.includes(el.dataset.k))fijarVitales(r);
   r[el.dataset.k]=v;
   if(VITALES.includes(el.dataset.k)){const ev=evaluaciones[r.n];if(ev){ev["ef_"+el.dataset.k]=v;guardarEvaluaciones();}} // misma dato en la evaluación
   tr.querySelector('[data-c=imc]').textContent=calcIMC(r.peso,r.talla);
@@ -315,7 +319,7 @@ function escribirForm(o){
   if(ajustarParrafos()&&o&&numActual!=null)autoGuardar(); // texto antiguo de una sola línea: se reacomoda y se guarda así
 }
 function ponerVitales(r){ // T, FR, FC, PA y SAT escritos en DATOS pasan a la hoja; devuelve true si cambió algo
-  let c=false;if(r)VITALES.forEach(k=>{const v=String(r[k]??"").trim(),el=document.querySelector(`#sheet [data-f="ef_${k}"]`);if(v&&el.value!==v){el.value=v;c=true;}});return c;
+  let c=false;if(r)VITALES.forEach(k=>{const v=vital(r,k),el=document.querySelector(`#sheet [data-f="ef_${k}"]`);if(v&&el.value!==v){el.value=v;c=true;}});return c;
 }
 function cargarPaciente(n){
   if(tAuto)guardarAhora(); // guardar lo escrito del paciente anterior antes de cambiar
@@ -436,7 +440,7 @@ document.getElementById('sheet').addEventListener('input',e=>{const m=/^dx(\d)_t
 // T, FR, FC, PA y SAT escritos en la hoja también quedan en DATOS (y al revés: ver tbodyDatos)
 document.getElementById('sheet').addEventListener('input',e=>{const m=/^ef_(t|fr|fc|pa|sat)$/.exec(e.target.dataset.f||"");if(!m)return;
   const el=e.target;if(m[1]==='pa'){const c=normPA(el.value);if(c!==el.value)el.value=c;}
-  const r=buscarPaciente(numActual);if(!r)return;r[m[1]]=el.value.trim();guardarPacientes();
+  const r=buscarPaciente(numActual);if(!r)return;fijarVitales(r);r[m[1]]=el.value.trim();guardarPacientes();
   const cel=document.querySelector(`#tbodyDatos tr[data-id="${CSS.escape(String(r.id))}"] [data-k="${m[1]}"]`);if(cel)cel.value=r[m[1]];
 });
 
