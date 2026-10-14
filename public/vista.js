@@ -147,7 +147,7 @@ document.body.insertAdjacentHTML("afterbegin",`
         <td class="bx c" style="border-bottom-width:2px"><span class="chk" data-f="ag_tumores_p"></span></td><td class="bx c" style="border-bottom-width:2px"><span class="chk" data-f="ag_tumores_f"></span></td><td class="bx" style="border-right-width:2px;border-bottom-width:2px">TUMORES</td>
       </tr>
     </table>
-    <table>
+    <table style="font-size:7.2pt">
       <tr><td class="bb" style="height:3.6mm"><input class="f" data-f="ant_especificar2"></td></tr>
       <tr><td class="bb" style="height:3.6mm"><input class="f" data-f="ant_especificar3"></td></tr>
     </table>
