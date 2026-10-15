@@ -325,7 +325,7 @@ function leerForm(){
 function escribirForm(o){
   document.querySelectorAll('#sheet input[data-f^="dx"][readonly]').forEach(el=>campoLibre(el,false));
   PARRAFOS.forEach(P=>P.preparar(o)); // líneas extra de ESPECIFICAR
-  campos().forEach(el=>{const f=el.dataset.f,v=o&&o[f]!=null?o[f]:(f==='ev_nombre'?"Dra. Mari Alva Mas":esNo(f)?"X":""); // evaluación nueva: NO marcado en el examen externo
+  campos().forEach(el=>{const f=el.dataset.f,v=o&&o[f]!=null?o[f]:(f==='ev_nombre'?"Dra. Mari Alva Mas":f==='fecha'&&!o?hoy():esNo(f)?"X":""); // evaluación nueva: fecha de hoy y NO marcado en el examen externo
     if(el.classList.contains('chk'))el.classList.toggle('on',v==="X");else el.value=v;});
   syncTodoNo();
   if(ajustarParrafos()&&o&&numActual!=null)autoGuardar(); // texto antiguo de una sola línea: se reacomoda y se guarda así
