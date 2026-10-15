@@ -460,8 +460,12 @@ document.getElementById('sheet').addEventListener('input',e=>{const m=/^ef_(t|fr
 // Al escribir, las palabras que no entran pasan solas a la línea siguiente (y vuelven al borrar);
 // si el texto es muy extenso se agregan líneas debajo (hasta "max") y se quitan al borrar;
 // solo si ni así alcanza, la letra se achica lo necesario para que se vean todas las palabras.
-function parrafoFluido(prefijo,fijas,max){
+function parrafoFluido(prefijo,fijas,max,cabeza){ // cabeza = línea que se deja vacía: lo que tenga pasa al inicio del párrafo
   const L=fijas.map(f=>document.querySelector(`#sheet [data-f="${f}"]`)),nf=L.length,tb=L[nf-1].closest('tbody'),ctx=document.createElement('canvas').getContext('2d');
+  const ultimo=+(/(\d+)$/.exec(fijas[nf-1])||[0,1])[1]; // número del último campo fijo (ant_especificar3 -> 3); las extra siguen: 4, 5…
+  const C=cabeza?document.querySelector(`#sheet [data-f="${cabeza}"]`):null;
+  if(C){C.readOnly=true;C.tabIndex=-1;C.placeholder="↓ escriba en las líneas de abajo";
+    C.addEventListener('focus',()=>{let j=L.length-1;while(j>0&&!L[j].value)j--;const x=L[j],q=x.value.length;x.focus();x.setSelectionRange(q,q);});} // al tocarla, el cursor va al párrafo
   const base=L.map(el=>parseFloat(getComputedStyle(el).fontSize)),fam=getComputedStyle(L[0]).fontFamily;
   const mod=i=>L[Math.min(i,nf-1)]; // las líneas extra miden como la última línea fija
   const cabe=(i,t,k)=>{ctx.font=`${base[Math.min(i,nf-1)]*k}px ${fam}`;return ctx.measureText(t.trimEnd()).width<=mod(i).clientWidth-4;};
@@ -480,12 +484,13 @@ function parrafoFluido(prefijo,fijas,max){
   function lineas(n){ // deja n líneas en pantalla: agrega o quita las extra (nunca las fijas)
     n=Math.max(nf,Math.min(max,n));
     while(L.length<n){const tr=document.createElement('tr');tr.className='lin-extra';
-      tr.innerHTML=`<td class="bb" style="height:3.6mm"><input class="f" data-f="${prefijo}${L.length+1}" autocomplete="off"></td>`;
+      tr.innerHTML=`<td class="bb" style="height:3.6mm"><input class="f" data-f="${prefijo}${ultimo+L.length-nf+1}" autocomplete="off"></td>`;
       tb.appendChild(tr);const el=tr.querySelector('input');conectar(el,L.length);L.push(el);}
     while(L.length>n)L.pop().closest('tr').remove();
   }
   function ajustar(activo){ // activo = línea donde está el cursor (null al cargar un paciente)
     if(!L[0].clientWidth)return false; // vista oculta: no se puede medir
+    let mov=false;if(C&&C.value.trim()){L[0].value=C.value.trim()+(L[0].value.trim()?" "+L[0].value:"");C.value="";mov=true;if(activo===0)activo=null;} // texto antiguo en la línea de ESPECIFICAR: baja al párrafo
     const v=L.map(el=>el.value);let c=null;
     if(activo!=null){c=L[activo].selectionStart??v[activo].length;for(let i=0;i<activo;i++)if(v[i]!=="")c+=v[i].length+1;}
     let T=v.filter(x=>x!=="").join(" ");const ini=T.length-T.trimStart().length;T=T.slice(ini);
@@ -493,7 +498,7 @@ function parrafoFluido(prefijo,fijas,max){
     let k=1,ls=cortar(T,1,false);
     if(!ls){for(k=.96;k>=.6;k=Math.round((k-.04)*100)/100){ls=cortar(T,k,false);if(ls)break;}}
     if(!ls){k=.6;ls=cortar(T,k,true);}
-    const antes=L.length;lineas(ls.length);let cambio=L.length!==antes;
+    const antes=L.length;lineas(ls.length);let cambio=mov||L.length!==antes;
     L.forEach((el,i)=>{if(el.value!==ls[i]){el.value=ls[i];cambio=true;}el.style.fontSize=k<1?(base[Math.min(i,nf-1)]*k).toFixed(2)+"px":"";});
     if(c!=null&&cambio){let st=0,j=0;for(;j<L.length-1;j++){if(c<=st+ls[j].length)break;st+=ls[j].length+1;}
       const el=L[j],pos=Math.min(c-st,ls[j].length);if(document.activeElement!==el)el.focus();el.setSelectionRange(pos,pos);}
@@ -513,12 +518,13 @@ function parrafoFluido(prefijo,fijas,max){
   }
   L.forEach(conectar);
   function preparar(o){ // antes de escribir una evaluación guardada: crear las líneas extra que tenga
-    let n=nf;if(o)for(const key in o){const m=key.startsWith(prefijo)&&/^\d+$/.exec(key.slice(prefijo.length));if(m&&+m[0]>n&&String(o[key]).trim())n=+m[0];}
+    let n=nf;if(o)for(const key in o){const m=key.startsWith(prefijo)&&/^\d+$/.exec(key.slice(prefijo.length));if(m&&+m[0]>ultimo&&String(o[key]).trim())n=Math.max(n,nf+(+m[0]-ultimo));}
     lineas(n);
   }
   return {ajustar,preparar};
 }
-const PARRAFOS=[parrafoFluido("ant_especificar",["ant_especificar","ant_especificar2","ant_especificar3"],12)];
+// ESPECIFICAR: el texto empieza siempre en la línea de abajo (la de «ESPECIFICAR:» queda vacía) y sigue hacia abajo, hasta 11 líneas
+const PARRAFOS=[parrafoFluido("ant_especificar",["ant_especificar2","ant_especificar3"],11,"ant_especificar")];
 function ajustarParrafos(){return PARRAFOS.map(P=>P.ajustar(null)).some(Boolean);}
 
 /* ======================= III. EXAMEN OCULAR EXTERNO: NO marcado por defecto ======================= */
