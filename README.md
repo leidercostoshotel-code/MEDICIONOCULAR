@@ -68,7 +68,7 @@ Pestaña **REGISTRO HIS** de `https://medicion-ocular.web.app` (archivos `public
 
 - En cada sección se escribe el **N°** del paciente de DATOS (o se busca por nombre / DNI) y se llenan solos nombre, fecha de nacimiento, DNI, HC, edad, sexo, peso y talla.
 - Por defecto cada sección lleva **1. Examen de los ojos y de la visión** (Z010, tipo D, VALOR LAB «ALT» si OD u OI ≥ 50, si no «N»; mismo criterio que la columna RESULTADO de DATOS) y **2. Determinación de la agudeza visual** (99173, tipo D, VALOR LAB = OD y OI). Esos valores se actualizan solos desde DATOS.
-- En el predictivo de diagnósticos aparecen primero los códigos de salud ocular (Z010, 99173, H527 trastorno de la refracción con «RF» si OD u OI ≥ 50, 9940116 consejería en salud ocular), luego los códigos propios y los 15 082 de CIE-10 (`public/cie10.json`).
+- En el predictivo de diagnósticos aparecen primero los códigos de salud ocular (Z010, 99173, H527 trastorno de la refracción con «RF» si OD u OI ≥ 50, 99401.16 consejería en salud ocular), luego los códigos propios y los 15 082 de CIE-10 (`public/cie10.json`).
 - Igual que PCT: secciones de continuación (N° 0), orden de llegada, una hoja por turno con reloj y turno automático, 10 secciones por página en A4 vertical con encabezado completo solo en páginas impares, diálogos propios, códigos propios con búsqueda y edición, exportación a Excel.
 - Se guarda en el navegador y en Firestore, colecciones `his_atenciones` y `his_config` (por eso hay que publicar también las reglas).
 
