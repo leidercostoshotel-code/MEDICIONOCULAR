@@ -46,7 +46,12 @@ function cargar(){
   try{const p=JSON.parse(localStorage.getItem(LS_PAC));if(Array.isArray(p)&&p.length)pacientes=p.map(normalizar);}catch(e){}
   if(!pacientes.length)pacientes=DATA_INICIAL.map(normalizar);
   try{evaluaciones=JSON.parse(localStorage.getItem(LS_EVAL))||{};}catch(e){evaluaciones={};}
+  if(migrarCodigos(evaluaciones))try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){}
 }
+// Códigos antiguos que se reemplazan al cargar (evaluaciones y REGISTRO HIS): consejería en salud ocular = 99401.16 (CPMS, Manual HIS)
+const COD_ANTIGUOS={"9940116":"99401.16"};
+function codigoVigente(c){const k=String(c||"").toUpperCase().replace(/[.\s]/g,"");return COD_ANTIGUOS[k]||c;}
+function migrarCodigos(obj){let n=0;Object.values(obj||{}).forEach(o=>{if(!o||typeof o!=="object")return;Object.keys(o).forEach(k=>{if(/^dx\d+_cie$/.test(k)&&o[k]){const v=codigoVigente(o[k]);if(v!==o[k]){o[k]=v;n++;}}});});return n;}
 function guardarPacientes(){try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync)Sync.programarPacientes();}
 function guardarEvaluaciones(){try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync)Sync.programarEvaluaciones();}
 
@@ -422,10 +427,10 @@ document.addEventListener('click',e=>{if(!e.target.closest('.bq'))bqL.style.disp
 
 /* ======================= DIAGNÓSTICOS: marcas, valores y CIE-10 automáticos ======================= */
 const DX_OPCIONES=["Examen de los ojos y de la visión","Determinación de la agudeza visual","Trastorno de la refracción","Consejería en salud ocular"];
-const DX_CIE={"examen de los ojos y de la vision":"Z01.0","determinacion de la agudeza visual":"99173","trastorno de la refraccion":"H52.7","consejeria en salud ocular":"9940116"}; // mismos códigos que el REGISTRO HIS
+const DX_CIE={"examen de los ojos y de la vision":"Z01.0","determinacion de la agudeza visual":"99173","trastorno de la refraccion":"H52.7","consejeria en salud ocular":"99401.16"}; // mismos códigos que el REGISTRO HIS
 const DX_TIPO={"examen de los ojos y de la vision":"d","determinacion de la agudeza visual":"d","trastorno de la refraccion":"p","consejeria en salud ocular":"d"}; // marca automática P / D / R
 // Búsqueda de diagnósticos por código o nombre: salud ocular, códigos propios y los 15 082 de CIE-10 (his.js)
-const DX_ETIQUETA={Z010:DX_OPCIONES[0],"99173":DX_OPCIONES[1],H527:DX_OPCIONES[2],"9940116":DX_OPCIONES[3]};
+const DX_ETIQUETA={Z010:DX_OPCIONES[0],"99173":DX_OPCIONES[1],H527:DX_OPCIONES[2],"9940116":DX_OPCIONES[3]}; // claves sin punto (99401.16 → 9940116)
 function codCIE(c){c=String(c||"").toUpperCase().replace(/\s/g,"");return /^[A-Z]\d{2}[0-9A-Z]+$/.test(c)?c.slice(0,3)+"."+c.slice(3):c;} // H527 -> H52.7 (como en la hoja); CPMS sin cambios
 function elegirDxEval(v,el){ // v = [código, descripción, origen]
   const n=+/^dx(\d)_/.exec(el.dataset.f)[1],g=k=>document.querySelector(`#sheet [data-f="dx${n}_${k}"]`),cod=String(v[0]).toUpperCase().trim(),c=cod.replace(/\./g,"");

@@ -71,7 +71,7 @@
     cacheEval=remoto;
     if(snap.metadata.hasPendingWrites||tEval||escribiendo)return;
     const antes=numActual!=null?JSON.stringify(evaluaciones[numActual]||null):null;
-    evaluaciones=obj;try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){}
+    evaluaciones=obj;if(window.migrarCodigos)migrarCodigos(evaluaciones);try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){}
     const ahora=numActual!=null?JSON.stringify(evaluaciones[numActual]||null):null;
     if(numActual!=null&&antes!==ahora&&JSON.stringify(leerForm())===antes)cargarPaciente(numActual);
   }
