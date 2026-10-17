@@ -26,7 +26,7 @@ $('registro').insertAdjacentHTML('afterend',`
   <div class="tpt-nota no-print">Dosis calculadas con la <b>edad</b> y el <b>peso</b> de DATOS según la <b>NTS N° 221-MINSA/DGIESP-2024</b>: TPT (Tablas N° 3 a 7, págs. 26–27) y esquema sensible (Tablas N° 10 a 12, págs. 35–37). Cambie el peso o el tratamiento aquí o en DATOS: todo se recalcula solo. La indicación final es del médico.</div>
   <div id="tptWrap">
     <table class="datos tpt-tabla" id="tblTPT">
-      <colgroup><col style="width:52px"><col style="width:250px"><col style="width:56px"><col style="width:70px"><col style="width:110px"><col style="width:190px"><col style="width:200px"><col style="width:380px"><col style="width:118px"><col style="width:190px"><col style="width:160px"></colgroup>
+      <colgroup><col style="width:52px"><col style="width:250px"><col style="width:56px"><col style="width:70px"><col style="width:110px"><col style="width:190px"><col style="width:200px"><col style="width:380px"><col style="width:140px"><col style="width:190px"><col style="width:160px"></colgroup>
       <thead><tr><th>N° Reg</th><th>Apellidos y Nombres</th><th>Edad</th><th>Peso (kg)</th><th>Tratamiento</th><th>Caso índice / Situación</th><th>Esquema</th><th>Dosis según peso y edad</th><th>Inicio</th><th>Fechas</th><th>Observación</th></tr></thead>
       <tbody id="tbodyTPT"></tbody>
     </table>
@@ -145,7 +145,11 @@ function celdaDosis(c){
   return (c.lin.length?`<div class="tpt-lin">${c.lin.map(l=>`<div${/^Piridoxina/.test(l)?' class="piri"':""}>${esc(l)}</div>`).join("")}</div>`:"")+
     (c.frec&&c.lin.length?`<div class="tpt-frec">${esc(c.frec)}${c.tabla?` · <b>${esc(c.tabla)}</b>`:""}</div>`:"")+
     c.aviso.map(a=>`<div class="tpt-aviso">⚠ ${esc(a)}</div>`).join("")+c.nota.map(a=>`<div class="tpt-nota-l">${esc(a)}</div>`).join("");}
-function celdaFechas(r,c){const f=fechas(r,c);if(!f.length)return r.f_ini?"":`<span class="tpt-gris">Ponga la fecha de inicio</span>`;return f.map(([k,v])=>`<div><span class="tpt-gris">${k}:</span> <b>${v}</b></div>`).join("");}
+// conformidad del inicio: el inicio se dio (primera dosis administrada); guarda la fecha en que se marcó
+function celdaConf(r){if(!r.f_ini)return "";const ok=!!r.f_ini_ok,venc=!ok&&parseFecha(r.f_ini)<=new Date();
+  return `<label class="tpt-conf${ok?' ok':venc?' pend':''}" title="${ok?'Inicio conforme (marcado el '+esc(r.f_ini_ok)+')':'Marque cuando el inicio ya se dio'}"><input type="checkbox" data-k="f_ini_ok" ${ok?'checked':''}> ${ok?'Inicio conforme':venc?'Confirmar inicio':'Conforme'}</label>`;}
+function celdaFechas(r,c){const f=fechas(r,c),plan=r.f_ini&&c.modo!=="tpt"&&window.MON?`<a href="#" class="tpt-plan no-print" onclick="MON.abrirPlan('${esc(r.id)}');return false" title="Calendario de exámenes y controles (pestaña MONITOREO)">📅 Plan de monitoreo</a>`:"";
+  if(!f.length)return r.f_ini?plan:`<span class="tpt-gris">Ponga la fecha de inicio</span>`;return f.map(([k,v])=>`<div><span class="tpt-gris">${k}:</span> <b>${v}</b></div>`).join("")+plan;}
 function filaTPT(r){const i=pacientes.indexOf(r),c=calcular(r);const e=edadDe(r);
   return `<tr data-i="${i}" data-id="${esc(r.id)}" class="m-${c.modo||'nd'}">
     <td class="num">${esc(r.n)}</td>
@@ -156,7 +160,7 @@ function filaTPT(r){const i=pacientes.indexOf(r),c=calcular(r);const e=edadDe(r)
     <td data-c="sel">${celdaSel(r,c.modo)}</td>
     <td data-c="esq">${celdaEsq(r,c)}</td>
     <td class="tpt-dosis" data-c="dosis">${celdaDosis(c)}</td>
-    <td><input type="date" required data-k="f_ini" value="${(d=>d?iso(d):"")(parseFecha(r.f_ini))}" title="Fecha de inicio del tratamiento"></td>
+    <td class="tpt-ini"><input type="date" required data-k="f_ini" value="${(d=>d?iso(d):"")(parseFecha(r.f_ini))}" title="Fecha de inicio indicada por el médico: desde aquí empieza el monitoreo">${celdaConf(r)}</td>
     <td class="tpt-fechas" data-c="fechas">${celdaFechas(r,c)}</td>
     <td><input data-k="tpt_obs" value="${esc(r.tpt_obs)}" placeholder="—"></td>
   </tr>`;}
@@ -172,19 +176,23 @@ let datosSucio=false;
 $('tbodyTPT').addEventListener('input',e=>{const el=e.target,tr=el.closest('tr');if(!tr||el.dataset.k!=="peso"&&el.dataset.k!=="tpt_obs")return;const r=pacientes[+tr.dataset.i];
   r[el.dataset.k]=el.value.trim();if(el.dataset.k==="peso")el.classList.toggle('invalid',num(el.value)==null);guardarPacientes();datosSucio=true;refrescarFila(tr);});
 $('tbodyTPT').addEventListener('change',e=>{const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k||el.dataset.k==="peso"||el.dataset.k==="tpt_obs")return;const r=pacientes[+tr.dataset.i];
-  if(el.dataset.k==="f_ini")r.f_ini=deIso(el.value);else r[el.dataset.k]=el.value;
+  if(el.dataset.k==="f_ini"){r.f_ini=deIso(el.value);if(!r.f_ini)r.f_ini_ok="";}
+  else if(el.dataset.k==="f_ini_ok")r.f_ini_ok=el.checked?fmtFecha(new Date()):"";else r[el.dataset.k]=el.value;
   if(el.dataset.k==="tpt_ind")r.tpt_esq=""; // otro caso índice: volver al esquema automático
   guardarPacientes();datosSucio=true;
   if(el.dataset.k==="tto"){const nuevo=document.createElement('tbody');nuevo.innerHTML=filaTPT(r);tr.replaceWith(nuevo.firstElementChild);msg(`N° ${r.n}: tratamiento «${r.tto||"—"}»`);}
-  else{if(el.dataset.k==="tpt_ind")tr.querySelector('[data-c=sel]').innerHTML=celdaSel(r,modoDe(r));refrescarFila(tr);}});
+  else{if(el.dataset.k==="tpt_ind")tr.querySelector('[data-c=sel]').innerHTML=celdaSel(r,modoDe(r));
+    if(el.dataset.k==="f_ini"||el.dataset.k==="f_ini_ok"){const td=tr.querySelector('td.tpt-ini'),cf=td.querySelector('.tpt-conf');if(cf)cf.remove();td.insertAdjacentHTML('beforeend',celdaConf(r));
+      if(el.dataset.k==="f_ini_ok")msg(`N° ${r.n}: ${r.f_ini_ok?"inicio conforme":"conformidad retirada"}`);}
+    refrescarFila(tr);}});
 $('tptFiltro').addEventListener('change',render);$('tptBuscar').addEventListener('input',render);
 
 /* ======================= EXCEL ======================= */
 function exportar(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la librería de Excel (sin conexión)");return;}
-  const cab=["N° Reg","Apellidos y Nombres","DNI","Edad","Peso (kg)","Tratamiento","Caso índice / Situación","Esquema","Dosis","Frecuencia","Tabla NTS 221-2024","Avisos","Inicio","Fechas","Observación"];
+  const cab=["N° Reg","Apellidos y Nombres","DNI","Edad","Peso (kg)","Tratamiento","Caso índice / Situación","Esquema","Dosis","Frecuencia","Tabla NTS 221-2024","Avisos","Inicio","Inicio conforme","Fechas","Observación"];
   const filas=lista().map(r=>{const c=calcular(r),m=c.modo;
-    return [r.n,r.nom,r.dni,edadDe(r),r.peso,r.tto,m==="tpt"?IND[r.tpt_ind||"ds"]:m==="sens"?SIT[r.tto_sit||"normal"]:"",m==="tpt"?(ESQ[c.esq]||""):c.esq,c.lin.join(" | "),c.frec||"",c.tabla,c.aviso.concat(c.nota).join(" | "),r.f_ini,fechas(r,c).map(([k,v])=>k+": "+v).join(" | "),r.tpt_obs];});
-  const ws=XLSX.utils.aoa_to_sheet([cab].concat(filas));ws['!cols']=[7,34,11,6,8,12,26,26,60,30,14,40,11,40,24].map(w=>({wch:w}));
+    return [r.n,r.nom,r.dni,edadDe(r),r.peso,r.tto,m==="tpt"?IND[r.tpt_ind||"ds"]:m==="sens"?SIT[r.tto_sit||"normal"]:"",m==="tpt"?(ESQ[c.esq]||""):c.esq,c.lin.join(" | "),c.frec||"",c.tabla,c.aviso.concat(c.nota).join(" | "),r.f_ini,r.f_ini_ok?"Sí ("+r.f_ini_ok+")":(r.f_ini?"Pendiente":""),fechas(r,c).map(([k,v])=>k+": "+v).join(" | "),r.tpt_obs];});
+  const ws=XLSX.utils.aoa_to_sheet([cab].concat(filas));ws['!cols']=[7,34,11,6,8,12,26,26,60,30,14,40,11,16,40,24].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"TPT");XLSX.writeFile(wb,"TPT_PCT.xlsx");msg("Excel exportado");}
 
 /* ======================= ENLACES CON EL RESTO DE LA APP ======================= */
@@ -192,5 +200,5 @@ const showBase=window.showView;
 window.showView=function(v){showBase(v);$('tabTPT').classList.toggle('active',v==='tpt');document.body.classList.toggle('ver-tpt',v==='tpt');if(v==='tpt')render();if(v==='datos'&&datosSucio){datosSucio=false;renderDatos();}};
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();const a=document.activeElement;if(!(a&&a.closest&&a.closest('#tbodyTPT')))render();};
-window.TPT={exportar,calcular,render};
+window.TPT={exportar,calcular,render,modoDe,fechas};
 })();
