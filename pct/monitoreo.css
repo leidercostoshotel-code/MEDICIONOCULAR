@@ -89,3 +89,13 @@ a.tpt-plan{display:inline-block;margin-top:3px;font-size:11.5px;color:#1e88e5;te
 .mon-pinfo div small{display:block;font-size:11px;margin-top:2px}.mon-pinfo .conf-ok small{color:#2e7d32;font-weight:bold}.mon-pinfo .conf-pend small{color:#c25b00;font-weight:bold}
 .mon-pinfo label{display:flex;gap:4px;align-items:center;font-size:11.5px;margin-top:3px;cursor:pointer}
 .conf-t.ok{color:#2e7d32;font-weight:bold}.conf-t.pend{color:#c25b00;font-weight:bold}
+/* exámenes marcados como realizados */
+.mon-ex span{flex:1}.mon-hecho{font-style:normal;font-size:10.5px;color:#fff;background:#43a047;border-radius:8px;padding:0 6px;white-space:nowrap;text-decoration:none;align-self:center}
+.mon-ex.ok{text-decoration:none}.mon-ex.ok span{text-decoration:line-through;text-decoration-color:#a5d6a7}
+.mon-arow-cab{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}.mon-arow-cab .mon-st{margin-left:auto}
+.mon-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.mon-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #cfd8dc;background:#fff;border-radius:12px;padding:2px 8px 2px 4px;font-size:11.5px;color:#37474f;cursor:pointer}
+.mon-chip input{margin:0}.mon-chip.ok{background:#e8f5e9;border-color:#a5d6a7;color:#1b5e20;font-weight:bold}
+.mon-arow small.mon-falta{display:block;color:#b00020;margin-top:4px;font-size:11.5px}
+.mon-arow.st-ok .mon-falta{display:none}
+@media print{.mon-chip input{display:none}}
