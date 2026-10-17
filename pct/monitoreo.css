@@ -174,6 +174,34 @@ a.tpt-plan{display:inline-block;margin-top:3px;font-size:11.5px;color:#1e88e5;te
 @media (max-width:700px){.mon-fnom{gap:8px;padding:9px 10px;font-size:13px;flex-wrap:wrap}.mon-fdni{min-width:0;order:2;flex-basis:100%;padding-left:18px;font-size:11.5px}.mon-fnom b{order:1}.mon-fflecha{order:1}.mon-det{padding:8px 10px 10px}.mon-li-cab{flex-direction:column;gap:4px}.mon-li-est{text-align:left}.mon-li-est small{display:inline;margin-left:6px}.mon-lkpi{width:100%}.mon-lkpi div{flex:1;min-width:0}.mr-ayuda{display:none}.mon-lcab{padding:10px}}
 @media print{.mon-lcab,.mon-fpunto,.mon-pbar i,.mon-lista .mon-st,.mon-li-falta,.mon-fila.abierta .mon-fnom{-webkit-print-color-adjust:exact;print-color-adjust:exact}.mon-fila{break-inside:avoid;box-shadow:none}.mon-lista{max-width:none}.mon-lfecha{break-after:avoid}.mon-fflecha{display:none}}
 .mon-li-datos span.conf-t{display:block;text-transform:none;font-size:11px;color:inherit}.mon-li-datos .conf-t.ok{color:#2e7d32}.mon-li-datos .conf-t.pend{color:#c25b00}
+/* reprogramar citas */
+.mon-repmodal{z-index:420}
+.mon-rep{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);width:min(560px,100%);max-height:92vh;overflow:auto}
+.mon-rep-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:14px 16px;background:#f6f2fc;border-bottom:1px solid #e6def5;border-radius:14px 14px 0 0}
+.mon-rep-cab h3{margin:0;color:#5e35b1;font-size:17px}.mon-rep-cab p{margin:3px 0 0;font-size:12px;color:#6d6480}
+.mon-x{background:none;border:0;font-size:18px;color:#78909c;cursor:pointer;padding:2px 7px;border-radius:6px}.mon-x:hover{background:#ece6f7}
+.mon-rep-pacs{padding:10px 16px 0;max-height:190px;overflow:auto}
+.mon-rep-pac{border:1px solid #ebeff3;border-radius:8px;padding:6px 10px;margin-bottom:6px}.mon-rep-pac b{display:block;font-size:13px;color:#263238}.mon-rep-pac small{font-size:11.5px;color:#607d8b}
+.mon-rep-sec{padding:10px 16px}.mon-rep-sec>label{display:block;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;color:#78909c;margin-bottom:6px}
+.mon-raps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.mon-rap{display:flex;flex-direction:column;align-items:flex-start;gap:1px;background:#fff;border:1px solid #dfe5ea;border-radius:10px;padding:7px 10px;cursor:pointer;font:inherit;text-align:left}
+.mon-rap b{font-size:12.5px;color:#37474f}.mon-rap span{font-size:11.5px;color:#78909c}
+.mon-rap:hover{border-color:#b39ddb}.mon-rap.sel{border-color:#7e57c2;background:#f6f2fc;box-shadow:0 0 0 2px #e4dbf7}.mon-rap.sel b{color:#5e35b1}
+.mon-rep-otra{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px;color:#607d8b}.mon-rep-otra input{font:inherit;padding:4px 6px;border:1px solid #cfd8dc;border-radius:6px}
+.mon-rep-aviso{margin-top:8px;font-size:12px;color:#a35a00;background:#fff8ef;border-radius:8px;padding:6px 9px}.mon-rep-aviso.ok{color:#2e7d32;background:#f2faf2}.mon-rep-aviso:empty{display:none}
+.mon-rep-sec select,.mon-rep-sec input[type=text]{width:100%;box-sizing:border-box;font:inherit;font-size:13px;padding:6px 8px;border:1px solid #cfd8dc;border-radius:8px;margin-bottom:6px;background:#fff}
+.mon-rep-pie{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:12px 16px;border-top:1px solid #eef1f3;background:#fafbfc;border-radius:0 0 14px 14px}.mon-rep-pie .sep{flex:1}
+.mon-rep-pie .btn.primary{background:#5e35b1;border-color:#5e35b1}.mon-rep-pie .btn.primary:disabled{opacity:.45;cursor:not-allowed}
+.mon-link{background:none;border:0;color:#5e35b1;font:inherit;font-weight:bold;text-decoration:underline;cursor:pointer;padding:0}
+.mon-hist{list-style:none;margin:6px 0 0;padding:0;font-size:12px;color:#455a64}.mon-hist li{border-left:3px solid #b39ddb;padding:2px 8px;margin-bottom:4px}.mon-hist small{display:block;color:#90a4ae;font-size:10.5px}
+.mon-btn-rep{color:#5e35b1;border-color:#cdbdf0}.mon-btn-rep:hover{background:#f6f2fc;border-color:#7e57c2}
+i.mon-mov{color:#5e35b1}
+.mon-ev.movida{background:transparent;color:#7e57c2;border:1px dashed #b39ddb;font-weight:normal}
+.mon-movidas{background:#f6f2fc;color:#4527a0;padding:6px 12px;font-size:12px}.mon-movidas div{margin:2px 0}
+.mon-dcab .mon-btn-repdia{display:block;margin-top:7px;background:#fff;color:#5e35b1;border-color:#fff;border-radius:8px;font-weight:bold}
+.mon-arow-acc{margin-top:5px}.mon-arow-acc .btn{padding:3px 10px;font-size:11.5px}
+.mon-arow.movida{border-left-color:#b39ddb;color:#4527a0;background:#faf8fe}
+.mon-resumen .mr.repro{background:#f3eefc;color:#5e35b1}.l-repro{--ac:#b39ddb;--ti:#f6f2fc;--tx:#5e35b1}
 /* calendario en pantallas pequeñas (al final para que prevalezca) */
 @media (max-width:900px){.mon-cuerpo{grid-template-columns:minmax(0,1fr);padding:8px}.mon-d{min-height:64px;padding:3px}.mon-ev{font-size:9.5px;padding:1px 2px}.mon-hito,.mon-fer{display:none}.mon-cnt{display:inline-block}.mon-calcard .mon-grid{padding:4px}.mon-semana{padding:6px 4px}.mon-calstats span{min-width:0;flex:1}.mon-calstats{width:100%}.mon-calt p{display:none}}
-@media (max-width:600px){.mon-ev{font-size:0;height:6px;padding:0;margin-top:3px;border-radius:3px;border-left:0}.mon-ev.st-prog{background:#90a4ae}.mon-ev.st-prox{background:#f9a825}.mon-ev.st-hoy{background:#42a5f5}.mon-ev.st-vencido{background:#e57373}.mon-ev.st-ok{background:#66bb6a}.mon-d{min-height:56px}.mon-mas{display:none}.mon-semana div{letter-spacing:0;font-size:11px}.mon-calcab{padding:10px}.mon-calt h2{font-size:17px}.mon-calico{width:36px;height:36px;font-size:18px}.mon-dnum{flex-wrap:nowrap;gap:2px}.mon-n{min-width:19px;height:19px;font-size:12px}}
+@media (max-width:600px){.mon-ev{font-size:0;height:6px;padding:0;margin-top:3px;border-radius:3px;border-left:0}.mon-ev.movida{display:none}.mon-ev.st-prog{background:#90a4ae}.mon-ev.st-prox{background:#f9a825}.mon-ev.st-hoy{background:#42a5f5}.mon-ev.st-vencido{background:#e57373}.mon-ev.st-ok{background:#66bb6a}.mon-d{min-height:56px}.mon-mas{display:none}.mon-semana div{letter-spacing:0;font-size:11px}.mon-calcab{padding:10px}.mon-calt h2{font-size:17px}.mon-calico{width:36px;height:36px;font-size:18px}.mon-dnum{flex-wrap:nowrap;gap:2px}.mon-n{min-width:19px;height:19px;font-size:12px}}
