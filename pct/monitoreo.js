@@ -132,7 +132,6 @@ function eventos(){ // {clave: [{tipo:'c', p, c} | {tipo:'h', h}]}
   const ev={},add=(d,o)=>{(ev[clave(d)]=ev[clave(d)]||[]).push(o);};
   pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(p)p.controles.forEach(c=>add(c.fecha,{tipo:"c",p,c}));hitos(r).forEach(h=>{if(h.f)add(h.f,{tipo:"h",h});});});
   return ev;}
-function sinInicio(){return pacientes.filter(r=>{const m=TPT.modoDe(r);return (m==="sens"||m==="otro")&&!parseFecha(r.f_ini);});}
 
 /* ======================= DIBUJO ======================= */
 const nom=r=>`N° ${esc(r.n)} · ${esc(r.nom||"(sin nombre)")}`;
@@ -161,11 +160,12 @@ function pintarCal(ev){
       ${hs.slice(0,2).map(e=>`<div class="mon-hito">◆ ${esc(e.h.txt)} · N° ${esc(e.h.r.n)}</div>`).join("")}${hs.length>2?`<div class="mon-mas">+${hs.length-2} fechas clave</div>`:""}
     </div>`;}
   $('monCal').innerHTML=html+"</div>";$('monMes').textContent=MESES_LARGO[mo]+" "+y;}
+function chips(c){return `<div class="mon-chips">${c.items.map(k=>{const ok=c.hechos.includes(k);return `<label class="mon-chip${ok?' ok':''}" title="${ok?'Realizado':'Falta · marque cuando se haga'}"><input type="checkbox" data-k="${k}" ${ok?'checked':''}>${esc(EX[k][0])}${ok?' · Realizado':''}</label>`;}).join("")}</div>`;}
 function filaAgenda(e,fecha){const c=e.c,r=e.p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
   return `<div class="mon-arow st-${cls}" data-dia="${clave(c.fecha)}" data-id="${esc(r.id)}" data-cid="${c.cid}">
     <div class="mon-arow-cab">${fecha?`<b>${fmtFecha(c.fecha)}</b> `:""}<b>${nom(r)}</b> · ${esc(c.nombre)} · ${esc(e.p.E.txt)}
       <span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt+(c.hechos.length?` · ${c.hechos.length}/${c.items.length}`:"")}</span></div>
-    <div class="mon-chips">${c.items.map(k=>{const ok=c.hechos.includes(k);return `<label class="mon-chip${ok?' ok':''}" title="${ok?'Realizado':'Falta · marque cuando se haga'}"><input type="checkbox" data-k="${k}" ${ok?'checked':''}>${esc(EX[k][0])}${ok?' · Realizado':''}</label>`;}).join("")}</div>
+    ${chips(c)}
     ${c.completo?"":`<small class="mon-falta">Falta: ${falta.map(k=>esc(EX[k][0])).join(" · ")}</small>`}</div>`;}
 function pintarAgenda(ev){const h=hoy0();let html="";
   const venc=Object.values(ev).flatMap(l=>l.filter(e=>e.tipo==="c"&&estado(e.c)[0]==="vencido"));
@@ -177,16 +177,78 @@ function pintarDia(ev){const k=clave(diaSel),l=ev[k]||[],cs=l.filter(e=>e.tipo==
   $('monDia').innerHTML=`<div class="mon-dcab"><b>${largo(diaSel)}</b><span>${cs.length} paciente(s) citado(s)${fer?" · Feriado: "+esc(fer):""}${diaSel.getDay()===0?" · Domingo":""}</span></div>`+
     (hs.length?`<div class="mon-hitos">${hs.map(e=>`<div>◆ <b>${esc(e.h.txt)}</b> · ${nom(e.h.r)}</div>`).join("")}</div>`:"")+
     (cs.length?cs.map(e=>tarjeta(e.p,e.c)).join(""):`<div class="mon-vacio">No hay controles programados este día.<br><small>Haga clic en un día del calendario para ver sus citas.</small></div>`);}
-function pintarResumen(){const h=hoy0(),semana=new Date(h);semana.setDate(h.getDate()+7);let hoy=0,sem=0,venc=0,con=0;
-  pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(!p)return;con++;p.controles.forEach(c=>{const s=estado(c)[0];if(s==="hoy")hoy++;if(s==="vencido")venc++;if(!c.completo&&c.fecha>=h&&c.fecha<=semana)sem++;});});
-  const sin=sinInicio().filter(filtrar),noConf=pacientes.filter(filtrar).filter(r=>{const p=TPT.modoDe(r);return (p==="sens"||p==="otro")&&r.f_ini&&!r.f_ini_ok&&parseFecha(r.f_ini)<=h;});
-  $('monResumen').innerHTML=`<span class="mr hoy">Hoy: <b>${hoy}</b></span><span class="mr prox">Próximos 7 días: <b>${sem}</b></span><span class="mr venc">Vencidos: <b>${venc}</b></span><span class="mr">Pacientes con plan: <b>${con}</b></span>`+
-    (noConf.length?`<span class="mr falta" title="${esc(noConf.map(r=>"N° "+r.n+" "+r.nom+" · inicio "+r.f_ini).join("\n"))}">Inicio sin conformidad: <b>${noConf.length}</b></span>`:"")+
-    (sin.length?`<span class="mr falta" title="${esc(sin.map(r=>"N° "+r.n+" "+r.nom).join("\n"))}">Sin fecha de inicio: <b>${sin.length}</b> · <a href="#" onclick="showView('tpt');return false">póngala en TPT</a></span>`:"")+
-    `<span class="mr leyenda"><i class="st-prog"></i>Programado <i class="st-prox"></i>Próximo <i class="st-hoy"></i>Hoy <i class="st-vencido"></i>Vencido <i class="st-ok"></i>Realizado</span>`;}
-function render(){if(!$('monitoreo').classList.contains('active'))return;const ev=eventos();
-  $('monImpCab').innerHTML=`<b>Calendario de monitoreo y seguimiento · ${$('monVista').value==="agenda"?"Próximos 30 días":MESES_LARGO[mesVista.getMonth()]+" "+mesVista.getFullYear()}</b><span>${esc(config.estab||"")} · Programa de Control de Tuberculosis · NTS N° 221-MINSA/DGIESP-2024 · Impreso el ${fmtFecha(new Date())}</span>`;
-  if($('monVista').value==="agenda")pintarAgenda(ev);else pintarCal(ev);pintarDia(ev);pintarResumen();if(planAbierto)abrirPlan(planAbierto,true);}
+function pintarResumen(D){ // indicadores = leyenda de colores; cada uno abre su lista detallada
+  const b=(k,cls,txt,dot)=>`<button type="button" class="mr ${cls}${lista===k?' activo':''}" data-lista="${k}" title="Ver la lista detallada">${dot?`<i class="st-${dot}"></i>`:""}${txt}: <b>${D[k].length}</b></button>`;
+  $('monResumen').innerHTML=b("hoy","hoy","Hoy","hoy")+b("prox","prox","Próximos 7 días","prox")+b("venc","venc","Vencidos","vencido")+b("prog","prog","Programados","prog")+b("ok","ok","Realizados","ok")+b("pac","pac","Pacientes con plan")+
+    (D.noconf.length||lista==="noconf"?b("noconf","falta","Inicio sin conformidad"):"")+(D.sin.length||lista==="sin"?b("sin","falta","Sin fecha de inicio"):"")+
+    `<span class="mr-ayuda no-print">👆 Haga clic en un indicador para ver la lista detallada</span>`;}
+
+/* ======================= LISTAS DETALLADAS (clic en los indicadores) ======================= */
+const LISTAS={
+  hoy:{t:"Citas de hoy",ico:"📅",d:"Controles de hoy con exámenes o evaluaciones por realizar.",vacio:"No hay controles pendientes para hoy."},
+  prox:{t:"Próximos 7 días",ico:"⏳",d:"Controles de hoy y de los próximos 7 días que aún no se realizan.",vacio:"No hay controles pendientes en los próximos 7 días."},
+  venc:{t:"Controles vencidos",ico:"⚠️",d:"La fecha ya pasó y faltan exámenes o evaluaciones: comuníquese con el paciente y reprograme la cita.",vacio:"¡Muy bien! No hay controles vencidos."},
+  prog:{t:"Controles programados",ico:"🗓️",d:"Controles a más de 7 días, agendados según la NTS N° 221-2024.",vacio:"No hay controles programados."},
+  ok:{t:"Controles realizados",ico:"✅",d:"Controles con todos sus exámenes y evaluaciones marcados como realizados.",vacio:"Todavía no hay controles completos.<br><small>Marque los exámenes en el calendario, la agenda o el plan del paciente.</small>"},
+  pac:{t:"Pacientes con plan de monitoreo",ico:"👥",d:"Avance de cada paciente: controles realizados, vencidos y su próxima cita.",vacio:"Ningún paciente tiene plan: ponga la fecha de inicio en la pestaña TPT."},
+  noconf:{t:"Inicio sin conformidad",ico:"☑️",d:"La fecha de inicio ya pasó y falta marcar la conformidad del médico.",vacio:"Todos los inicios tienen conformidad. ✔"},
+  sin:{t:"Sin fecha de inicio",ico:"✏️",d:"Pacientes en tratamiento sin fecha de inicio: escríbala aquí y el plan de monitoreo se arma solo.",vacio:"Todos los pacientes en tratamiento tienen fecha de inicio. ✔"}};
+const LISTAS_CTRL=["hoy","prox","venc","prog","ok"];
+let lista=null;
+function datosListas(){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7);const D={};Object.keys(LISTAS).forEach(k=>{D[k]=[];});
+  pacientes.filter(filtrar).forEach(r=>{const m=TPT.modoDe(r),p=plan(r);
+    if(p){D.pac.push({r,p});p.controles.forEach(c=>{const e={p,c},s=estado(c)[0];
+      if(s==="ok")D.ok.push(e);else if(s==="vencido")D.venc.push(e);else{if(s==="hoy")D.hoy.push(e);if(c.fecha<=sem)D.prox.push(e);else D.prog.push(e);}});}
+    if(m==="sens"||m==="otro"){const ini=parseFecha(r.f_ini);if(!ini)D.sin.push({r,p});else if(!r.f_ini_ok&&ini<=h)D.noconf.push({r,p});}});
+  const porN=(a,b)=>(+a.n||0)-(+b.n||0),porF=(a,b)=>a.c.fecha-b.c.fecha||porN(a.p.r,b.p.r);
+  ["hoy","prox","venc","prog"].forEach(k=>D[k].sort(porF));D.ok.sort((a,b)=>porF(b,a)); // realizados: lo más reciente primero
+  ["pac","noconf","sin"].forEach(k=>D[k].sort((a,b)=>porN(a.r,b.r)));
+  return D;}
+const dias=d=>Math.round((d-hoy0())/864e5);
+function relTxt(d,venc){const n=dias(d),a=Math.abs(n),u=a===1?"día":"días";if(n===0)return "Hoy";if(n<0)return (venc?"Venció hace ":"Hace ")+a+" "+u;return n===1?"Mañana":"En "+a+" "+u;}
+const iniciales=s=>String(s||"?").trim().split(/\s+/).slice(0,2).map(w=>w.charAt(0)).join("").toUpperCase();
+const confTxt=r=>r.f_ini_ok?`<span class="conf-t ok">✔ inicio conforme</span>`:`<span class="conf-t pend">⚠ inicio sin conformidad</span>`;
+function meta(r){const e=edadDe(r),sx=String(r.sexo||"").toUpperCase();
+  return [r.dni&&"DNI "+esc(r.dni),r.hc&&"HC "+esc(r.hc),/\d/.test(e)&&esc(e)+" años",sx==="F"?"Femenino":sx==="M"?"Masculino":"",r.peso&&esc(r.peso)+" kg",r.dx&&esc(r.dx)].filter(Boolean).join(" · ");}
+const cabLi=(r,est)=>`<div class="mon-li-cab"><div><b class="mon-li-nom">${esc(r.nom||"(sin nombre)")}</b> <span class="mon-li-n">N° ${esc(r.n)}</span><div class="mon-li-meta">${meta(r)}</div></div><div class="mon-li-est">${est}</div></div>`;
+const avance=(n,t,txt)=>`<div class="mon-avance"><div class="mon-pbar"><i style="width:${t?Math.round(n*100/t):0}%"></i></div><span>${n} de ${t} ${txt}</span></div>`;
+function itemCtrl(e){const c=e.c,p=e.p,r=p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
+  return `<article class="mon-li st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}"><div class="mon-li-av st-${cls}">${esc(iniciales(r.nom))}</div><div class="mon-li-cuerpo">
+    ${cabLi(r,`<span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt}</span><small>${relTxt(c.fecha,cls==="vencido")}</small>`)}
+    <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${esc(r.f_ini)} ${confTxt(r)}${c.movido?` · <i>${c.movido==="reprogramada"?"cita reprogramada":"pasó del "+esc(c.movido)}</i>`:""}</div>
+    ${avance(c.hechos.length,c.items.length,"exámenes y evaluaciones realizados")}${chips(c)}
+    ${falta.length?`<div class="mon-li-falta"><b>Falta (${falta.length}):</b> ${falta.map(k=>esc(EX[k][0])).join(" · ")}</div>`:""}${c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("")}
+    <div class="mon-acc no-print">${c.completo?"":`<button class="btn primary" data-acc="todo">✔ Todo realizado</button>`}<label class="lbl">Reprogramar <input type="date" data-acc="rep" value="${iso(c.fecha)}"></label><button class="btn" data-acc="plan">📋 Plan completo</button><button class="btn" data-acc="ver" data-f="${clave(c.fecha)}">📅 Ver en el calendario</button></div>
+  </div></article>`;}
+function itemPac(o){const r=o.r,p=o.p;let est,cuerpo="",acc;
+  if(lista==="sin"){est=`<span class="mon-st st-falta">Sin fecha de inicio</span>`;cuerpo=`<div class="mon-li-ctrl">💊 Tratamiento: <b>${esc(r.tto||"—")}</b> · ${TPT.modoDe(r)==="sens"?"se monitoreará con la Tabla N° 13 (TB-DS)":"TB resistente: luego elija el esquema en el plan completo"}</div>`;
+    acc=`<label class="lbl mon-li-ini">Fecha de inicio <input type="date" data-acc="ini"></label><button class="btn" data-acc="tpt">Ir a TPT</button>`;}
+  else{const C=p?p.controles:[],venc=C.filter(c=>estado(c)[0]==="vencido").length,hech=C.filter(c=>c.completo).length,sig=C.find(c=>!c.completo),sv=sig&&estado(sig)[0]==="vencido";
+    est=lista==="noconf"?`<span class="mon-st st-falta">Falta conformidad</span><small>Inicio ${relTxt(parseFecha(r.f_ini)).toLowerCase()}</small>`:venc?`<span class="mon-st st-vencido">${venc} control${venc>1?"es":""} vencido${venc>1?"s":""}</span>`:`<span class="mon-st st-ok">${C.length&&hech===C.length?"✔ Completo":"Al día"}</span>`;
+    if(p)cuerpo=`<div class="mon-li-datos"><div><span>Esquema</span><b>${esc(p.E.txt)}</b></div><div><span>Inicio</span><b>${fmtFecha(p.ini)}</b>${confTxt(r)}</div>
+      <div><span>Próximo control</span><b>${sig?esc(sig.nombre)+" · "+fmtFecha(sig.fecha):"—"}</b>${sig?`<small class="${sv?"rojo":""}">${relTxt(sig.fecha,sv)}</small>`:""}</div><div><span>Último control</span><b>${C.length?fmtFecha(C[C.length-1].fecha):"—"}</b></div></div>
+      ${avance(hech,C.length,"controles realizados")}`;
+    acc=(lista==="noconf"?`<label class="mon-li-conf"><input type="checkbox" data-acc="conf"> Marcar inicio conforme</label>`:"")+`<button class="btn" data-acc="plan">📋 Plan completo</button>`+(sig?`<button class="btn" data-acc="ver" data-f="${clave(sig.fecha)}">📅 Ver próximo control</button>`:"");}
+  return `<article class="mon-li st-${lista==="pac"?"pac":"falta"}" data-id="${esc(r.id)}"><div class="mon-li-av">${esc(iniciales(r.nom))}</div><div class="mon-li-cuerpo">${cabLi(r,est)}${cuerpo}<div class="mon-acc no-print">${acc}</div></div></article>`;}
+function pintarLista(D){const def=LISTAS[lista],arr=D[lista],ctrl=LISTAS_CTRL.includes(lista),pl=(n,s,p)=>n+" "+(n===1?s:p);
+  const kpi=ctrl?[[arr.length,arr.length===1?"control":"controles"],[new Set(arr.map(e=>e.p.r.id)).size,"pacientes"],lista==="ok"?[arr.reduce((s,e)=>s+e.c.hechos.length,0),"exámenes realizados"]:[arr.reduce((s,e)=>s+e.c.items.length-e.c.hechos.length,0),"exámenes por realizar"]]:[[arr.length,arr.length===1?"paciente":"pacientes"]];
+  const f=$('monFiltro'),q=$('monBuscar').value.trim(),filtro=[f.value!=="todos"?f.options[f.selectedIndex].text:"",q?"búsqueda «"+q+"»":""].filter(Boolean).join(" · ");
+  let html=`<section class="mon-lista l-${lista}"><header class="mon-lcab"><div class="mon-ltit"><span class="mon-lico">${def.ico}</span><div><h2>${def.t}</h2><p>${def.d}</p>${filtro?`<p class="mon-lfil">Filtro: ${esc(filtro)}</p>`:""}</div></div>
+    <div class="mon-lkpi">${kpi.map(([n,t])=>`<div><b>${n}</b><span>${t}</span></div>`).join("")}</div>
+    <div class="mon-lbtn no-print"><button class="btn" data-l="xls">📥 Excel</button><button class="btn" data-l="imp">🖨 Imprimir</button><button class="btn" data-l="cerrar">✕ Volver al calendario</button></div></header>`;
+  if(!arr.length)html+=`<div class="mon-vacio mon-lvacio">${def.vacio}</div>`;
+  else if(ctrl){const cuenta={};arr.forEach(e=>{const k=clave(e.c.fecha);cuenta[k]=(cuenta[k]||0)+1;});let k0="";
+    arr.forEach(e=>{const k=clave(e.c.fecha);if(k!==k0){k0=k;html+=`<div class="mon-lfecha"><b>${largo(e.c.fecha)}</b><span>${relTxt(e.c.fecha,lista==="venc")} · ${pl(cuenta[k],"control","controles")}</span></div>`;}html+=itemCtrl(e);});}
+  else html+=arr.map(itemPac).join("");
+  $('monCal').innerHTML=html+"</section>";$('monMes').textContent=def.t;}
+function verDia(k){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(k||"");if(!m)return;diaSel=new Date(+m[1],+m[2]-1,+m[3]);mesVista=new Date(+m[1],+m[2]-1,1);lista=null;$('monVista').value="cal";render();
+  if(window.innerWidth<900)$('monDia').scrollIntoView({behavior:"smooth",block:"start"});else window.scrollTo({top:0,behavior:"smooth"});}
+
+function render(){if(!$('monitoreo').classList.contains('active'))return;const ev=eventos(),D=datosListas();
+  const tit=lista?"Monitoreo y seguimiento · "+LISTAS[lista].t+" ("+D[lista].length+")":"Calendario de monitoreo y seguimiento · "+($('monVista').value==="agenda"?"Próximos 30 días":MESES_LARGO[mesVista.getMonth()]+" "+mesVista.getFullYear());
+  $('monImpCab').innerHTML=`<b>${esc(tit)}</b><span>${esc(config.estab||"")} · Programa de Control de Tuberculosis · NTS N° 221-MINSA/DGIESP-2024 · Impreso el ${fmtFecha(new Date())}</span>`;
+  document.querySelector('#monitoreo .mon-cuerpo').classList.toggle('con-lista',!!lista);
+  if(lista)pintarLista(D);else if($('monVista').value==="agenda")pintarAgenda(ev);else pintarCal(ev);pintarDia(ev);pintarResumen(D);if(planAbierto)abrirPlan(planAbierto,true);}
 
 /* ======================= PLAN COMPLETO (ventana) ======================= */
 function abrirPlan(id,refrescar){const r=pacientes.find(x=>x.id===id);if(!r)return;planAbierto=id;const p=plan(r);
@@ -211,20 +273,26 @@ function cerrarPlan(){planAbierto=null;$('monModal').classList.remove('abierto')
 /* ======================= ACCIONES (marcar, reprogramar) ======================= */
 function ordenar(o){if(!o||typeof o!=="object"||Array.isArray(o))return o;const x={};Object.keys(o).sort().forEach(k=>{x[k]=ordenar(o[k]);});return x;}
 function guardar(r){r.mon=ordenar(r.mon&&typeof r.mon==="object"?r.mon:{});guardarPacientes();render();if(window.TPT)TPT.render();}
-function accion(e){const t=e.target,cont=t.closest('[data-cid]');if(!cont)return;const r=pacientes.find(x=>x.id===cont.dataset.id);if(!r)return;
+function accion(e){const t=e.target,cont=t.closest('[data-id]');if(!cont)return;const r=pacientes.find(x=>x.id===cont.dataset.id);if(!r)return;const acc=t.dataset.acc,clic=e.type==="click",cambio=e.type==="change";
+  if(acc==="plan"&&clic){abrirPlan(r.id);return;}
+  if(acc==="ver"&&clic){verDia(t.dataset.f);return;}
+  if(acc==="tpt"&&clic){showView('tpt');return;}
+  if(acc==="conf"&&cambio){r.f_ini_ok=t.checked?fmtFecha(new Date()):"";guardar(r);msg(`N° ${r.n}: ${r.f_ini_ok?"inicio conforme":"conformidad retirada"}`);return;}
+  if(acc==="ini"&&cambio){const f=deIso(t.value);if(!f)return;r.f_ini=f;guardar(r);msg(`N° ${r.n}: inicio ${f} · plan de monitoreo armado`);return;}
+  if(!cont.dataset.cid)return;
   r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[cont.dataset.cid]=r.mon[cont.dataset.cid]||{};st.ok=st.ok||{};
-  if(t.matches('input[type=checkbox][data-k]')){if(e.type!=="change")return;if(t.checked)st.ok[t.dataset.k]=1;else delete st.ok[t.dataset.k];guardar(r);return;}
-  const acc=t.dataset.acc;if(!acc)return;
-  if(acc==="todo"&&e.type==="click"){const p=plan(r),c=p&&p.controles.find(x=>x.cid===cont.dataset.cid);if(c)c.items.forEach(k=>{st.ok[k]=1;});guardar(r);msg(`N° ${r.n}: ${c?c.nombre.toLowerCase():"control"} realizado`);}
-  else if(acc==="rep"&&e.type==="change"){const f=deIso(t.value);if(!f)return;st.f=f;guardar(r);const d=parseFecha(f);diaSel=d;mesVista=new Date(d.getFullYear(),d.getMonth(),1);render();msg(`N° ${r.n}: cita reprogramada al ${f}`);}
-  else if(acc==="plan"&&e.type==="click")abrirPlan(r.id);}
+  if(t.matches('input[type=checkbox][data-k]')){if(!cambio)return;if(t.checked)st.ok[t.dataset.k]=1;else delete st.ok[t.dataset.k];guardar(r);return;}
+  if(acc==="todo"&&clic){const p=plan(r),c=p&&p.controles.find(x=>x.cid===cont.dataset.cid);if(c)c.items.forEach(k=>{st.ok[k]=1;});guardar(r);msg(`N° ${r.n}: ${c?c.nombre.toLowerCase():"control"} realizado`);}
+  else if(acc==="rep"&&cambio){const f=deIso(t.value);if(!f)return;st.f=f;const d=parseFecha(f);if(!lista){diaSel=d;mesVista=new Date(d.getFullYear(),d.getMonth(),1);}guardar(r);msg(`N° ${r.n}: cita reprogramada al ${f}`);}}
 ['click','change'].forEach(tp=>{$('monDia').addEventListener(tp,accion);$('monPlan').addEventListener(tp,accion);$('monCal').addEventListener(tp,accion);});
+$('monResumen').addEventListener('click',e=>{const b=e.target.closest('[data-lista]');if(!b)return;lista=lista===b.dataset.lista?null:b.dataset.lista;render();});
+$('monCal').addEventListener('click',e=>{const b=e.target.closest('[data-l]');if(!b)return;if(b.dataset.l==="cerrar"){lista=null;render();}else if(b.dataset.l==="xls")exportarLista();else if(b.dataset.l==="imp")imprimir();});
 $('monCal').addEventListener('click',e=>{if(e.target.closest('.mon-chip'))return;const d=e.target.closest('[data-dia]');if(!d)return;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d.dataset.dia);diaSel=new Date(+m[1],+m[2]-1,+m[3]);render();
   if(window.innerWidth<900)$('monDia').scrollIntoView({behavior:"smooth",block:"start"});});
-$('monPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);$('monVista').value="cal";render();};
-$('monNext').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1);$('monVista').value="cal";render();};
-$('monHoy').onclick=()=>{const h=hoy0();diaSel=h;mesVista=new Date(h.getFullYear(),h.getMonth(),1);render();};
-['monVista','monFiltro'].forEach(id=>$(id).addEventListener('change',render));$('monBuscar').addEventListener('input',render);
+$('monPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);lista=null;$('monVista').value="cal";render();};
+$('monNext').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1);lista=null;$('monVista').value="cal";render();};
+$('monHoy').onclick=()=>{const h=hoy0();diaSel=h;mesVista=new Date(h.getFullYear(),h.getMonth(),1);lista=null;render();};
+$('monVista').addEventListener('change',()=>{lista=null;render();});$('monFiltro').addEventListener('change',render);$('monBuscar').addEventListener('input',render);
 $('monModal').addEventListener('mousedown',e=>{if(e.target===$('monModal'))cerrarPlan();});
 document.addEventListener('keydown',e=>{if(e.key==="Escape"&&$('monModal').classList.contains('abierto'))cerrarPlan();});
 
@@ -234,6 +302,14 @@ function exportar(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la libr
   const filas=[];pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(!p)return;p.controles.forEach(c=>filas.push([c.fecha,fmtFecha(c.fecha),DIAS[c.fecha.getDay()],r.n,r.nom,r.dni,r.f_ini_ok?"Sí ("+r.f_ini_ok+")":"Pendiente",p.E.txt,p.T.nombre,c.nombre,c.items.map(k=>EX[k][0]).join(" | "),c.hechos.length+"/"+c.items.length,estado(c)[1],c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):""]));});
   filas.sort((a,b)=>a[0]-b[0]);const ws=XLSX.utils.aoa_to_sheet([cab].concat(filas.map(f=>f.slice(1))));ws['!cols']=[11,10,7,34,11,16,30,40,18,90,10,11,22].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Monitoreo");XLSX.writeFile(wb,"Monitoreo_PCT.xlsx");msg("Excel exportado");}
+function exportarLista(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la librería de Excel (sin conexión)");return;}if(!lista)return;
+  const D=datosListas(),arr=D[lista],def=LISTAS[lista],si=r=>r.f_ini_ok?"Sí ("+r.f_ini_ok+")":(r.f_ini?"Pendiente":"");let filas;
+  if(LISTAS_CTRL.includes(lista))filas=[["Fecha","Día","Situación","N° Reg","Apellidos y Nombres","DNI","HC","Edad","Sexo","Esquema","Control","Estado","Realizados","Exámenes realizados","Exámenes que faltan","Inicio conforme","Observación de fecha"]].concat(arr.map(({p,c})=>{const r=p.r;
+    return [fmtFecha(c.fecha),DIAS[c.fecha.getDay()],relTxt(c.fecha,estado(c)[0]==="vencido"),r.n,r.nom,r.dni,r.hc,edadDe(r),r.sexo,p.E.txt,c.nombre,estado(c)[1],c.hechos.length+"/"+c.items.length,c.hechos.map(k=>EX[k][0]).join(" | "),c.items.filter(k=>!c.hechos.includes(k)).map(k=>EX[k][0]).join(" | "),si(r),c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):""];}));
+  else filas=[["N° Reg","Apellidos y Nombres","DNI","HC","Edad","Sexo","Diagnóstico","Tratamiento","Esquema","Inicio","Inicio conforme","Controles realizados","Controles vencidos","Próximo control","Fecha del próximo control"]].concat(arr.map(({r,p})=>{const C=p?p.controles:[],sig=C.find(c=>!c.completo);
+    return [r.n,r.nom,r.dni,r.hc,edadDe(r),r.sexo,r.dx,r.tto,p?p.E.txt:"",r.f_ini,si(r),p?C.filter(c=>c.completo).length+"/"+C.length:"",p?C.filter(c=>estado(c)[0]==="vencido").length:"",sig?sig.nombre:"",sig?fmtFecha(sig.fecha):""];}));
+  const ws=XLSX.utils.aoa_to_sheet(filas);ws['!cols']=filas[0].map(h=>({wch:/Exámenes|Nombres|Esquema|Diagnóstico|Tratamiento/.test(h)?40:14}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,def.t.slice(0,31));XLSX.writeFile(wb,"Monitoreo_"+def.t.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_")+".xlsx");msg("Excel exportado: "+def.t);}
 function imprimir(){document.body.classList.remove('imp-plan');window.print();}
 function imprimirPlan(){document.body.classList.add('imp-plan');window.print();setTimeout(()=>document.body.classList.remove('imp-plan'),500);}
 
@@ -242,5 +318,6 @@ const showBase=window.showView;
 window.showView=function(v){showBase(v);$('tabMon').classList.toggle('active',v==='monitoreo');document.body.classList.toggle('ver-mon',v==='monitoreo');if(v==='monitoreo')render();};
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();const a=document.activeElement;if(!(a&&a.closest&&a.closest('#monitoreo,#monPlan')))render();};
-window.MON={plan,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,imprimir,imprimirPlan,render,feriado};
+window.MON={plan,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,
+  verLista:k=>{lista=LISTAS[k]?k:null;showView('monitoreo');}};
 })();
