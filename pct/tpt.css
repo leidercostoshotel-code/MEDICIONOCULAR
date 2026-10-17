@@ -1,0 +1,31 @@
+/* PCT · Pestaña TPT (terapia preventiva y esquema sensible) */
+.tpt-nota{padding:6px 16px;font-size:12px;color:#455a64;background:#fff8e1;border-bottom:1px solid #f0e0b0}
+#tptWrap{overflow:auto;max-height:calc(100vh - var(--tb,60px) - 92px);background:#fff}
+table.tpt-tabla{width:1876px}
+table.tpt-tabla td{white-space:normal;height:auto;vertical-align:middle;padding:3px 6px}
+table.tpt-tabla td input,table.tpt-tabla td select{padding:2px 4px}
+table.tpt-tabla td:has(>input),table.tpt-tabla td:has(>select){padding:0}
+table.tpt-tabla td.tpt-nom div{font-weight:bold;color:#1a2b3c}
+table.tpt-tabla td.tpt-nom small{color:#78909c;font-size:11px}
+table.tpt-tabla td.tpt-dosis{font-size:12px;line-height:1.35}
+.tpt-lin div{font-weight:bold;color:#0d47a1}
+.tpt-lin div.piri{font-weight:normal;color:#455a64}
+.tpt-frec{color:#455a64;font-size:11px;margin-top:2px}
+.tpt-aviso{color:#b00020;font-size:11.5px;font-weight:bold}
+.tpt-nota-l{color:#6d4c41;font-size:11px;font-style:italic}
+.tpt-gris{color:#90a4ae;font-size:11.5px}
+.tpt-esq{font-weight:bold;color:#1b5e20}
+table.tpt-tabla td.tpt-fechas{font-size:12px;line-height:1.4}
+table.tpt-tabla tr.m-tpt td.num{border-left:4px solid #1e88e5}
+table.tpt-tabla tr.m-sens td.num{border-left:4px solid #43a047}
+table.tpt-tabla tr.m-otro td.num{border-left:4px solid #fb8c00}
+@page tpt{size:A4 landscape;margin:8mm} /* solo la pestaña TPT se imprime en horizontal; la hoja HIS sigue vertical */
+@media print{
+  body.ver-tpt #registro{display:none!important}
+  body.ver-tpt #tpt{display:block!important;page:tpt}
+  .tpt-nota{display:none}
+  #tptWrap{max-height:none;overflow:visible;zoom:.56} /* la tabla completa entra en A4 horizontal */
+  table.tpt-tabla input[type=date]:invalid{color:transparent} /* sin fecha: no imprimir dd/mm/aaaa */
+  table.tpt-tabla th{position:static}
+  table.tpt-tabla td input,table.tpt-tabla td select{appearance:none;-webkit-appearance:none;background:transparent!important;box-shadow:none!important}
+}
