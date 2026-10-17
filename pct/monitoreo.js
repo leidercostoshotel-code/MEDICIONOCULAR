@@ -147,19 +147,27 @@ function tarjeta(p,c){const [cls,txt]=estado(c),r=p.r;
     <div class="mon-acc"><button class="btn primary" data-acc="todo">✔ Todo realizado</button>
       <label class="lbl">Reprogramar <input type="date" data-acc="rep" value="${iso(c.fecha)}"></label>
       <button class="btn" data-acc="plan">📋 Plan completo</button></div></div>`;}
+function cabCal(tit,sub,stats){ // encabezado de color del calendario y de la agenda, con el resumen del periodo
+  return `<div class="mon-calcab"><div class="mon-calt"><span class="mon-calico">📅</span><div><h2>${tit}</h2><p>${sub}</p></div></div>
+    <div class="mon-calstats">${stats.map(([n,t,c])=>`<span class="${c||""}"><b>${n}</b>${t}</span>`).join("")}</div></div>`;}
+function cuentaEv(lst){const pac=new Set();let c=0,ok=0,v=0,hi=0;lst.forEach(e=>{if(e.tipo==="h"){hi++;return;}c++;pac.add(e.p.r.id);const s=estado(e.c)[0];if(s==="ok")ok++;else if(s==="vencido")v++;});return {c,pac:pac.size,ok,v,hi};}
 function pintarCal(ev){
-  const y=mesVista.getFullYear(),mo=mesVista.getMonth(),prim=new Date(y,mo,1),offset=(prim.getDay()+6)%7,dias=new Date(y,mo+1,0).getDate(),h=hoy0();
-  let html=`<div class="mon-grid">${DIAS_C.map(d=>`<div class="mon-dn">${d}</div>`).join("")}`;
-  for(let i=0;i<offset;i++)html+=`<div class="mon-d vacio"></div>`;
+  const y=mesVista.getFullYear(),mo=mesVista.getMonth(),prim=new Date(y,mo,1),offset=(prim.getDay()+6)%7,dias=new Date(y,mo+1,0).getDate(),h=hoy0(),antes=new Date(y,mo,0).getDate();
+  const n=cuentaEv([].concat(...Array.from({length:dias},(_,i)=>ev[clave(new Date(y,mo,i+1))]||[])));
+  let html=`<div class="mon-calcard">`+cabCal(MESES_LARGO[mo]+" "+y,"Calendario de monitoreo y seguimiento · NTS N° 221-MINSA/DGIESP-2024",
+      [[n.c,n.c===1?"cita":"citas"],[n.pac,n.pac===1?"paciente":"pacientes"],[n.ok,"realizadas","ok"],[n.v,"vencidas","venc"],[n.hi,"fechas clave","hito"]])+
+    `<div class="mon-semana">${DIAS_C.map((d,i)=>`<div class="${i===6?"dom":""}">${d}</div>`).join("")}</div><div class="mon-grid">`;
+  for(let i=0;i<offset;i++)html+=`<div class="mon-d vacio"><div class="mon-dnum"><span class="mon-n">${antes-offset+1+i}</span></div></div>`;
   for(let d=1;d<=dias;d++){const f=new Date(y,mo,d),k=clave(f),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),fer=feriado(f);
     const venc=cs.some(e=>estado(e.c)[0]==="vencido");
     html+=`<div class="mon-d${+f===+h?' hoy':''}${+f===+diaSel?' sel':''}${f.getDay()===0?' dom':''}${fer?' fer':''}${venc?' venc':''}" data-dia="${k}" title="${fer?esc(fer):""}">
-      <div class="mon-dnum">${d}${fer?`<span class="mon-fer">${esc(fer)}</span>`:""}</div>
+      <div class="mon-dnum"><span class="mon-n">${d}</span>${cs.length?`<span class="mon-cnt" title="${cs.length} paciente(s) citado(s)">${cs.length}</span>`:""}${fer?`<span class="mon-fer">${esc(fer)}</span>`:""}</div>
       ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}">N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
       ${cs.length>3?`<div class="mon-mas">+${cs.length-3} más</div>`:""}
       ${hs.slice(0,2).map(e=>`<div class="mon-hito">◆ ${esc(e.h.txt)} · N° ${esc(e.h.r.n)}</div>`).join("")}${hs.length>2?`<div class="mon-mas">+${hs.length-2} fechas clave</div>`:""}
     </div>`;}
-  $('monCal').innerHTML=html+"</div>";$('monMes').textContent=MESES_LARGO[mo]+" "+y;}
+  const resto=(7-(offset+dias)%7)%7;for(let i=1;i<=resto;i++)html+=`<div class="mon-d vacio"><div class="mon-dnum"><span class="mon-n">${i}</span></div></div>`;
+  $('monCal').innerHTML=html+"</div></div>";$('monMes').textContent=MESES_LARGO[mo]+" "+y;}
 function chips(c){return `<div class="mon-chips">${c.items.map(k=>{const ok=c.hechos.includes(k);return `<label class="mon-chip${ok?' ok':''}" title="${ok?'Realizado':'Falta · marque cuando se haga'}"><input type="checkbox" data-k="${k}" ${ok?'checked':''}>${esc(EX[k][0])}${ok?' · Realizado':''}</label>`;}).join("")}</div>`;}
 function filaAgenda(e,fecha){const c=e.c,r=e.p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
   return `<div class="mon-arow st-${cls}" data-dia="${clave(c.fecha)}" data-id="${esc(r.id)}" data-cid="${c.cid}">
@@ -167,12 +175,15 @@ function filaAgenda(e,fecha){const c=e.c,r=e.p.r,[cls,txt]=estado(c),falta=c.ite
       <span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt+(c.hechos.length?` · ${c.hechos.length}/${c.items.length}`:"")}</span></div>
     ${chips(c)}
     ${c.completo?"":`<small class="mon-falta">Falta: ${falta.map(k=>esc(EX[k][0])).join(" · ")}</small>`}</div>`;}
-function pintarAgenda(ev){const h=hoy0();let html="";
+function pintarAgenda(ev){const h=hoy0(),fin=new Date(h.getFullYear(),h.getMonth(),h.getDate()+30);let html="",todo=[];
   const venc=Object.values(ev).flatMap(l=>l.filter(e=>e.tipo==="c"&&estado(e.c)[0]==="vencido"));
-  if(venc.length)html+=`<h3 class="mon-ah venc">Vencidos (${venc.length}) · controles con exámenes que faltan</h3>`+venc.sort((a,b)=>a.c.fecha-b.c.fecha).map(e=>filaAgenda(e,true)).join("");
-  for(let i=0;i<=30;i++){const f=new Date(h.getFullYear(),h.getMonth(),h.getDate()+i),l=ev[clave(f)]||[];if(!l.length)continue;
-    html+=`<h3 class="mon-ah${i===0?' hoy':''}">${largo(f)}${i===0?" · HOY":""}</h3>`+l.map(e=>e.tipo==="c"?filaAgenda(e,false):`<div class="mon-arow hito" data-dia="${clave(f)}">◆ ${esc(e.h.txt)} · ${nom(e.h.r)}</div>`).join("");}
-  $('monCal').innerHTML=html||`<div class="mon-vacio">No hay citas en los próximos 30 días.</div>`;$('monMes').textContent="Próximos 30 días";}
+  if(venc.length)html+=`<h3 class="mon-ah venc"><span>⚠ Vencidos</span><small>${venc.length} control${venc.length>1?"es":""} con exámenes que faltan</small></h3>`+venc.sort((a,b)=>a.c.fecha-b.c.fecha).map(e=>filaAgenda(e,true)).join("");
+  for(let i=0;i<=30;i++){const f=new Date(h.getFullYear(),h.getMonth(),h.getDate()+i),l=ev[clave(f)]||[];if(!l.length)continue;todo=todo.concat(l);const nc=l.filter(e=>e.tipo==="c").length;
+    html+=`<h3 class="mon-ah${i===0?' hoy':''}"><span>${largo(f)}${i===0?" · HOY":""}</span><small>${nc?nc+" paciente"+(nc>1?"s":"")+" citado"+(nc>1?"s":""):"fecha clave"}</small></h3>`+l.map(e=>e.tipo==="c"?filaAgenda(e,false):`<div class="mon-arow hito" data-dia="${clave(f)}">◆ ${esc(e.h.txt)} · ${nom(e.h.r)}</div>`).join("");}
+  const n=cuentaEv(todo);
+  $('monCal').innerHTML=`<div class="mon-calcard agenda">`+cabCal("Agenda · próximos 30 días",`Del ${fmtFecha(h)} al ${fmtFecha(fin)} · NTS N° 221-MINSA/DGIESP-2024`,
+      [[n.c,n.c===1?"cita":"citas"],[n.pac,n.pac===1?"paciente":"pacientes"],[n.ok,"realizadas","ok"],[venc.length,"vencidas","venc"],[n.hi,"fechas clave","hito"]])+
+    `<div class="mon-agbody">${html||`<div class="mon-vacio">No hay citas en los próximos 30 días.</div>`}</div></div>`;$('monMes').textContent="Próximos 30 días";}
 function pintarDia(ev){const k=clave(diaSel),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),fer=feriado(diaSel);
   $('monDia').innerHTML=`<div class="mon-dcab"><b>${largo(diaSel)}</b><span>${cs.length} paciente(s) citado(s)${fer?" · Feriado: "+esc(fer):""}${diaSel.getDay()===0?" · Domingo":""}</span></div>`+
     (hs.length?`<div class="mon-hitos">${hs.map(e=>`<div>◆ <b>${esc(e.h.txt)}</b> · ${nom(e.h.r)}</div>`).join("")}</div>`:"")+
@@ -206,21 +217,26 @@ function datosListas(){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7)
   return D;}
 const dias=d=>Math.round((d-hoy0())/864e5);
 function relTxt(d,venc){const n=dias(d),a=Math.abs(n),u=a===1?"día":"días";if(n===0)return "Hoy";if(n<0)return (venc?"Venció hace ":"Hace ")+a+" "+u;return n===1?"Mañana":"En "+a+" "+u;}
-const iniciales=s=>String(s||"?").trim().split(/\s+/).slice(0,2).map(w=>w.charAt(0)).join("").toUpperCase();
 const confTxt=r=>r.f_ini_ok?`<span class="conf-t ok">✔ inicio conforme</span>`:`<span class="conf-t pend">⚠ inicio sin conformidad</span>`;
 function meta(r){const e=edadDe(r),sx=String(r.sexo||"").toUpperCase();
-  return [r.dni&&"DNI "+esc(r.dni),r.hc&&"HC "+esc(r.hc),/\d/.test(e)&&esc(e)+" años",sx==="F"?"Femenino":sx==="M"?"Masculino":"",r.peso&&esc(r.peso)+" kg",r.dx&&esc(r.dx)].filter(Boolean).join(" · ");}
-const cabLi=(r,est)=>`<div class="mon-li-cab"><div><b class="mon-li-nom">${esc(r.nom||"(sin nombre)")}</b> <span class="mon-li-n">N° ${esc(r.n)}</span><div class="mon-li-meta">${meta(r)}</div></div><div class="mon-li-est">${est}</div></div>`;
+  return ["N° "+esc(r.n),r.hc&&"HC "+esc(r.hc),/\d/.test(e)&&esc(e)+" años",sx==="F"?"Femenino":sx==="M"?"Masculino":"",r.peso&&esc(r.peso)+" kg",r.dx&&esc(r.dx)].filter(Boolean).join(" · ");}
+const cabDet=(r,est)=>`<div class="mon-li-cab"><div class="mon-li-meta">${meta(r)}</div><div class="mon-li-est">${est}</div></div>`;
 const avance=(n,t,txt)=>`<div class="mon-avance"><div class="mon-pbar"><i style="width:${t?Math.round(n*100/t):0}%"></i></div><span>${n} de ${t} ${txt}</span></div>`;
+// cada fila muestra solo DNI y nombre; al hacer clic en el nombre se abre su detalle
+const abiertos=new Set();
+function fila(r,key,cls,detalle){const ab=abiertos.has(key);
+  return `<div class="mon-fila st-${cls}${ab?' abierta':''}"><button type="button" class="mon-fnom" data-fila="${esc(key)}" aria-expanded="${ab}" title="${ab?"Ocultar":"Ver"} el detalle">
+    <span class="mon-fpunto"></span><span class="mon-fdni">${r.dni?"DNI "+esc(r.dni):"Sin DNI"}</span><b>${esc(r.nom||"(sin nombre)")}</b><span class="mon-fflecha">${ab?"▲":"▼"}</span></button>${ab?detalle():""}</div>`;}
 function itemCtrl(e){const c=e.c,p=e.p,r=p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
-  return `<article class="mon-li st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}"><div class="mon-li-av st-${cls}">${esc(iniciales(r.nom))}</div><div class="mon-li-cuerpo">
-    ${cabLi(r,`<span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt}</span><small>${relTxt(c.fecha,cls==="vencido")}</small>`)}
+  return fila(r,r.id+"|"+c.cid,cls,()=>`<div class="mon-det" data-id="${esc(r.id)}" data-cid="${c.cid}">
+    ${cabDet(r,`<span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt}</span><small>${relTxt(c.fecha,cls==="vencido")}</small>`)}
     <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${esc(r.f_ini)} ${confTxt(r)}${c.movido?` · <i>${c.movido==="reprogramada"?"cita reprogramada":"pasó del "+esc(c.movido)}</i>`:""}</div>
     ${avance(c.hechos.length,c.items.length,"exámenes y evaluaciones realizados")}${chips(c)}
     ${falta.length?`<div class="mon-li-falta"><b>Falta (${falta.length}):</b> ${falta.map(k=>esc(EX[k][0])).join(" · ")}</div>`:""}${c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("")}
     <div class="mon-acc no-print">${c.completo?"":`<button class="btn primary" data-acc="todo">✔ Todo realizado</button>`}<label class="lbl">Reprogramar <input type="date" data-acc="rep" value="${iso(c.fecha)}"></label><button class="btn" data-acc="plan">📋 Plan completo</button><button class="btn" data-acc="ver" data-f="${clave(c.fecha)}">📅 Ver en el calendario</button></div>
-  </div></article>`;}
-function itemPac(o){const r=o.r,p=o.p;let est,cuerpo="",acc;
+  </div>`);}
+function itemPac(o){const r=o.r,p=o.p;
+  return fila(r,lista+"|"+r.id,lista==="pac"?"pac":"falta",()=>{let est,cuerpo="",acc;
   if(lista==="sin"){est=`<span class="mon-st st-falta">Sin fecha de inicio</span>`;cuerpo=`<div class="mon-li-ctrl">💊 Tratamiento: <b>${esc(r.tto||"—")}</b> · ${TPT.modoDe(r)==="sens"?"se monitoreará con la Tabla N° 13 (TB-DS)":"TB resistente: luego elija el esquema en el plan completo"}</div>`;
     acc=`<label class="lbl mon-li-ini">Fecha de inicio <input type="date" data-acc="ini"></label><button class="btn" data-acc="tpt">Ir a TPT</button>`;}
   else{const C=p?p.controles:[],venc=C.filter(c=>estado(c)[0]==="vencido").length,hech=C.filter(c=>c.completo).length,sig=C.find(c=>!c.completo),sv=sig&&estado(sig)[0]==="vencido";
@@ -229,17 +245,18 @@ function itemPac(o){const r=o.r,p=o.p;let est,cuerpo="",acc;
       <div><span>Próximo control</span><b>${sig?esc(sig.nombre)+" · "+fmtFecha(sig.fecha):"—"}</b>${sig?`<small class="${sv?"rojo":""}">${relTxt(sig.fecha,sv)}</small>`:""}</div><div><span>Último control</span><b>${C.length?fmtFecha(C[C.length-1].fecha):"—"}</b></div></div>
       ${avance(hech,C.length,"controles realizados")}`;
     acc=(lista==="noconf"?`<label class="mon-li-conf"><input type="checkbox" data-acc="conf"> Marcar inicio conforme</label>`:"")+`<button class="btn" data-acc="plan">📋 Plan completo</button>`+(sig?`<button class="btn" data-acc="ver" data-f="${clave(sig.fecha)}">📅 Ver próximo control</button>`:"");}
-  return `<article class="mon-li st-${lista==="pac"?"pac":"falta"}" data-id="${esc(r.id)}"><div class="mon-li-av">${esc(iniciales(r.nom))}</div><div class="mon-li-cuerpo">${cabLi(r,est)}${cuerpo}<div class="mon-acc no-print">${acc}</div></div></article>`;}
-function pintarLista(D){const def=LISTAS[lista],arr=D[lista],ctrl=LISTAS_CTRL.includes(lista),pl=(n,s,p)=>n+" "+(n===1?s:p);
+  return `<div class="mon-det" data-id="${esc(r.id)}">${cabDet(r,est)}${cuerpo}<div class="mon-acc no-print">${acc}</div></div>`;});}
+const claves=arr=>arr.map(e=>e.c?e.p.r.id+"|"+e.c.cid:lista+"|"+e.r.id);
+function pintarLista(D){const def=LISTAS[lista],arr=D[lista],ctrl=LISTAS_CTRL.includes(lista),pl=(n,s,p)=>n+" "+(n===1?s:p),todas=arr.length&&claves(arr).every(k=>abiertos.has(k));
   const kpi=ctrl?[[arr.length,arr.length===1?"control":"controles"],[new Set(arr.map(e=>e.p.r.id)).size,"pacientes"],lista==="ok"?[arr.reduce((s,e)=>s+e.c.hechos.length,0),"exámenes realizados"]:[arr.reduce((s,e)=>s+e.c.items.length-e.c.hechos.length,0),"exámenes por realizar"]]:[[arr.length,arr.length===1?"paciente":"pacientes"]];
   const f=$('monFiltro'),q=$('monBuscar').value.trim(),filtro=[f.value!=="todos"?f.options[f.selectedIndex].text:"",q?"búsqueda «"+q+"»":""].filter(Boolean).join(" · ");
   let html=`<section class="mon-lista l-${lista}"><header class="mon-lcab"><div class="mon-ltit"><span class="mon-lico">${def.ico}</span><div><h2>${def.t}</h2><p>${def.d}</p>${filtro?`<p class="mon-lfil">Filtro: ${esc(filtro)}</p>`:""}</div></div>
     <div class="mon-lkpi">${kpi.map(([n,t])=>`<div><b>${n}</b><span>${t}</span></div>`).join("")}</div>
-    <div class="mon-lbtn no-print"><button class="btn" data-l="xls">📥 Excel</button><button class="btn" data-l="imp">🖨 Imprimir</button><button class="btn" data-l="cerrar">✕ Volver al calendario</button></div></header>`;
+    <div class="mon-lbtn no-print">${arr.length?`<button class="btn" data-l="todos">${todas?"▲ Cerrar todos":"▼ Abrir todos"}</button>`:""}<button class="btn" data-l="xls">📥 Excel</button><button class="btn" data-l="imp">🖨 Imprimir</button><button class="btn" data-l="cerrar">✕ Volver al calendario</button></div></header>`;
   if(!arr.length)html+=`<div class="mon-vacio mon-lvacio">${def.vacio}</div>`;
   else if(ctrl){const cuenta={};arr.forEach(e=>{const k=clave(e.c.fecha);cuenta[k]=(cuenta[k]||0)+1;});let k0="";
     arr.forEach(e=>{const k=clave(e.c.fecha);if(k!==k0){k0=k;html+=`<div class="mon-lfecha"><b>${largo(e.c.fecha)}</b><span>${relTxt(e.c.fecha,lista==="venc")} · ${pl(cuenta[k],"control","controles")}</span></div>`;}html+=itemCtrl(e);});}
-  else html+=arr.map(itemPac).join("");
+  else html+=`<div class="mon-lfecha"><b>${lista==="pac"?"Pacientes":"Pacientes por atender"}</b><span>Haga clic en el nombre para ver el detalle</span></div>`+arr.map(itemPac).join("");
   $('monCal').innerHTML=html+"</section>";$('monMes').textContent=def.t;}
 function verDia(k){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(k||"");if(!m)return;diaSel=new Date(+m[1],+m[2]-1,+m[3]);mesVista=new Date(+m[1],+m[2]-1,1);lista=null;$('monVista').value="cal";render();
   if(window.innerWidth<900)$('monDia').scrollIntoView({behavior:"smooth",block:"start"});else window.scrollTo({top:0,behavior:"smooth"});}
@@ -286,7 +303,10 @@ function accion(e){const t=e.target,cont=t.closest('[data-id]');if(!cont)return;
   else if(acc==="rep"&&cambio){const f=deIso(t.value);if(!f)return;st.f=f;const d=parseFecha(f);if(!lista){diaSel=d;mesVista=new Date(d.getFullYear(),d.getMonth(),1);}guardar(r);msg(`N° ${r.n}: cita reprogramada al ${f}`);}}
 ['click','change'].forEach(tp=>{$('monDia').addEventListener(tp,accion);$('monPlan').addEventListener(tp,accion);$('monCal').addEventListener(tp,accion);});
 $('monResumen').addEventListener('click',e=>{const b=e.target.closest('[data-lista]');if(!b)return;lista=lista===b.dataset.lista?null:b.dataset.lista;render();});
-$('monCal').addEventListener('click',e=>{const b=e.target.closest('[data-l]');if(!b)return;if(b.dataset.l==="cerrar"){lista=null;render();}else if(b.dataset.l==="xls")exportarLista();else if(b.dataset.l==="imp")imprimir();});
+$('monCal').addEventListener('click',e=>{const fl=e.target.closest('[data-fila]');if(fl){const k=fl.dataset.fila;if(abiertos.has(k))abiertos.delete(k);else abiertos.add(k);render();return;}
+  const b=e.target.closest('[data-l]');if(!b)return;const a=b.dataset.l;
+  if(a==="cerrar"){lista=null;render();}else if(a==="xls")exportarLista();else if(a==="imp")imprimir();
+  else if(a==="todos"){const ks=claves(datosListas()[lista]),todas=ks.every(k=>abiertos.has(k));ks.forEach(k=>{if(todas)abiertos.delete(k);else abiertos.add(k);});render();}});
 $('monCal').addEventListener('click',e=>{if(e.target.closest('.mon-chip'))return;const d=e.target.closest('[data-dia]');if(!d)return;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d.dataset.dia);diaSel=new Date(+m[1],+m[2]-1,+m[3]);render();
   if(window.innerWidth<900)$('monDia').scrollIntoView({behavior:"smooth",block:"start"});});
 $('monPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);lista=null;$('monVista').value="cal";render();};
