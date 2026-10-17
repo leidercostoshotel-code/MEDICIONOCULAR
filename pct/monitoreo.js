@@ -139,11 +139,11 @@ const nom=r=>`N° ${esc(r.n)} · ${esc(r.nom||"(sin nombre)")}`;
 function chipsItems(c,editable){
   const por={};c.items.forEach(k=>{(por[EX[k][1]]=por[EX[k][1]]||[]).push(k);});
   return Object.keys(GRUPO).filter(g=>por[g]).map(g=>`<div class="mon-grupo g-${g}"><span class="mon-gt">${GRUPO[g]}</span>${por[g].map(k=>{const ok=c.hechos.includes(k);
-    return editable?`<label class="mon-ex${ok?' ok':''}"><input type="checkbox" data-pid="" data-k="${k}" ${ok?'checked':''}> ${esc(EX[k][0])}</label>`:`<span class="mon-ex${ok?' ok':''}">${ok?'✔ ':''}${esc(EX[k][0])}</span>`;}).join("")}</div>`).join("")+
+    return editable?`<label class="mon-ex${ok?' ok':''}"><input type="checkbox" data-k="${k}" ${ok?'checked':''}> <span>${esc(EX[k][0])}</span>${ok?'<em class="mon-hecho">✔ Realizado</em>':''}</label>`:`<span class="mon-ex${ok?' ok':''}">${ok?'✔ ':''}${esc(EX[k][0])}</span>`;}).join("")}</div>`).join("")+
     c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("");}
 function tarjeta(p,c){const [cls,txt]=estado(c),r=p.r;
   return `<div class="mon-card st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}">
-    <div class="mon-card-cab"><div><b>${nom(r)}</b><small>${esc(p.E.txt)} · ${esc(c.nombre)}${c.m===0?(r.f_ini_ok?' · <span class="conf-t ok">✔ inicio conforme</span>':' · <span class="conf-t pend">⚠ inicio sin conformidad</span>'):""}${c.movido?` · <i>${c.movido==="reprogramada"?"reprogramada":"pasó del "+esc(c.movido)}</i>`:""}</small></div><span class="mon-st st-${cls}">${txt}</span></div>
+    <div class="mon-card-cab"><div><b>${nom(r)}</b><small>${esc(p.E.txt)} · ${esc(c.nombre)}${c.m===0?(r.f_ini_ok?' · <span class="conf-t ok">✔ inicio conforme</span>':' · <span class="conf-t pend">'+(c.fecha>hoy0()?'inicio por confirmar':'⚠ inicio sin conformidad')+'</span>'):""}${c.movido?` · <i>${c.movido==="reprogramada"?"reprogramada":"pasó del "+esc(c.movido)}</i>`:""}</small></div><span class="mon-st st-${cls}">${txt}</span></div>
     <div class="mon-items">${chipsItems(c,true)}</div>
     <div class="mon-acc"><button class="btn primary" data-acc="todo">✔ Todo realizado</button>
       <label class="lbl">Reprogramar <input type="date" data-acc="rep" value="${iso(c.fecha)}"></label>
@@ -154,18 +154,24 @@ function pintarCal(ev){
   for(let i=0;i<offset;i++)html+=`<div class="mon-d vacio"></div>`;
   for(let d=1;d<=dias;d++){const f=new Date(y,mo,d),k=clave(f),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),fer=feriado(f);
     const venc=cs.some(e=>estado(e.c)[0]==="vencido");
-    html+=`<div class="mon-d${+f===+h?' hoy':''}${+f===+diaSel?' sel':''}${f.getDay()===0?' dom':''}${fer?' fer':''}${venc?' venc':''}" data-k="${k}" title="${fer?esc(fer):""}">
+    html+=`<div class="mon-d${+f===+h?' hoy':''}${+f===+diaSel?' sel':''}${f.getDay()===0?' dom':''}${fer?' fer':''}${venc?' venc':''}" data-dia="${k}" title="${fer?esc(fer):""}">
       <div class="mon-dnum">${d}${fer?`<span class="mon-fer">${esc(fer)}</span>`:""}</div>
-      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}">N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}</div>`).join("")}
+      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}">N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
       ${cs.length>3?`<div class="mon-mas">+${cs.length-3} más</div>`:""}
       ${hs.slice(0,2).map(e=>`<div class="mon-hito">◆ ${esc(e.h.txt)} · N° ${esc(e.h.r.n)}</div>`).join("")}${hs.length>2?`<div class="mon-mas">+${hs.length-2} fechas clave</div>`:""}
     </div>`;}
   $('monCal').innerHTML=html+"</div>";$('monMes').textContent=MESES_LARGO[mo]+" "+y;}
+function filaAgenda(e,fecha){const c=e.c,r=e.p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
+  return `<div class="mon-arow st-${cls}" data-dia="${clave(c.fecha)}" data-id="${esc(r.id)}" data-cid="${c.cid}">
+    <div class="mon-arow-cab">${fecha?`<b>${fmtFecha(c.fecha)}</b> `:""}<b>${nom(r)}</b> · ${esc(c.nombre)} · ${esc(e.p.E.txt)}
+      <span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt+(c.hechos.length?` · ${c.hechos.length}/${c.items.length}`:"")}</span></div>
+    <div class="mon-chips">${c.items.map(k=>{const ok=c.hechos.includes(k);return `<label class="mon-chip${ok?' ok':''}" title="${ok?'Realizado':'Falta · marque cuando se haga'}"><input type="checkbox" data-k="${k}" ${ok?'checked':''}>${esc(EX[k][0])}${ok?' · Realizado':''}</label>`;}).join("")}</div>
+    ${c.completo?"":`<small class="mon-falta">Falta: ${falta.map(k=>esc(EX[k][0])).join(" · ")}</small>`}</div>`;}
 function pintarAgenda(ev){const h=hoy0();let html="";
-  const venc=Object.entries(ev).flatMap(([k,l])=>l.filter(e=>e.tipo==="c"&&estado(e.c)[0]==="vencido").map(e=>e));
-  if(venc.length)html+=`<h3 class="mon-ah venc">Vencidos (${venc.length})</h3>`+venc.sort((a,b)=>a.c.fecha-b.c.fecha).map(e=>`<div class="mon-arow st-vencido" data-k="${clave(e.c.fecha)}"><b>${fmtFecha(e.c.fecha)}</b> ${nom(e.p.r)} · ${esc(e.c.nombre)} · ${e.c.items.length-e.c.hechos.length} pendiente(s)</div>`).join("");
+  const venc=Object.values(ev).flatMap(l=>l.filter(e=>e.tipo==="c"&&estado(e.c)[0]==="vencido"));
+  if(venc.length)html+=`<h3 class="mon-ah venc">Vencidos (${venc.length}) · controles con exámenes que faltan</h3>`+venc.sort((a,b)=>a.c.fecha-b.c.fecha).map(e=>filaAgenda(e,true)).join("");
   for(let i=0;i<=30;i++){const f=new Date(h.getFullYear(),h.getMonth(),h.getDate()+i),l=ev[clave(f)]||[];if(!l.length)continue;
-    html+=`<h3 class="mon-ah${i===0?' hoy':''}">${largo(f)}${i===0?" · HOY":""}</h3>`+l.map(e=>e.tipo==="c"?`<div class="mon-arow st-${estado(e.c)[0]}" data-k="${clave(f)}"><b>${nom(e.p.r)}</b> · ${esc(e.c.nombre)} · ${esc(e.p.E.txt)}<small>${e.c.items.map(k=>esc(EX[k][0])).join(" · ")}</small></div>`:`<div class="mon-arow hito" data-k="${clave(f)}">◆ ${esc(e.h.txt)} · ${nom(e.h.r)}</div>`).join("");}
+    html+=`<h3 class="mon-ah${i===0?' hoy':''}">${largo(f)}${i===0?" · HOY":""}</h3>`+l.map(e=>e.tipo==="c"?filaAgenda(e,false):`<div class="mon-arow hito" data-dia="${clave(f)}">◆ ${esc(e.h.txt)} · ${nom(e.h.r)}</div>`).join("");}
   $('monCal').innerHTML=html||`<div class="mon-vacio">No hay citas en los próximos 30 días.</div>`;$('monMes').textContent="Próximos 30 días";}
 function pintarDia(ev){const k=clave(diaSel),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),fer=feriado(diaSel);
   $('monDia').innerHTML=`<div class="mon-dcab"><b>${largo(diaSel)}</b><span>${cs.length} paciente(s) citado(s)${fer?" · Feriado: "+esc(fer):""}${diaSel.getDay()===0?" · Domingo":""}</span></div>`+
@@ -212,8 +218,8 @@ function accion(e){const t=e.target,cont=t.closest('[data-cid]');if(!cont)return
   if(acc==="todo"&&e.type==="click"){const p=plan(r),c=p&&p.controles.find(x=>x.cid===cont.dataset.cid);if(c)c.items.forEach(k=>{st.ok[k]=1;});guardar(r);msg(`N° ${r.n}: ${c?c.nombre.toLowerCase():"control"} realizado`);}
   else if(acc==="rep"&&e.type==="change"){const f=deIso(t.value);if(!f)return;st.f=f;guardar(r);const d=parseFecha(f);diaSel=d;mesVista=new Date(d.getFullYear(),d.getMonth(),1);render();msg(`N° ${r.n}: cita reprogramada al ${f}`);}
   else if(acc==="plan"&&e.type==="click")abrirPlan(r.id);}
-['click','change'].forEach(tp=>{$('monDia').addEventListener(tp,accion);$('monPlan').addEventListener(tp,accion);});
-$('monCal').addEventListener('click',e=>{const d=e.target.closest('[data-k]');if(!d)return;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d.dataset.k);diaSel=new Date(+m[1],+m[2]-1,+m[3]);render();
+['click','change'].forEach(tp=>{$('monDia').addEventListener(tp,accion);$('monPlan').addEventListener(tp,accion);$('monCal').addEventListener(tp,accion);});
+$('monCal').addEventListener('click',e=>{if(e.target.closest('.mon-chip'))return;const d=e.target.closest('[data-dia]');if(!d)return;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d.dataset.dia);diaSel=new Date(+m[1],+m[2]-1,+m[3]);render();
   if(window.innerWidth<900)$('monDia').scrollIntoView({behavior:"smooth",block:"start"});});
 $('monPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);$('monVista').value="cal";render();};
 $('monNext').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1);$('monVista').value="cal";render();};
