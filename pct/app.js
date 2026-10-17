@@ -35,7 +35,7 @@ function resaltar(txt,q){const toks=normTxt(q).trim().split(/\s+/).filter(Boolea
   while(i<txt.length){let hit=null;for(const t of toks){if(n.startsWith(t,i)&&(!hit||t.length>hit.length))hit=t;}
     if(hit){out+="<mark>"+esc(txt.slice(i,i+hit.length))+"</mark>";i+=hit.length;}else{out+=esc(txt[i]);i++;}}
   return out;}
-function nuevoRegistro(){return {id:uid(),n:"",nom:"",hc:"",dni:"",fn:"",edad:"",sexo:"",dx:"",peso:"",talla:"",tto:"",tpt_ind:"",tpt_esq:"",tto_sit:"",f_ini:"",tpt_obs:""};} // tpt_*, tto_sit, f_ini: pestaña TPT
+function nuevoRegistro(){return {id:uid(),n:"",nom:"",hc:"",dni:"",fn:"",edad:"",sexo:"",dx:"",peso:"",talla:"",tto:"",tpt_ind:"",tpt_esq:"",tto_sit:"",f_ini:"",f_ini_ok:"",tpt_obs:"",mon_esq:"",mon:{}};} // tpt_*, tto_sit, f_ini: pestaña TPT · mon_esq, mon: pestaña MONITOREO
 function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o[k]=r[k];}o.id=String(o.id||uid());o.n=parseInt(o.n);if(isNaN(o.n))o.n="";o.dni=String(o.dni||"").replace(/\D/g,"");return o;}
 
 /* ======================= PERSISTENCIA ======================= */

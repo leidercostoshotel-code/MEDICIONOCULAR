@@ -1,0 +1,91 @@
+/* PCT · Pestaña MONITOREO (calendario de seguimiento y monitoreo, NTS 221-2024) */
+.mon-bar .mon-mes{min-width:150px;text-align:center;font-size:15px;color:#1a2b3c}
+.mon-resumen{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 16px;background:#fff;border-bottom:1px solid #e3e8ec;font-size:12.5px}
+.mon-resumen .mr{background:#f1f4f6;border-radius:14px;padding:4px 10px;color:#37474f}
+.mon-resumen .mr.hoy{background:#e3f2fd;color:#0d47a1}.mon-resumen .mr.prox{background:#fff8e1;color:#7a5b00}.mon-resumen .mr.venc{background:#fdecea;color:#b00020}.mon-resumen .mr.falta{background:#fff3e0;color:#8a4b00}
+.mon-resumen .leyenda{margin-left:auto;background:transparent;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;font-size:11.5px;max-width:100%}
+.mon-resumen .leyenda i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-left:6px}
+.mon-cuerpo{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:12px;padding:12px 16px;align-items:start}
+@media (max-width:900px){.mon-cuerpo{grid-template-columns:minmax(0,1fr);padding:8px}.mon-d{min-height:64px;padding:3px}.mon-ev{font-size:9.5px;padding:1px 2px}.mon-hito,.mon-fer{display:none}}
+/* calendario */
+.mon-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.mon-dn{text-align:center;font-weight:bold;font-size:12px;color:#546e7a;padding:4px 0}
+.mon-d{background:#fff;border:1px solid #dfe5ea;border-radius:8px;min-height:104px;padding:4px 5px;cursor:pointer;overflow:hidden;transition:box-shadow .15s}
+.mon-d:hover{box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.mon-d.vacio{background:transparent;border:0;cursor:default}
+.mon-d.dom{background:#fafafa}.mon-d.fer{background:#fff7f0}
+.mon-d.hoy{border:2px solid #1e88e5}.mon-d.sel{box-shadow:0 0 0 3px #90caf9}.mon-d.venc .mon-dnum{color:#b00020}
+.mon-dnum{font-weight:bold;font-size:13px;color:#263238;display:flex;gap:4px;align-items:baseline;flex-wrap:wrap}
+.mon-fer{font-size:9.5px;font-weight:normal;color:#c25b00}
+.mon-ev{font-size:10.5px;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.mon-hito{font-size:10px;color:#6a1b9a;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mon-mas{font-size:10px;color:#607d8b}
+.st-prog{background:#5c7f9e}.st-prox{background:#f9a825}.st-hoy{background:#1e88e5}.st-vencido{background:#d32f2f}.st-ok{background:#43a047}
+.mon-ev.st-prox{color:#3e2b00}
+/* agenda */
+.mon-ah{font-size:13px;margin:14px 0 6px;color:#1F4E79;border-bottom:1px solid #dfe5ea;padding-bottom:3px}.mon-ah.hoy{color:#1e88e5}.mon-ah.venc{color:#b00020}
+.mon-arow{background:#fff;border:1px solid #dfe5ea;border-left:5px solid #5c7f9e;border-radius:6px;padding:6px 10px;margin-bottom:5px;font-size:12.5px;cursor:pointer}
+.mon-arow small{display:block;color:#607d8b;margin-top:2px}
+.mon-arow.st-prox{border-left-color:#f9a825;background:#fffdf5}.mon-arow.st-hoy{border-left-color:#1e88e5}.mon-arow.st-vencido{border-left-color:#d32f2f;background:#fff7f7}.mon-arow.st-ok{border-left-color:#43a047;opacity:.75}.mon-arow.hito{border-left-color:#8e24aa;color:#4a148c}
+.mon-arow.st-prog,.mon-arow.st-prox,.mon-arow.st-hoy,.mon-arow.st-vencido,.mon-arow.st-ok{color:#263238}
+/* detalle del día */
+.mon-der{position:sticky;top:calc(var(--tb,60px) + 8px);max-height:calc(100vh - var(--tb,60px) - 24px);overflow:auto}
+@media (max-width:900px){.mon-der{position:static;max-height:none}}
+.mon-dcab{background:#1F4E79;color:#fff;border-radius:10px 10px 0 0;padding:10px 12px}.mon-dcab b{display:block;font-size:15px}.mon-dcab span{font-size:12px;opacity:.9}
+.mon-hitos{background:#f3e5f5;color:#4a148c;padding:6px 12px;font-size:12px}
+.mon-vacio{background:#fff;border:1px dashed #cfd8dc;border-radius:0 0 10px 10px;padding:22px;text-align:center;color:#78909c;font-size:13px}
+.mon-card{background:#fff;border:1px solid #dfe5ea;border-left:6px solid #5c7f9e;border-radius:8px;margin-top:8px;padding:8px 10px}
+.mon-card.st-prox{border-left-color:#f9a825}.mon-card.st-hoy{border-left-color:#1e88e5}.mon-card.st-vencido{border-left-color:#d32f2f}.mon-card.st-ok{border-left-color:#43a047}
+.mon-card-cab{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.mon-card-cab small{display:block;color:#607d8b;font-size:11.5px}
+.mon-st{color:#fff;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:bold;white-space:nowrap}.mon-st.st-prox{color:#3e2b00}
+.mon-items{margin:6px 0}
+.mon-grupo{margin-top:4px}.mon-gt{display:block;font-size:10.5px;font-weight:bold;text-transform:uppercase;letter-spacing:.3px;margin-bottom:1px}
+.g-lab .mon-gt{color:#1565c0}.g-bac .mon-gt{color:#ad1457}.g-img .mon-gt{color:#00796b}.g-eva .mon-gt{color:#2e7d32}
+.mon-ex{display:flex;gap:6px;align-items:flex-start;font-size:12.5px;padding:1px 0;color:#263238;cursor:pointer}.mon-ex input{margin-top:2px}
+.mon-ex.ok{color:#2e7d32;text-decoration:line-through;text-decoration-color:#a5d6a7}
+span.mon-ex{display:block;cursor:default}
+.mon-nota{font-size:11px;color:#6d4c41;font-style:italic;margin-top:3px}
+.mon-acc{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid #eef1f3;padding-top:6px}.mon-acc input[type=date]{font:inherit;font-size:12px;padding:3px}
+/* plan completo */
+.mon-modal{z-index:380}
+.mon-plan{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.35);width:min(1000px,100%);max-height:92vh;overflow:auto;padding:16px 18px}
+.mon-pcab{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-bottom:2px solid #1F4E79;padding-bottom:8px}
+.mon-pcab h2{margin:0;font-size:18px;color:#1F4E79}.mon-psub{font-size:12.5px;color:#455a64;margin-top:2px}.mon-pbtn{display:flex;gap:6px}
+.mon-pinfo{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px;margin:10px 0}
+.mon-pinfo div{background:#f5f8fa;border-radius:6px;padding:6px 8px}.mon-pinfo span{display:block;font-size:10.5px;color:#78909c;text-transform:uppercase}.mon-pinfo b{font-size:12.5px;color:#1a2b3c}
+.mon-pinfo select{font:inherit;font-size:12px;max-width:100%}
+.mon-ptab{width:100%;border-collapse:collapse;font-size:12px}
+.mon-ptab th{background:#1F4E79;color:#fff;padding:6px;text-align:left}
+.mon-ptab td{border-bottom:1px solid #e3e8ec;padding:6px;vertical-align:top}
+.mon-ptab tr td:first-child{border-left:5px solid #5c7f9e;width:110px}
+.mon-ptab tr.st-prox td:first-child{border-left-color:#f9a825}.mon-ptab tr.st-hoy td:first-child{border-left-color:#1e88e5}.mon-ptab tr.st-vencido td:first-child{border-left-color:#d32f2f}.mon-ptab tr.st-ok td:first-child{border-left-color:#43a047}
+.mon-ptab tr{background:#fff!important}
+.mon-pf{width:120px}.mon-pf i{color:#c25b00;font-size:11px}.mon-pf input{font:inherit;font-size:11px;margin-top:3px;width:118px}
+.mon-ptab td:last-child{width:90px;text-align:center}
+.mon-pnotas{font-size:11.5px;color:#546e7a;margin-top:8px}
+.solo-print{display:none}
+a.tpt-plan{display:inline-block;margin-top:3px;font-size:11.5px;color:#1e88e5;text-decoration:none;font-weight:bold}a.tpt-plan:hover{text-decoration:underline}
+/* impresión: calendario del mes (horizontal) o plan del paciente (vertical) */
+@page mon{size:A4 landscape;margin:8mm}
+@page plan{size:A4 portrait;margin:10mm}
+@media print{
+  body.ver-mon #registro{display:none!important}
+  body.ver-mon #monitoreo{display:block!important;page:mon}
+  body.ver-mon .mon-der{display:none}
+  body.ver-mon .mon-imp-cab{display:block!important;border-bottom:2px solid #1F4E79;margin-bottom:6px;padding-bottom:4px}
+  .mon-imp-cab b{display:block;font-size:16px;color:#1F4E79}.mon-imp-cab span{font-size:10px;color:#546e7a}
+  .mon-ptab th,.mon-pinfo div,.mon-ptab tr td:first-child{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.ver-mon .mon-cuerpo{display:block;padding:0}
+  .mon-d{min-height:80px;break-inside:avoid}
+  .mon-ev,.mon-st,.mon-resumen .leyenda i,.st-prog,.st-prox,.st-hoy,.st-vencido,.st-ok{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.imp-plan>*:not(#monModal){display:none!important}
+  body.imp-plan #monModal{display:block!important;position:static;background:#fff;padding:0;backdrop-filter:none;page:plan}
+  body.imp-plan .mon-plan{box-shadow:none;max-height:none;overflow:visible;width:100%;padding:0;border-radius:0}
+  body.imp-plan .solo-print{display:inline}
+  body.imp-plan .no-print-sel{display:none}
+  .mon-ptab tr{break-inside:avoid}
+  .mon-ex input{display:none}
+}
+.mon-pinfo div small{display:block;font-size:11px;margin-top:2px}.mon-pinfo .conf-ok small{color:#2e7d32;font-weight:bold}.mon-pinfo .conf-pend small{color:#c25b00;font-weight:bold}
+.mon-pinfo label{display:flex;gap:4px;align-items:center;font-size:11.5px;margin-top:3px;cursor:pointer}
+.conf-t.ok{color:#2e7d32;font-weight:bold}.conf-t.pend{color:#c25b00;font-weight:bold}
