@@ -83,6 +83,11 @@ Segunda aplicación del mismo proyecto Firebase, en la carpeta `pct/`, con la mi
   - Contactos (tratamiento «con»): terapia preventiva según el caso índice: TB-DS → 3HP en mayores de 2 años (Tablas N° 3 y 4), 3HR en DFC dispersable en 2 años o menos (Tabla N° 5), con opción de 3HR monofármacos, 6H o 4R; TB-Hr → 4R (Tabla N° 6); TB-RR/MDR → 6Lfx (Tabla N° 7); pre-XDR/XDR → no indicada. Con H se agrega piridoxina 50 mg por dosis.
   - Esquema sensible (tratamiento «sensible»): 2HREZ/4HR (150 dosis, lunes a sábado) con tabletas DFC por peso (Tablas N° 11 y 12) y las variantes de la pág. 36 (miliar/SNC/osteoarticular: 2ª fase de 10 meses; TB no grave en niños: 2ª fase de 2 meses).
   - Con la fecha de inicio calcula la 12ª dosis semanal o el término (TPT), y el fin de la 1ª fase, el inicio de la 2ª y el término (esquema sensible). Peso, tratamiento y datos de TPT se guardan en el paciente (Firestore `pct_pacientes`). Exporta a Excel e imprime en A4 horizontal.
+  - Junto a la fecha de inicio, el check **Conforme** confirma que el inicio ya se dio (guarda la fecha de conformidad).
+- **MONITOREO** (`pct/monitoreo.js`, `pct/monitoreo.css`): calendario de seguimiento que empieza con la fecha de inicio puesta en TPT. Para cada paciente arma solo el estudio basal y los controles mensuales con los exámenes y evaluaciones de la NTS 221-2024: Tabla N° 13 (esquema sensible, pág. 37, con las variantes de 4 y 12 meses), Tabla N° 15 (TB-Hr, págs. 39–40), Tabla N° 16 (BPaLM/BPaL/BLC/modificado, pág. 43) y Tabla N° 17 (BLCC/XDR/modificado, págs. 44–45). Las citas que caen domingo o feriado nacional pasan al siguiente día hábil.
+  - Vista de calendario del mes y agenda de 30 días; al hacer clic en un día se ven los pacientes citados con sus exámenes agrupados (laboratorio, bacteriología, imágenes/ECG, evaluaciones), para marcarlos como realizados, reprogramar la cita o abrir el plan completo.
+  - Estados: programado, próximo (7 días), hoy, vencido y realizado; resumen de citas de hoy, de la semana, vencidas, inicios sin conformidad y pacientes sin fecha de inicio.
+  - Plan completo por paciente (esquema de monitoreo editable en TB resistente), impresión del calendario (A4 horizontal) y del plan (A4 vertical), y exportación a Excel. Se guarda en el paciente (`mon_esq`, `mon`).
 
 ### Publicar PCT (una sola vez, crear el sitio)
 
