@@ -89,7 +89,7 @@ function plan(r){
     if(m===0&&T.filas.esp)notas.push("Evaluación por especialidad: luego, según indicación médica.");
     const base=m===0?new Date(ini):masMeses(ini,m),aj=habil(base),st=est["m"+m]||{};
     const rep=parseFecha(st.f);const fecha=rep||aj.f;const hechos=items.filter(k=>st.ok&&st.ok[k]);
-    controles.push({m,cid:"m"+m,nombre:m===0?"Estudio basal":`Control del mes ${m}`,fecha,base,movido:rep?"reprogramada":aj.motivo,items,hechos,notas,
+    controles.push({m,cid:"m"+m,nombre:m===0?"Estudio basal":`Control del mes ${m}`,fecha,base,movido:rep?"reprogramada":aj.motivo,hist:Array.isArray(st.hist)?st.hist:[],items,hechos,notas,
       completo:items.length>0&&hechos.length===items.length});
   }
   return {r,id,E,T,meses,ini,controles,fin:masMeses(ini,meses)};
@@ -121,7 +121,8 @@ $('tpt').insertAdjacentHTML('afterend',`
     <aside class="mon-der" id="monDia"></aside>
   </div>
 </div>
-<div class="dlg-fondo mon-modal no-print" id="monModal"><div class="mon-plan" role="dialog" aria-modal="true"><div id="monPlan"></div></div></div>`);
+<div class="dlg-fondo mon-modal no-print" id="monModal"><div class="mon-plan" role="dialog" aria-modal="true"><div id="monPlan"></div></div></div>
+<div class="dlg-fondo mon-repmodal no-print" id="monRepModal"><div class="mon-rep" role="dialog" aria-modal="true" aria-label="Reprogramar cita"><div id="monRep"></div></div></div>`);
 let mesVista=(()=>{const h=new Date();return new Date(h.getFullYear(),h.getMonth(),1);})(),diaSel=hoy0(),planAbierto=null;
 
 /* ======================= DATOS DEL CALENDARIO ======================= */
@@ -130,7 +131,9 @@ function filtrar(r){const f=$('monFiltro').value,q=normTxt($('monBuscar').value)
   if(f==="ds")return m==="sens";if(f==="dr")return m==="otro";if(f==="tpt")return m==="tpt";return true;}
 function eventos(){ // {clave: [{tipo:'c', p, c} | {tipo:'h', h}]}
   const ev={},add=(d,o)=>{(ev[clave(d)]=ev[clave(d)]||[]).push(o);};
-  pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(p)p.controles.forEach(c=>add(c.fecha,{tipo:"c",p,c}));hitos(r).forEach(h=>{if(h.f)add(h.f,{tipo:"h",h});});});
+  pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(p)p.controles.forEach(c=>{add(c.fecha,{tipo:"c",p,c});
+      const vistos=new Set([clave(c.fecha)]);c.hist.forEach(x=>{const d=parseFecha(x.de);if(d&&!vistos.has(clave(d))){vistos.add(clave(d));add(d,{tipo:"m",p,c,x});}});}); // «m» = cita que se reprogramó a otro día
+    hitos(r).forEach(h=>{if(h.f)add(h.f,{tipo:"h",h});});});
   return ev;}
 
 /* ======================= DIBUJO ======================= */
@@ -142,15 +145,15 @@ function chipsItems(c,editable){
     c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("");}
 function tarjeta(p,c){const [cls,txt]=estado(c),r=p.r;
   return `<div class="mon-card st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}">
-    <div class="mon-card-cab"><div><b>${nom(r)}</b><small>${esc(p.E.txt)} · ${esc(c.nombre)}${c.m===0?(r.f_ini_ok?' · <span class="conf-t ok">✔ inicio conforme</span>':' · <span class="conf-t pend">'+(c.fecha>hoy0()?'inicio por confirmar':'⚠ inicio sin conformidad')+'</span>'):""}${c.movido?` · <i>${c.movido==="reprogramada"?"reprogramada":"pasó del "+esc(c.movido)}</i>`:""}</small></div><span class="mon-st st-${cls}">${txt}</span></div>
+    <div class="mon-card-cab"><div><b>${nom(r)}</b><small>${esc(p.E.txt)} · ${esc(c.nombre)}${c.m===0?(r.f_ini_ok?' · <span class="conf-t ok">✔ inicio conforme</span>':' · <span class="conf-t pend">'+(c.fecha>hoy0()?'inicio por confirmar':'⚠ inicio sin conformidad')+'</span>'):""}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</small></div><span class="mon-st st-${cls}">${txt}</span></div>
     <div class="mon-items">${chipsItems(c,true)}</div>
     <div class="mon-acc"><button class="btn primary" data-acc="todo">✔ Todo realizado</button>
-      <label class="lbl">Reprogramar <input type="date" data-acc="rep" value="${iso(c.fecha)}"></label>
+      ${c.completo?"":`<button class="btn mon-btn-rep" data-acc="repro" title="Cambiar la cita a otro día (falta de tiempo, no acudió, etc.)">↪ Reprogramar</button>`}
       <button class="btn" data-acc="plan">📋 Plan completo</button></div></div>`;}
 function cabCal(tit,sub,stats){ // encabezado de color del calendario y de la agenda, con el resumen del periodo
   return `<div class="mon-calcab"><div class="mon-calt"><span class="mon-calico">📅</span><div><h2>${tit}</h2><p>${sub}</p></div></div>
     <div class="mon-calstats">${stats.map(([n,t,c])=>`<span class="${c||""}"><b>${n}</b>${t}</span>`).join("")}</div></div>`;}
-function cuentaEv(lst){const pac=new Set();let c=0,ok=0,v=0,hi=0;lst.forEach(e=>{if(e.tipo==="h"){hi++;return;}c++;pac.add(e.p.r.id);const s=estado(e.c)[0];if(s==="ok")ok++;else if(s==="vencido")v++;});return {c,pac:pac.size,ok,v,hi};}
+function cuentaEv(lst){const pac=new Set();let c=0,ok=0,v=0,hi=0;lst.forEach(e=>{if(e.tipo==="m")return;if(e.tipo==="h"){hi++;return;}c++;pac.add(e.p.r.id);const s=estado(e.c)[0];if(s==="ok")ok++;else if(s==="vencido")v++;});return {c,pac:pac.size,ok,v,hi};}
 function pintarCal(ev){
   const y=mesVista.getFullYear(),mo=mesVista.getMonth(),prim=new Date(y,mo,1),offset=(prim.getDay()+6)%7,dias=new Date(y,mo+1,0).getDate(),h=hoy0(),antes=new Date(y,mo,0).getDate();
   const n=cuentaEv([].concat(...Array.from({length:dias},(_,i)=>ev[clave(new Date(y,mo,i+1))]||[])));
@@ -158,12 +161,13 @@ function pintarCal(ev){
       [[n.c,n.c===1?"cita":"citas"],[n.pac,n.pac===1?"paciente":"pacientes"],[n.ok,"realizadas","ok"],[n.v,"vencidas","venc"],[n.hi,"fechas clave","hito"]])+
     `<div class="mon-semana">${DIAS_C.map((d,i)=>`<div class="${i===6?"dom":""}">${d}</div>`).join("")}</div><div class="mon-grid">`;
   for(let i=0;i<offset;i++)html+=`<div class="mon-d vacio"><div class="mon-dnum"><span class="mon-n">${antes-offset+1+i}</span></div></div>`;
-  for(let d=1;d<=dias;d++){const f=new Date(y,mo,d),k=clave(f),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),fer=feriado(f);
+  for(let d=1;d<=dias;d++){const f=new Date(y,mo,d),k=clave(f),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),ms=l.filter(e=>e.tipo==="m"),fer=feriado(f);
     const venc=cs.some(e=>estado(e.c)[0]==="vencido");
     html+=`<div class="mon-d${+f===+h?' hoy':''}${+f===+diaSel?' sel':''}${f.getDay()===0?' dom':''}${fer?' fer':''}${venc?' venc':''}" data-dia="${k}" title="${fer?esc(fer):""}">
       <div class="mon-dnum"><span class="mon-n">${d}</span>${cs.length?`<span class="mon-cnt" title="${cs.length} paciente(s) citado(s)">${cs.length}</span>`:""}${fer?`<span class="mon-fer">${esc(fer)}</span>`:""}</div>
-      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}">N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
+      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}">${e.c.movido==="reprogramada"?"↪ ":""}N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
       ${cs.length>3?`<div class="mon-mas">+${cs.length-3} más</div>`:""}
+      ${ms.slice(0,2).map(e=>`<div class="mon-ev movida" title="Cita reprogramada al ${fmtFecha(e.c.fecha)}">N° ${esc(e.p.r.n)} ↪ ${p2(e.c.fecha.getDate())}/${p2(e.c.fecha.getMonth()+1)}</div>`).join("")}${ms.length>2?`<div class="mon-mas">+${ms.length-2} reprogramadas</div>`:""}
       ${hs.slice(0,2).map(e=>`<div class="mon-hito">◆ ${esc(e.h.txt)} · N° ${esc(e.h.r.n)}</div>`).join("")}${hs.length>2?`<div class="mon-mas">+${hs.length-2} fechas clave</div>`:""}
     </div>`;}
   const resto=(7-(offset+dias)%7)%7;for(let i=1;i<=resto;i++)html+=`<div class="mon-d vacio"><div class="mon-dnum"><span class="mon-n">${i}</span></div></div>`;
@@ -174,23 +178,25 @@ function filaAgenda(e,fecha){const c=e.c,r=e.p.r,[cls,txt]=estado(c),falta=c.ite
     <div class="mon-arow-cab">${fecha?`<b>${fmtFecha(c.fecha)}</b> `:""}<b>${nom(r)}</b> · ${esc(c.nombre)} · ${esc(e.p.E.txt)}
       <span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt+(c.hechos.length?` · ${c.hechos.length}/${c.items.length}`:"")}</span></div>
     ${chips(c)}
-    ${c.completo?"":`<small class="mon-falta">Falta: ${falta.map(k=>esc(EX[k][0])).join(" · ")}</small>`}</div>`;}
+    ${c.completo?"":`<small class="mon-falta">Falta: ${falta.map(k=>esc(EX[k][0])).join(" · ")}</small><div class="mon-arow-acc no-print"><button class="btn mon-btn-rep" data-acc="repro">↪ Reprogramar</button></div>`}</div>`;}
 function pintarAgenda(ev){const h=hoy0(),fin=new Date(h.getFullYear(),h.getMonth(),h.getDate()+30);let html="",todo=[];
   const venc=Object.values(ev).flatMap(l=>l.filter(e=>e.tipo==="c"&&estado(e.c)[0]==="vencido"));
   if(venc.length)html+=`<h3 class="mon-ah venc"><span>⚠ Vencidos</span><small>${venc.length} control${venc.length>1?"es":""} con exámenes que faltan</small></h3>`+venc.sort((a,b)=>a.c.fecha-b.c.fecha).map(e=>filaAgenda(e,true)).join("");
-  for(let i=0;i<=30;i++){const f=new Date(h.getFullYear(),h.getMonth(),h.getDate()+i),l=ev[clave(f)]||[];if(!l.length)continue;todo=todo.concat(l);const nc=l.filter(e=>e.tipo==="c").length;
-    html+=`<h3 class="mon-ah${i===0?' hoy':''}"><span>${largo(f)}${i===0?" · HOY":""}</span><small>${nc?nc+" paciente"+(nc>1?"s":"")+" citado"+(nc>1?"s":""):"fecha clave"}</small></h3>`+l.map(e=>e.tipo==="c"?filaAgenda(e,false):`<div class="mon-arow hito" data-dia="${clave(f)}">◆ ${esc(e.h.txt)} · ${nom(e.h.r)}</div>`).join("");}
+  for(let i=0;i<=30;i++){const f=new Date(h.getFullYear(),h.getMonth(),h.getDate()+i),l=ev[clave(f)]||[];if(!l.length)continue;todo=todo.concat(l);const nc=l.filter(e=>e.tipo==="c").length,nm=l.filter(e=>e.tipo==="m").length;
+    html+=`<h3 class="mon-ah${i===0?' hoy':''}"><span>${largo(f)}${i===0?" · HOY":""}</span><small>${nc?nc+" paciente"+(nc>1?"s":"")+" citado"+(nc>1?"s":""):nm?"citas pasadas a otro día":"fecha clave"}</small></h3>`+l.map(e=>e.tipo==="c"?filaAgenda(e,false):e.tipo==="m"?`<div class="mon-arow movida" data-dia="${clave(e.c.fecha)}">↪ ${nom(e.p.r)} · ${esc(e.c.nombre)}: reprogramada al <b>${largo(e.c.fecha)}</b>${e.x.mot?` · ${esc(e.x.mot)}`:""}</div>`:`<div class="mon-arow hito" data-dia="${clave(f)}">◆ ${esc(e.h.txt)} · ${nom(e.h.r)}</div>`).join("");}
   const n=cuentaEv(todo);
   $('monCal').innerHTML=`<div class="mon-calcard agenda">`+cabCal("Agenda · próximos 30 días",`Del ${fmtFecha(h)} al ${fmtFecha(fin)} · NTS N° 221-MINSA/DGIESP-2024`,
       [[n.c,n.c===1?"cita":"citas"],[n.pac,n.pac===1?"paciente":"pacientes"],[n.ok,"realizadas","ok"],[venc.length,"vencidas","venc"],[n.hi,"fechas clave","hito"]])+
     `<div class="mon-agbody">${html||`<div class="mon-vacio">No hay citas en los próximos 30 días.</div>`}</div></div>`;$('monMes').textContent="Próximos 30 días";}
-function pintarDia(ev){const k=clave(diaSel),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),fer=feriado(diaSel);
-  $('monDia').innerHTML=`<div class="mon-dcab"><b>${largo(diaSel)}</b><span>${cs.length} paciente(s) citado(s)${fer?" · Feriado: "+esc(fer):""}${diaSel.getDay()===0?" · Domingo":""}</span></div>`+
+function pintarDia(ev){const k=clave(diaSel),l=ev[k]||[],cs=l.filter(e=>e.tipo==="c"),hs=l.filter(e=>e.tipo==="h"),ms=l.filter(e=>e.tipo==="m"),fer=feriado(diaSel),pend=cs.filter(e=>!e.c.completo).length;
+  $('monDia').innerHTML=`<div class="mon-dcab"><b>${largo(diaSel)}</b><span>${cs.length} paciente(s) citado(s)${fer?" · Feriado: "+esc(fer):""}${diaSel.getDay()===0?" · Domingo":""}</span>
+      ${pend?`<button class="btn mon-btn-repdia no-print" data-repdia="1" title="Si no alcanzó el tiempo: pasa a otro día todas las citas de este día que faltan">↪ Reprogramar pendientes del día (${pend})</button>`:""}</div>`+
     (hs.length?`<div class="mon-hitos">${hs.map(e=>`<div>◆ <b>${esc(e.h.txt)}</b> · ${nom(e.h.r)}</div>`).join("")}</div>`:"")+
+    (ms.length?`<div class="mon-movidas">${ms.map(e=>`<div>↪ <b>${nom(e.p.r)}</b> · ${esc(e.c.nombre)}: reprogramada al <b>${largo(e.c.fecha)}</b>${e.x.mot?` · ${esc(e.x.mot)}`:""} <button type="button" class="mon-link" data-ver="${clave(e.c.fecha)}">ver</button></div>`).join("")}</div>`:"")+
     (cs.length?cs.map(e=>tarjeta(e.p,e.c)).join(""):`<div class="mon-vacio">No hay controles programados este día.<br><small>Haga clic en un día del calendario para ver sus citas.</small></div>`);}
 function pintarResumen(D){ // indicadores = leyenda de colores; cada uno abre su lista detallada
   const b=(k,cls,txt,dot)=>`<button type="button" class="mr ${cls}${lista===k?' activo':''}" data-lista="${k}" title="Ver la lista detallada">${dot?`<i class="st-${dot}"></i>`:""}${txt}: <b>${D[k].length}</b></button>`;
-  $('monResumen').innerHTML=b("hoy","hoy","Hoy","hoy")+b("prox","prox","Próximos 7 días","prox")+b("venc","venc","Vencidos","vencido")+b("prog","prog","Programados","prog")+b("ok","ok","Realizados","ok")+b("pac","pac","Pacientes con plan")+
+  $('monResumen').innerHTML=b("hoy","hoy","Hoy","hoy")+b("prox","prox","Próximos 7 días","prox")+b("venc","venc","Vencidos","vencido")+b("prog","prog","Programados","prog")+b("ok","ok","Realizados","ok")+(D.repro.length||lista==="repro"?b("repro","repro","Reprogramadas"):"")+b("pac","pac","Pacientes con plan")+
     (D.noconf.length||lista==="noconf"?b("noconf","falta","Inicio sin conformidad"):"")+(D.sin.length||lista==="sin"?b("sin","falta","Sin fecha de inicio"):"")+
     `<span class="mr-ayuda no-print">👆 Haga clic en un indicador para ver la lista detallada</span>`;}
 
@@ -203,16 +209,18 @@ const LISTAS={
   ok:{t:"Controles realizados",ico:"✅",d:"Controles con todos sus exámenes y evaluaciones marcados como realizados.",vacio:"Todavía no hay controles completos.<br><small>Marque los exámenes en el calendario, la agenda o el plan del paciente.</small>"},
   pac:{t:"Pacientes con plan de monitoreo",ico:"👥",d:"Avance de cada paciente: controles realizados, vencidos y su próxima cita.",vacio:"Ningún paciente tiene plan: ponga la fecha de inicio en la pestaña TPT."},
   noconf:{t:"Inicio sin conformidad",ico:"☑️",d:"La fecha de inicio ya pasó y falta marcar la conformidad del médico.",vacio:"Todos los inicios tienen conformidad. ✔"},
+  repro:{t:"Citas reprogramadas",ico:"↪️",d:"Controles pendientes que se pasaron a otro día: fecha anterior, nueva fecha y motivo.",vacio:"No hay citas reprogramadas pendientes."},
   sin:{t:"Sin fecha de inicio",ico:"✏️",d:"Pacientes en tratamiento sin fecha de inicio: escríbala aquí y el plan de monitoreo se arma solo.",vacio:"Todos los pacientes en tratamiento tienen fecha de inicio. ✔"}};
-const LISTAS_CTRL=["hoy","prox","venc","prog","ok"];
+const LISTAS_CTRL=["hoy","prox","venc","prog","ok","repro"];
 let lista=null;
 function datosListas(){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7);const D={};Object.keys(LISTAS).forEach(k=>{D[k]=[];});
   pacientes.filter(filtrar).forEach(r=>{const m=TPT.modoDe(r),p=plan(r);
     if(p){D.pac.push({r,p});p.controles.forEach(c=>{const e={p,c},s=estado(c)[0];
+      if(c.movido==="reprogramada"&&!c.completo)D.repro.push(e);
       if(s==="ok")D.ok.push(e);else if(s==="vencido")D.venc.push(e);else{if(s==="hoy")D.hoy.push(e);if(c.fecha<=sem)D.prox.push(e);else D.prog.push(e);}});}
     if(m==="sens"||m==="otro"){const ini=parseFecha(r.f_ini);if(!ini)D.sin.push({r,p});else if(!r.f_ini_ok&&ini<=h)D.noconf.push({r,p});}});
   const porN=(a,b)=>(+a.n||0)-(+b.n||0),porF=(a,b)=>a.c.fecha-b.c.fecha||porN(a.p.r,b.p.r);
-  ["hoy","prox","venc","prog"].forEach(k=>D[k].sort(porF));D.ok.sort((a,b)=>porF(b,a)); // realizados: lo más reciente primero
+  ["hoy","prox","venc","prog","repro"].forEach(k=>D[k].sort(porF));D.ok.sort((a,b)=>porF(b,a)); // realizados: lo más reciente primero
   ["pac","noconf","sin"].forEach(k=>D[k].sort((a,b)=>porN(a.r,b.r)));
   return D;}
 const dias=d=>Math.round((d-hoy0())/864e5);
@@ -230,10 +238,10 @@ function fila(r,key,cls,detalle){const ab=abiertos.has(key);
 function itemCtrl(e){const c=e.c,p=e.p,r=p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
   return fila(r,r.id+"|"+c.cid,cls,()=>`<div class="mon-det" data-id="${esc(r.id)}" data-cid="${c.cid}">
     ${cabDet(r,`<span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt}</span><small>${relTxt(c.fecha,cls==="vencido")}</small>`)}
-    <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${esc(r.f_ini)} ${confTxt(r)}${c.movido?` · <i>${c.movido==="reprogramada"?"cita reprogramada":"pasó del "+esc(c.movido)}</i>`:""}</div>
+    <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${esc(r.f_ini)} ${confTxt(r)}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</div>
     ${avance(c.hechos.length,c.items.length,"exámenes y evaluaciones realizados")}${chips(c)}
-    ${falta.length?`<div class="mon-li-falta"><b>Falta (${falta.length}):</b> ${falta.map(k=>esc(EX[k][0])).join(" · ")}</div>`:""}${c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("")}
-    <div class="mon-acc no-print">${c.completo?"":`<button class="btn primary" data-acc="todo">✔ Todo realizado</button>`}<label class="lbl">Reprogramar <input type="date" data-acc="rep" value="${iso(c.fecha)}"></label><button class="btn" data-acc="plan">📋 Plan completo</button><button class="btn" data-acc="ver" data-f="${clave(c.fecha)}">📅 Ver en el calendario</button></div>
+    ${falta.length?`<div class="mon-li-falta"><b>Falta (${falta.length}):</b> ${falta.map(k=>esc(EX[k][0])).join(" · ")}</div>`:""}${c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("")}${c.hist.length?histHtml(c):""}
+    <div class="mon-acc no-print">${c.completo?"":`<button class="btn primary" data-acc="todo">✔ Todo realizado</button>`}${c.completo?"":`<button class="btn mon-btn-rep" data-acc="repro">↪ Reprogramar</button>`}<button class="btn" data-acc="plan">📋 Plan completo</button><button class="btn" data-acc="ver" data-f="${clave(c.fecha)}">📅 Ver en el calendario</button></div>
   </div>`);}
 function itemPac(o){const r=o.r,p=o.p;
   return fila(r,lista+"|"+r.id,lista==="pac"?"pac":"falta",()=>{let est,cuerpo="",acc;
@@ -279,7 +287,7 @@ function abrirPlan(id,refrescar){const r=pacientes.find(x=>x.id===id);if(!r)retu
       <div class="${r.f_ini_ok?'conf-ok':'conf-pend'}"><span>Inicio</span><b>${fmtFecha(p.ini)}</b><small>${r.f_ini_ok?"✔ Inicio conforme ("+esc(r.f_ini_ok)+")":"⚠ Inicio sin conformidad"}</small><label class="no-print"><input type="checkbox" id="monConf" ${r.f_ini_ok?'checked':''}> Conforme</label></div>${h.map(x=>`<div><span>${esc(x.txt)}</span><b>${x.f?fmtFecha(x.f):"—"}</b></div>`).join("")}
       <div><span>Monitoreo</span><b>${esc(p.T.nombre)} (${p.T.pag})</b></div></div>
       <table class="mon-ptab"><thead><tr><th>Control</th><th>Fecha</th><th>Exámenes y evaluaciones</th><th>Estado</th></tr></thead><tbody>${p.controles.map(c=>{const [cls,txt]=estado(c);
-        return `<tr class="st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}"><td><b>${esc(c.nombre)}</b></td><td class="mon-pf"><b>${fmtFecha(c.fecha)}</b><br>${DIAS[c.fecha.getDay()]}${c.movido?`<br><i>${c.movido==="reprogramada"?"reprogramada":"pasó del "+esc(c.movido)}</i>`:""}<br><input type="date" class="no-print" data-acc="rep" value="${iso(c.fecha)}" title="Reprogramar"></td>
+        return `<tr class="st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}"><td><b>${esc(c.nombre)}</b></td><td class="mon-pf"><b>${fmtFecha(c.fecha)}</b><br>${DIAS[c.fecha.getDay()]}${c.movido?`<br><i class="mon-mov">${movTxt(c)}</i>`:""}${c.completo?"":`<br><button class="btn no-print mon-btn-rep" data-acc="repro">↪ Reprogramar</button>`}</td>
           <td>${chipsItems(c,true)}</td><td><span class="mon-st st-${cls}">${txt}</span><br><small>${c.hechos.length}/${c.items.length}</small><br><button class="btn no-print" data-acc="todo">✔ Todo</button></td></tr>`;}).join("")}</tbody></table>
       <div class="mon-pnotas">${p.T.notas.map(n=>`<div>• ${esc(n)}</div>`).join("")}<div>• Las citas que caen domingo o feriado pasan al siguiente día hábil. Fuente: NTS N° 221-MINSA/DGIESP-2024.</div></div>`;}
   if(!refrescar)$('monModal').classList.add('abierto');
@@ -300,32 +308,79 @@ function accion(e){const t=e.target,cont=t.closest('[data-id]');if(!cont)return;
   r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[cont.dataset.cid]=r.mon[cont.dataset.cid]||{};st.ok=st.ok||{};
   if(t.matches('input[type=checkbox][data-k]')){if(!cambio)return;if(t.checked)st.ok[t.dataset.k]=1;else delete st.ok[t.dataset.k];guardar(r);return;}
   if(acc==="todo"&&clic){const p=plan(r),c=p&&p.controles.find(x=>x.cid===cont.dataset.cid);if(c)c.items.forEach(k=>{st.ok[k]=1;});guardar(r);msg(`N° ${r.n}: ${c?c.nombre.toLowerCase():"control"} realizado`);}
-  else if(acc==="rep"&&cambio){const f=deIso(t.value);if(!f)return;st.f=f;const d=parseFecha(f);if(!lista){diaSel=d;mesVista=new Date(d.getFullYear(),d.getMonth(),1);}guardar(r);msg(`N° ${r.n}: cita reprogramada al ${f}`);}}
+  else if(acc==="repro"&&clic)abrirRepro([{id:r.id,cid:cont.dataset.cid}]);}
 ['click','change'].forEach(tp=>{$('monDia').addEventListener(tp,accion);$('monPlan').addEventListener(tp,accion);$('monCal').addEventListener(tp,accion);});
 $('monResumen').addEventListener('click',e=>{const b=e.target.closest('[data-lista]');if(!b)return;lista=lista===b.dataset.lista?null:b.dataset.lista;render();});
 $('monCal').addEventListener('click',e=>{const fl=e.target.closest('[data-fila]');if(fl){const k=fl.dataset.fila;if(abiertos.has(k))abiertos.delete(k);else abiertos.add(k);render();return;}
   const b=e.target.closest('[data-l]');if(!b)return;const a=b.dataset.l;
   if(a==="cerrar"){lista=null;render();}else if(a==="xls")exportarLista();else if(a==="imp")imprimir();
   else if(a==="todos"){const ks=claves(datosListas()[lista]),todas=ks.every(k=>abiertos.has(k));ks.forEach(k=>{if(todas)abiertos.delete(k);else abiertos.add(k);});render();}});
-$('monCal').addEventListener('click',e=>{if(e.target.closest('.mon-chip'))return;const d=e.target.closest('[data-dia]');if(!d)return;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d.dataset.dia);diaSel=new Date(+m[1],+m[2]-1,+m[3]);render();
+$('monCal').addEventListener('click',e=>{if(e.target.closest('.mon-chip,[data-acc]'))return;const d=e.target.closest('[data-dia]');if(!d)return;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d.dataset.dia);diaSel=new Date(+m[1],+m[2]-1,+m[3]);render();
   if(window.innerWidth<900)$('monDia').scrollIntoView({behavior:"smooth",block:"start"});});
 $('monPrev').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()-1,1);lista=null;$('monVista').value="cal";render();};
 $('monNext').onclick=()=>{mesVista=new Date(mesVista.getFullYear(),mesVista.getMonth()+1,1);lista=null;$('monVista').value="cal";render();};
 $('monHoy').onclick=()=>{const h=hoy0();diaSel=h;mesVista=new Date(h.getFullYear(),h.getMonth(),1);lista=null;render();};
 $('monVista').addEventListener('change',()=>{lista=null;render();});$('monFiltro').addEventListener('change',render);$('monBuscar').addEventListener('input',render);
 $('monModal').addEventListener('mousedown',e=>{if(e.target===$('monModal'))cerrarPlan();});
-document.addEventListener('keydown',e=>{if(e.key==="Escape"&&$('monModal').classList.contains('abierto'))cerrarPlan();});
+document.addEventListener('keydown',e=>{if(e.key!=="Escape")return;if($('monRepModal').classList.contains('abierto'))cerrarRepro();else if($('monModal').classList.contains('abierto'))cerrarPlan();});
+
+/* ======================= REPROGRAMAR CITAS (una o todas las pendientes del día) ======================= */
+// st.f = fecha nueva · st.hist = [{de, a, mot, obs, reg}] (cada cambio queda registrado; los exámenes ya hechos se conservan)
+const MOTIVOS=["Falta de tiempo en la atención","Paciente no acudió","Paciente pidió otra fecha","Falta de insumos o de resultados de laboratorio","Personal no disponible","Otro"];
+function movTxt(c){const u=c.hist[c.hist.length-1];return c.movido==="reprogramada"?`↪ reprogramada${u?` (antes ${esc(u.de)}${u.mot?" · "+esc(u.mot):""})`:""}`:"pasó del "+esc(c.movido);}
+function obsFecha(c){const u=c.hist[c.hist.length-1];if(c.movido==="reprogramada"&&u)return `Reprogramada del ${u.de} al ${u.a}${u.mot?" · "+u.mot:""}${u.obs?" ("+u.obs+")":""}`;return c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):"";}
+function histHtml(c){return `<ul class="mon-hist">${c.hist.slice().reverse().map(x=>`<li><b>${esc(x.de)} → ${esc(x.a)}</b>${x.mot?" · "+esc(x.mot):""}${x.obs?` · <i>${esc(x.obs)}</i>`:""}<small>Registrado el ${esc(x.reg||"")}</small></li>`).join("")}</ul>`;}
+let repSel=[];
+function objetivos(){return repSel.map(o=>{const r=pacientes.find(x=>x.id===o.id),p=r&&plan(r),c=p&&p.controles.find(x=>x.cid===o.cid);return c?{r,p,c}:null;}).filter(Boolean);}
+const sigHabil=(d,n)=>habil(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)).f;
+function abrirRepro(lst){repSel=lst;const T=objetivos();if(!T.length)return;pintarRepro(T);$('monRepModal').classList.add('abierto');
+  setTimeout(()=>{const b=$('monRep').querySelector('.mon-rap.sel');if(b)b.focus();},50);}
+function cerrarRepro(){repSel=[];$('monRepModal').classList.remove('abierto');}
+function pintarRepro(T){const h=hoy0(),uno=T.length===1,c0=T[0].c,dia1=sigHabil(h,1);
+  const rap=[["Siguiente día hábil",dia1],["En 2 días hábiles",sigHabil(dia1,1)],["En 1 semana",sigHabil(h,7)],["En 2 semanas",sigHabil(h,14)]];
+  $('monRep').innerHTML=`<div class="mon-rep-cab"><div><h3>↪ ${uno?"Reprogramar cita":`Reprogramar ${T.length} citas pendientes`}</h3><p>${uno?"La cita pasa a la nueva fecha; los exámenes ya realizados se conservan.":"Citas del "+largo(c0.fecha).toLowerCase()+" que aún tienen exámenes por realizar."}</p></div><button type="button" class="mon-x" data-r="cerrar" title="Cerrar (Esc)">✕</button></div>
+    <div class="mon-rep-pacs">${T.map(({r,c})=>`<div class="mon-rep-pac"><b>${nom(r)}</b><small>DNI ${esc(r.dni||"—")} · ${esc(c.nombre)} · cita del ${DIAS[c.fecha.getDay()]} ${fmtFecha(c.fecha)} · ${c.items.length-c.hechos.length} de ${c.items.length} por realizar</small></div>`).join("")}</div>
+    <div class="mon-rep-sec"><label>Nueva fecha</label><div class="mon-raps">${rap.map(([t,d])=>`<button type="button" class="mon-rap" data-f="${iso(d)}"><b>${t}</b><span>${DIAS[d.getDay()]} ${fmtFecha(d)}</span></button>`).join("")}</div>
+      <div class="mon-rep-otra"><span>u otra fecha:</span><input type="date" id="repFecha" value="${iso(dia1)}" min="${iso(h)}"></div><div id="repAviso" class="mon-rep-aviso"></div></div>
+    <div class="mon-rep-sec"><label for="repMot">Motivo</label><select id="repMot">${MOTIVOS.map(m=>`<option>${m}</option>`).join("")}</select><input type="text" id="repObs" placeholder="Observación (opcional)" maxlength="120" autocomplete="off"></div>
+    ${uno&&c0.hist.length?`<div class="mon-rep-sec"><label>Historial de esta cita</label>${histHtml(c0)}</div>`:""}
+    <div class="mon-rep-pie">${uno&&c0.movido==="reprogramada"?`<button type="button" class="btn" data-r="original" title="Quita la reprogramación">↺ Volver a la fecha de la norma (${fmtFecha(habil(c0.base).f)})</button>`:""}<span class="sep"></span><button type="button" class="btn" data-r="cerrar">Cancelar</button><button type="button" class="btn primary" data-r="ok" id="repOk">✔ Reprogramar</button></div>`;
+  validarRepro();}
+function validarRepro(){const v=$('repFecha').value,d=v?parseFecha(deIso(v)):null,T=objetivos(),h=hoy0();let av="",ok=!!d,bien=false;
+  $('monRep').querySelectorAll('.mon-rap').forEach(b=>b.classList.toggle('sel',b.dataset.f===v));
+  if(!d)av="Elija la nueva fecha.";
+  else if(d<h){av=`⚠ El ${fmtFecha(d)} ya pasó: elija hoy o una fecha futura.`;ok=false;}
+  else if(T.length===1&&+d===+T[0].c.fecha){av="Es la misma fecha de la cita.";ok=false;}
+  else{const fer=feriado(d),n=(eventos()[clave(d)]||[]).filter(e=>e.tipo==="c").length;
+    if(d.getDay()===0||fer){const s=habil(d).f;av=`⚠ El ${DIAS[d.getDay()]} ${fmtFecha(d)} no es día hábil${fer?" ("+esc(fer)+")":""}. <button type="button" class="mon-link" data-f="${iso(s)}">Usar el ${DIAS[s.getDay()]} ${fmtFecha(s)}</button>`;}
+    else{bien=true;av=`✔ ${largo(d)} · ${n?n+" paciente"+(n>1?"s":"")+" ya citado"+(n>1?"s":"")+" ese día":"sin otras citas ese día"}`;}}
+  $('repAviso').innerHTML=av;$('repAviso').className="mon-rep-aviso"+(bien?" ok":"");$('repOk').disabled=!ok;}
+function guardarRepro(original){const T=objetivos();if(!T.length)return;const ahora=new Date(),reg=fmtFecha(ahora)+" "+p2(ahora.getHours())+":"+p2(ahora.getMinutes());
+  const mot=original?"Vuelve a la fecha de la norma":$('repMot').value,obs=$('repObs').value.trim();let nueva="";
+  if(!original){nueva=deIso($('repFecha').value);if(!nueva)return;}
+  T.forEach(({r,c})=>{const a=original?fmtFecha(habil(c.base).f):nueva;if(a===fmtFecha(c.fecha))return;
+    r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[c.cid]=r.mon[c.cid]||{};
+    st.hist=(Array.isArray(st.hist)?st.hist:[]).concat([{de:fmtFecha(c.fecha),a,mot,obs,reg}]);if(original)delete st.f;else st.f=a;r.mon=ordenar(r.mon);});
+  cerrarRepro();guardarPacientes();render();if(window.TPT)TPT.render();
+  msg(T.length===1?`N° ${T[0].r.n}: cita ${original?"devuelta al "+fmtFecha(habil(T[0].c.base).f):"reprogramada al "+DIAS[parseFecha(nueva).getDay()]+" "+nueva}`:`${T.length} citas reprogramadas al ${DIAS[parseFecha(nueva).getDay()]} ${nueva}`);}
+$('monRep').addEventListener('click',e=>{const b=e.target.closest('[data-r],[data-f]');if(!b)return;
+  if(b.dataset.f){$('repFecha').value=b.dataset.f;validarRepro();return;}
+  if(b.dataset.r==="cerrar")cerrarRepro();else if(b.dataset.r==="ok"&&!$('repOk').disabled)guardarRepro(false);else if(b.dataset.r==="original")guardarRepro(true);});
+$('monRep').addEventListener('input',e=>{if(e.target.id==="repFecha")validarRepro();});
+$('monRepModal').addEventListener('mousedown',e=>{if(e.target===$('monRepModal'))cerrarRepro();});
+$('monDia').addEventListener('click',e=>{const v=e.target.closest('[data-ver]');if(v){verDia(v.dataset.ver);return;}
+  if(e.target.closest('[data-repdia]')){const l=(eventos()[clave(diaSel)]||[]).filter(x=>x.tipo==="c"&&!x.c.completo);abrirRepro(l.map(x=>({id:x.p.r.id,cid:x.c.cid})));}});
 
 /* ======================= EXCEL E IMPRESIÓN ======================= */
 function exportar(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la librería de Excel (sin conexión)");return;}
   const cab=["Fecha","Día","N° Reg","Apellidos y Nombres","DNI","Inicio conforme","Esquema","Tabla NTS","Control","Exámenes y evaluaciones","Realizados","Estado","Observación de fecha"];
-  const filas=[];pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(!p)return;p.controles.forEach(c=>filas.push([c.fecha,fmtFecha(c.fecha),DIAS[c.fecha.getDay()],r.n,r.nom,r.dni,r.f_ini_ok?"Sí ("+r.f_ini_ok+")":"Pendiente",p.E.txt,p.T.nombre,c.nombre,c.items.map(k=>EX[k][0]).join(" | "),c.hechos.length+"/"+c.items.length,estado(c)[1],c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):""]));});
+  const filas=[];pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(!p)return;p.controles.forEach(c=>filas.push([c.fecha,fmtFecha(c.fecha),DIAS[c.fecha.getDay()],r.n,r.nom,r.dni,r.f_ini_ok?"Sí ("+r.f_ini_ok+")":"Pendiente",p.E.txt,p.T.nombre,c.nombre,c.items.map(k=>EX[k][0]).join(" | "),c.hechos.length+"/"+c.items.length,estado(c)[1],obsFecha(c)]));});
   filas.sort((a,b)=>a[0]-b[0]);const ws=XLSX.utils.aoa_to_sheet([cab].concat(filas.map(f=>f.slice(1))));ws['!cols']=[11,10,7,34,11,16,30,40,18,90,10,11,22].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Monitoreo");XLSX.writeFile(wb,"Monitoreo_PCT.xlsx");msg("Excel exportado");}
 function exportarLista(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la librería de Excel (sin conexión)");return;}if(!lista)return;
   const D=datosListas(),arr=D[lista],def=LISTAS[lista],si=r=>r.f_ini_ok?"Sí ("+r.f_ini_ok+")":(r.f_ini?"Pendiente":"");let filas;
   if(LISTAS_CTRL.includes(lista))filas=[["Fecha","Día","Situación","N° Reg","Apellidos y Nombres","DNI","HC","Edad","Sexo","Esquema","Control","Estado","Realizados","Exámenes realizados","Exámenes que faltan","Inicio conforme","Observación de fecha"]].concat(arr.map(({p,c})=>{const r=p.r;
-    return [fmtFecha(c.fecha),DIAS[c.fecha.getDay()],relTxt(c.fecha,estado(c)[0]==="vencido"),r.n,r.nom,r.dni,r.hc,edadDe(r),r.sexo,p.E.txt,c.nombre,estado(c)[1],c.hechos.length+"/"+c.items.length,c.hechos.map(k=>EX[k][0]).join(" | "),c.items.filter(k=>!c.hechos.includes(k)).map(k=>EX[k][0]).join(" | "),si(r),c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):""];}));
+    return [fmtFecha(c.fecha),DIAS[c.fecha.getDay()],relTxt(c.fecha,estado(c)[0]==="vencido"),r.n,r.nom,r.dni,r.hc,edadDe(r),r.sexo,p.E.txt,c.nombre,estado(c)[1],c.hechos.length+"/"+c.items.length,c.hechos.map(k=>EX[k][0]).join(" | "),c.items.filter(k=>!c.hechos.includes(k)).map(k=>EX[k][0]).join(" | "),si(r),obsFecha(c)];}));
   else filas=[["N° Reg","Apellidos y Nombres","DNI","HC","Edad","Sexo","Diagnóstico","Tratamiento","Esquema","Inicio","Inicio conforme","Controles realizados","Controles vencidos","Próximo control","Fecha del próximo control"]].concat(arr.map(({r,p})=>{const C=p?p.controles:[],sig=C.find(c=>!c.completo);
     return [r.n,r.nom,r.dni,r.hc,edadDe(r),r.sexo,r.dx,r.tto,p?p.E.txt:"",r.f_ini,si(r),p?C.filter(c=>c.completo).length+"/"+C.length:"",p?C.filter(c=>estado(c)[0]==="vencido").length:"",sig?sig.nombre:"",sig?fmtFecha(sig.fecha):""];}));
   const ws=XLSX.utils.aoa_to_sheet(filas);ws['!cols']=filas[0].map(h=>({wch:/Exámenes|Nombres|Esquema|Diagnóstico|Tratamiento/.test(h)?40:14}));
@@ -338,6 +393,6 @@ const showBase=window.showView;
 window.showView=function(v){showBase(v);$('tabMon').classList.toggle('active',v==='monitoreo');document.body.classList.toggle('ver-mon',v==='monitoreo');if(v==='monitoreo')render();};
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();const a=document.activeElement;if(!(a&&a.closest&&a.closest('#monitoreo,#monPlan')))render();};
-window.MON={plan,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,
+window.MON={plan,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,abrirRepro,cerrarRepro,
   verLista:k=>{lista=LISTAS[k]?k:null;showView('monitoreo');}};
 })();
