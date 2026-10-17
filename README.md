@@ -79,6 +79,10 @@ Segunda aplicación del mismo proyecto Firebase, en la carpeta `pct/`, con la mi
 - **DATOS**: padrón de pacientes (N° Reg, apellidos y nombres, HC, DNI, fecha de nacimiento, edad, sexo, diagnóstico, peso, talla, tratamiento). Importa/exporta CSV y Excel.
 - **ATENCIÓN HIS**: registra una atención por paciente y fecha con los campos del formato HIS (financiador, distrito, etnia, centro poblado, edad, PC/PAB, peso, talla, Hb, establecimiento y servicio N/C/R) y hasta 3 diagnósticos con búsqueda predictiva sobre los 15 082 códigos CIE-10 (`pct/cie10.json`).
 - **REGISTRO HIS**: arma el "Registro Diario de Atención y Otras Actividades de Salud" del mes (o de un día), con encabezado editable (establecimiento, UPS, responsable, digitador, lote), 5 pacientes por página en A4 horizontal, impresión y exportación a Excel.
+- **TPT** (`pct/tpt.js`, `pct/tpt.css`): toma de DATOS la edad, el peso y el tratamiento de cada paciente y calcula solo la dosis según la **NTS N° 221-MINSA/DGIESP-2024** (`6873271-nts-para-la-prevencion-y-control-de-la-tb-2024.pdf`):
+  - Contactos (tratamiento «con»): terapia preventiva según el caso índice: TB-DS → 3HP en mayores de 2 años (Tablas N° 3 y 4), 3HR en DFC dispersable en 2 años o menos (Tabla N° 5), con opción de 3HR monofármacos, 6H o 4R; TB-Hr → 4R (Tabla N° 6); TB-RR/MDR → 6Lfx (Tabla N° 7); pre-XDR/XDR → no indicada. Con H se agrega piridoxina 50 mg por dosis.
+  - Esquema sensible (tratamiento «sensible»): 2HREZ/4HR (150 dosis, lunes a sábado) con tabletas DFC por peso (Tablas N° 11 y 12) y las variantes de la pág. 36 (miliar/SNC/osteoarticular: 2ª fase de 10 meses; TB no grave en niños: 2ª fase de 2 meses).
+  - Con la fecha de inicio calcula la 12ª dosis semanal o el término (TPT), y el fin de la 1ª fase, el inicio de la 2ª y el término (esquema sensible). Peso, tratamiento y datos de TPT se guardan en el paciente (Firestore `pct_pacientes`). Exporta a Excel e imprime en A4 horizontal.
 
 ### Publicar PCT (una sola vez, crear el sitio)
 
