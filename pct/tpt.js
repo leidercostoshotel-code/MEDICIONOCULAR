@@ -16,7 +16,7 @@ $('registro').insertAdjacentHTML('afterend',`
 <div id="tpt" class="view">
   <div class="toolbar">
     <label class="lbl">Mostrar <select id="tptFiltro">
-      <option value="tpt">Contactos · TPT</option><option value="sens">Esquema sensible (TB-DS)</option><option value="todos">Todos los pacientes</option></select></label>
+      <option value="todos" selected>Todos los pacientes de DATOS</option><option value="tpt">Contactos · TPT</option><option value="sens">Esquema sensible (TB-DS)</option><option value="otro">TB resistente / otros</option><option value="nd">Sin tratamiento indicado</option></select></label>
     <input type="text" id="tptBuscar" placeholder="Buscar (N°, DNI, nombre…)" autocomplete="off">
     <span class="status" id="tptInfo"></span>
     <span class="sep"></span>
@@ -165,11 +165,14 @@ function filaTPT(r){const i=pacientes.indexOf(r),c=calcular(r);const e=edadDe(r)
     <td><input data-k="tpt_obs" value="${esc(r.tpt_obs)}" placeholder="—"></td>
   </tr>`;}
 function lista(){const f=$('tptFiltro').value,q=normTxt($('tptBuscar').value).trim();
-  return pacientes.filter(r=>{const m=modoDe(r);if(f!=="todos"&&m!==f)return false;return !q||normTxt([r.n,r.dni,r.hc,r.nom].join(" ")).includes(q);});}
+  return pacientes.filter(r=>{const m=modoDe(r)||"nd";if(f!=="todos"&&m!==f)return false;return !q||normTxt([r.n,r.dni,r.hc,r.nom].join(" ")).includes(q);});}
 function render(){if(!$('tpt').classList.contains('active'))return;const l=lista();
   $('tbodyTPT').innerHTML=l.map(filaTPT).join("");$('tptVacio').style.display=l.length?'none':'block';
-  const tot=pacientes.filter(r=>modoDe(r)==="tpt").length,sen=pacientes.filter(r=>modoDe(r)==="sens").length;
-  $('tptInfo').textContent=`${l.length} en la lista · ${tot} contacto(s) con TPT · ${sen} en esquema sensible`;}
+  // todo lo de DATOS aparece aquí: el filtro muestra cuántos hay de cada tipo
+  const cuenta={todos:pacientes.length,tpt:0,sens:0,otro:0,nd:0};pacientes.forEach(r=>{cuenta[modoDe(r)||"nd"]++;});
+  const base={todos:"Todos los pacientes de DATOS",tpt:"Contactos · TPT",sens:"Esquema sensible (TB-DS)",otro:"TB resistente / otros",nd:"Sin tratamiento indicado"};
+  [...$('tptFiltro').options].forEach(o=>{o.textContent=`${base[o.value]} (${cuenta[o.value]})`;});
+  $('tptInfo').textContent=`${l.length} en la lista · ${cuenta.tpt} con TPT · ${cuenta.sens} en esquema sensible`+(cuenta.nd?` · ${cuenta.nd} sin tratamiento: elíjalo en la columna Tratamiento`:"");}
 function refrescarFila(tr){const r=pacientes[+tr.dataset.i];if(!r)return;const c=calcular(r);
   tr.className="m-"+(c.modo||"nd");tr.querySelector('[data-c=esq]').innerHTML=celdaEsq(r,c);tr.querySelector('[data-c=dosis]').innerHTML=celdaDosis(c);tr.querySelector('[data-c=fechas]').innerHTML=celdaFechas(r,c);}
 let datosSucio=false;

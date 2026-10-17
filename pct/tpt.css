@@ -33,3 +33,5 @@ table.tpt-tabla tr.m-otro td.num{border-left:4px solid #fb8c00}
   table.tpt-tabla th{position:static}
   table.tpt-tabla td input,table.tpt-tabla td select{appearance:none;-webkit-appearance:none;background:transparent!important;box-shadow:none!important}
 }
+table.tpt-tabla tr.m-nd td.num{border-left:4px solid #b0bec5}
+table.tpt-tabla tr.m-nd select[data-k=tto]{background:#fff8e1;box-shadow:inset 0 0 0 2px #f9a825}
