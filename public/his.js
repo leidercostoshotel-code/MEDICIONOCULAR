@@ -16,7 +16,7 @@ const DX_OCULAR=[
   {c:"Z010",t:"EXAMEN DE LOS OJOS Y DE LA VISIÓN",tipo:"d",re:/^(\d+\.\s*)?examen de (los )?ojos/},
   {c:"99173",t:"DETERMINACIÓN DE LA AGUDEZA VISUAL",tipo:"d",re:/^(\d+\.\s*)?determinacion de (la )?agudeza/},
   {c:"H527",t:"TRASTORNO DE LA REFRACCIÓN",tipo:"p",re:/^(\d+\.\s*)?trastorno de (la )?refraccion/},
-  {c:"9940116",t:"CONSEJERÍA EN SALUD OCULAR",tipo:"d",re:/^(\d+\.\s*)?consejeria (en|de) salud ocular/}];
+  {c:"99401.16",t:"CONSEJERÍA EN SALUD OCULAR",tipo:"d",re:/^(\d+\.\s*)?consejeria (en|de) salud ocular/}];
 const CAB_AT=["FECHA","TURNO","N° REG","APELLIDOS Y NOMBRES","DNI","HC","EDAD","SEXO","FINANCIA","DISTRITO","ETNIA","C. POBLADO","GESTANTE","PC","PAB","PESO","TALLA","HB","F. HB","F. REGLA","ESTABLEC","SERVICIO","DX1","TIPO1","LAB1","CÓDIGO1","DX2","TIPO2","LAB2","CÓDIGO2","DX3","TIPO3","LAB3","CÓDIGO3"];
 
 let atenciones={};
@@ -35,6 +35,7 @@ function nombreDe(r){return calcNombre(r).toUpperCase();}
 /* ======================= PERSISTENCIA ======================= */
 function cargar(){
   try{atenciones=JSON.parse(localStorage.getItem(LS_AT))||{};}catch(e){atenciones={};}
+  if(migrarCodigos(atenciones))try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){} // 9940116 → 99401.16
   try{config=Object.assign(config,JSON.parse(localStorage.getItem(LS_CFG))||{});}catch(e){}
 }
 function guardarAtenciones(){try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync&&Sync.programarAtenciones)Sync.programarAtenciones();}
@@ -69,7 +70,7 @@ $('evaluacion').insertAdjacentHTML('afterend',`
   </div>
   <div id="cpPanel" class="toolbar cfgbar cppanel no-print">
     <div class="codbusca"><input id="cpCie" placeholder="🔎 Buscar en la lista CIE-10 para agregar (código o nombre)…" autocomplete="off" spellcheck="false"></div>
-    <form class="codform" id="cpForm" autocomplete="off"><input id="cpCod" name="cp-cod-nohist" placeholder="CÓDIGO (EJ. 9940116)" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><input id="cpTxt" name="cp-txt-nohist" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN SALUD OCULAR)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><button type="submit" class="btn primary" id="cpBtn">+ Agregar código</button><button type="button" class="btn" id="cpCancelar" style="display:none">Cancelar</button></form>
+    <form class="codform" id="cpForm" autocomplete="off"><input id="cpCod" name="cp-cod-nohist" placeholder="CÓDIGO (EJ. 99401.16)" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><input id="cpTxt" name="cp-txt-nohist" placeholder="DESCRIPCIÓN (EJ. CONSEJERÍA EN SALUD OCULAR)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="text-transform:uppercase"><button type="submit" class="btn primary" id="cpBtn">+ Agregar código</button><button type="button" class="btn" id="cpCancelar" style="display:none">Cancelar</button></form>
     <div class="codbusca"><input id="cpBuscar" placeholder="🔎 Buscar código o descripción…" autocomplete="off"><span id="cpCuenta" class="status"></span></div>
     <div id="cpLista" class="cplista"></div>
   </div>
@@ -132,7 +133,7 @@ function cargarCIE(){if(CIE||cieCargando)return cieCargando;
   cieCargando=Promise.all([fetch('cie10.json').then(r=>r.json()),fetch('codigos-salud-ocular.json').then(r=>r.json()).catch(()=>[])])
     .then(([d,m])=>{CIE=d;CIE_N=d.map(([c,t])=>normTxt(c+" "+t));MINSA=m;MINSA_N=m.map(([c,t])=>normTxt(c+" "+t));return d;})
     .catch(()=>{cieCargando=null;msg("No se pudo cargar la lista CIE-10");return null;});return cieCargando;}
-function codigosPropios(){return Array.isArray(config.codigos)?config.codigos.map(o=>({c:String(o.c||'').toUpperCase(),t:String(o.t||'').toUpperCase()})):[];}
+function codigosPropios(){return Array.isArray(config.codigos)?config.codigos.map(o=>({c:String(codigoVigente(o.c)||'').toUpperCase(),t:String(o.t||'').toUpperCase()})):[];}
 function buscarCIE(q,toks){
   if(!toks.length)return [];const out=[],vistos=new Set();const cod=toks[0].toUpperCase();
   const add=(o)=>{const k=String(o[0]).toUpperCase().replace(/\./g,"");if(vistos.has(k))return;vistos.add(k);out.push(o);}; // 99401.16 = 9940116
@@ -195,7 +196,7 @@ function predictivoCIE(input,alElegir){
 
 /* ======================= FÓRMULAS DEL EXCEL (VALOR LAB desde DATOS) ======================= */
 function dxOcular(txt,cod){const k=normTxt(txt).trim(),c=String(cod||"").toUpperCase().replace(/\./g,"");
-  return DX_OCULAR.find(o=>(k&&o.re.test(k))||(!k&&c&&o.c===c))||null;}
+  return DX_OCULAR.find(o=>(k&&o.re.test(k))||(!k&&c&&o.c.replace(/\./g,"")===c))||null;}
 // Examen → "ALT" si OD u OI ≥ 50 (mismo criterio que RESULTADO de DATOS), si no "N" · Agudeza → OD y OI · Trastorno de la refracción → RF si OD u OI ≥ 50
 function labsFormula(o,pac){const od=num(pac&&pac.od),oi=num(pac&&pac.oi);const hay=od!=null||oi!=null;
   if(o.c==="Z010")return [hay?((od!=null&&od>=50)||(oi!=null&&oi>=50)?"ALT":"N"):"","",""];
@@ -410,7 +411,7 @@ window.showView=function(v){showViewBase(v);$('tabRegistro').classList.toggle('a
 /* ======================= ENLACE CON LA SINCRONIZACIÓN (firebase-sync.js) ======================= */
 window.HIS={
   atenciones:()=>atenciones,config:()=>config,
-  recibirAtenciones(obj){atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}if(activa()){llenarDias();renderRegistro();}},
+  recibirAtenciones(obj){migrarCodigos(obj);atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}if(activa()){llenarDias();renderRegistro();}},
   recibirConfig(c){config=Object.assign({},config,c);try{localStorage.setItem(LS_CFG,JSON.stringify(config));}catch(e){}pintarConfig();pintarCodigos();if(activa())renderRegistro();},
   alCambiarPacientes(){if(activa())renderRegistro();},
   predictivoCIE,abrirCodigos,cerrarCodigos,
