@@ -1,6 +1,6 @@
 /* PCT · Pestaña TPT (terapia preventiva y esquema sensible) */
 .tpt-nota{padding:6px 16px;font-size:12px;color:#455a64;background:#fff8e1;border-bottom:1px solid #f0e0b0}
-#tptWrap{overflow:auto;max-height:calc(100vh - var(--tb,60px) - 92px);background:#fff}
+#tptWrap{overflow:auto;max-height:calc(100vh - var(--tb,60px) - 92px);max-height:calc(100svh - var(--tb,60px) - 92px);background:#fff}
 table.tpt-tabla{width:1898px}
 table.tpt-tabla td{white-space:normal;height:auto;vertical-align:middle;padding:3px 6px}
 table.tpt-tabla td input,table.tpt-tabla td select{padding:2px 4px}
