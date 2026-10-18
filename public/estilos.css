@@ -46,7 +46,7 @@ button{font-family:inherit;cursor:pointer}
 #msg.show{opacity:.95}
 
 /* ======================= DATOS ======================= */
-#datosWrap{height:calc(100vh - 92px);overflow:auto;background:#fff;margin:0;font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:10pt}
+#datosWrap{height:calc(100vh - 92px);height:calc(100svh - 92px);overflow:auto;background:#fff;margin:0;font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:10pt}
 table.datos{border-collapse:separate;border-spacing:0;table-layout:fixed;font-family:inherit;font-size:10pt}
 table.datos th{position:sticky;top:0;z-index:5;background:#1F4E79;color:#fff;font-weight:bold;border:1px solid #D9D9D9;padding:5px 6px;text-align:center;white-space:nowrap;font-size:10pt}
 table.datos td{border:1px solid #D9D9D9;padding:0;white-space:nowrap;height:24px;overflow:hidden;text-overflow:ellipsis}
@@ -181,4 +181,4 @@ table.datos td.actions button:hover{background:#ffe4e6;border-radius:3px}
 .paginador .pg{border:1px solid #cfd8dc;background:#fff;border-radius:6px;min-width:32px;padding:6px 8px;font:inherit;font-size:12px;cursor:pointer;color:#1F4E79}
 .paginador .pg:hover:not(:disabled){background:#e3f2fd}.paginador .pg.act{background:#1F4E79;color:#fff;border-color:#1F4E79;font-weight:bold}.paginador .pg:disabled{opacity:.4;cursor:default}
 .paginador .pg-nav{padding:6px 12px}.paginador .pg-pts{padding:0 4px;color:#888}
-#datos.con-pag #datosWrap{height:calc(100vh - 138px)}
+#datos.con-pag #datosWrap{height:calc(100vh - 138px);height:calc(100svh - 138px)}
