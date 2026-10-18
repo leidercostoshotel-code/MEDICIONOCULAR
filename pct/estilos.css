@@ -48,7 +48,7 @@ button{font-family:inherit;cursor:pointer}
 #msg.show{opacity:.95}
 
 /* ======================= DATOS ======================= */
-#datosWrap{height:calc(100vh - 92px);overflow:auto;background:#fff;margin:0;font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:10pt}
+#datosWrap{height:calc(100vh - 92px);height:calc(100svh - 92px);overflow:auto;background:#fff;margin:0;font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:10pt}
 table.datos{border-collapse:separate;border-spacing:0;table-layout:fixed;font-family:inherit;font-size:10pt}
 table.datos th{position:sticky;top:0;z-index:5;background:#1F4E79;color:#fff;font-weight:bold;border:1px solid #D9D9D9;padding:5px 6px;text-align:center;white-space:nowrap;font-size:10pt}
 table.datos td{border:1px solid #D9D9D9;padding:0;white-space:nowrap;height:24px;overflow:hidden;text-overflow:ellipsis}
@@ -290,7 +290,7 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
 .paginador .pg:hover:not(:disabled){background:#e3f2fd}.paginador .pg.act{background:#1F4E79;color:#fff;border-color:#1F4E79;font-weight:bold}.paginador .pg:disabled{opacity:.4;cursor:default}
 .paginador .pg-nav{padding:6px 12px}.paginador .pg-pts{padding:0 4px;color:#888}
 table.datos input.estimado::placeholder{color:#7a8a99;font-style:italic}
-#datos.con-pag #datosWrap{height:calc(100vh - 138px)}
+#datos.con-pag #datosWrap{height:calc(100vh - 138px);height:calc(100svh - 138px)}
 /* celular: las pestañas (DATOS, REGISTRO HIS, TPT, MONITOREO) se acomodan sin desbordar la pantalla */
 @media (min-width:701px) and (max-width:1250px){.topbar{flex-wrap:wrap;row-gap:4px}.topbar h1{flex:1 0 auto}.tabs{flex-wrap:wrap;justify-content:flex-end;row-gap:3px}.syncStatus{flex-basis:100%;order:5;text-align:right;white-space:normal;margin-left:0}} /* tablet: el estado de sincronización baja a otra línea */
 @media (max-width:700px){.topbar{flex-wrap:wrap;row-gap:6px}.topbar h1{flex-basis:100%}.tabs{flex-wrap:wrap;width:100%}.tabs button{padding:6px 10px;font-size:12px;flex:1 1 auto}.syncStatus{flex-basis:100%;text-align:right;white-space:normal}}

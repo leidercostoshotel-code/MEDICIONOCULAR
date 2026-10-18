@@ -1,4 +1,8 @@
 /* PCT · Estructura de la pantalla: pestañas DATOS, ATENCIÓN HIS y REGISTRO HIS, acceso y avisos. */
+// iPhone / iPad: Safari acerca la página al tocar un campo con letra menor de 16 px y la deja acercada (la pantalla se mueve de lado).
+// Solo en iOS se agrega maximum-scale=1: ya no hace ese zoom y el zoom con dos dedos sigue funcionando. Android y PC no cambian.
+(function(){const n=navigator;if(!(/iPad|iPhone|iPod/.test(n.userAgent)||(n.platform==="MacIntel"&&n.maxTouchPoints>1)))return;
+  const m=document.querySelector('meta[name="viewport"]');if(m&&!/maximum-scale/.test(m.content))m.content+=", maximum-scale=1";})();
 document.body.insertAdjacentHTML("afterbegin",`
 <div class="topbar">
   <h1>PCT · Paciente con Tuberculosis</h1>

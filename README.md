@@ -62,6 +62,10 @@ cat clave.json
 3. Borrar la clave de Cloud Shell: `rm clave.json`. No la pegue en chats ni la suba al repositorio.
 4. Comprobar: en la pestaña **Actions** del repositorio, cada fusión en `main` crea una ejecución «Publicar en Firebase (Hosting y reglas)». Con el secreto configurado, el paso «Publicar sitios (ocular y PCT) y reglas de Firestore» aparece en verde (no «skipped») y la app muestra el aviso de nueva versión. Ya no hace falta `firebase deploy` desde Cloud Shell.
 
+## iPhone / iPad: pantalla quieta
+
+En las dos apps (Salud Ocular y PCT), `vista.js` agrega `maximum-scale=1` al viewport **solo en iPhone / iPad**: Safari ya no acerca la página al tocar un campo con letra pequeña (antes quedaba acercada y se movía de lado). El zoom con dos dedos sigue funcionando; Android y PC no cambian. Las tablas usan el alto visible del celular (`100svh`, con `100vh` de respaldo) y la página no rebota (`overscroll-behavior: none`).
+
 ## REGISTRO HIS de salud ocular
 
 Pestaña **REGISTRO HIS** de `https://medicion-ocular.web.app` (archivos `public/his.js` y `public/his.css`), con la misma mecánica que el Registro HIS de PCT y las fórmulas de la pestaña HIS de la plantilla Excel ocular:

@@ -48,7 +48,7 @@
 .mon-arow.st-prox{border-left-color:#f9a825;background:#fffdf5}.mon-arow.st-hoy{border-left-color:#1e88e5}.mon-arow.st-vencido{border-left-color:#d32f2f;background:#fff7f7}.mon-arow.st-ok{border-left-color:#43a047;opacity:.75}.mon-arow.hito{border-left-color:#8e24aa;color:#4a148c}
 .mon-arow.st-prog,.mon-arow.st-prox,.mon-arow.st-hoy,.mon-arow.st-vencido,.mon-arow.st-ok{color:#263238}
 /* detalle del día */
-.mon-der{position:sticky;top:calc(var(--tb,60px) + 8px);max-height:calc(100vh - var(--tb,60px) - 24px);overflow:auto}
+.mon-der{position:sticky;top:calc(var(--tb,60px) + 8px);max-height:calc(100vh - var(--tb,60px) - 24px);max-height:calc(100svh - var(--tb,60px) - 24px);overflow:auto}
 @media (max-width:900px){.mon-der{position:static;max-height:none}}
 .mon-dcab{background:linear-gradient(135deg,#2c5f8c 0%,#3d76a8 55%,#5a92c4 100%);color:#fff;border-radius:10px 10px 0 0;padding:10px 12px}.mon-dcab b{display:block;font-size:15px}.mon-dcab span{font-size:12px;opacity:.9}
 .mon-hitos{background:#f3e5f5;color:#4a148c;padding:6px 12px;font-size:12px}
