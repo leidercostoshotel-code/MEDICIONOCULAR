@@ -3,6 +3,11 @@
   const cfg=window.FIREBASE_CONFIG||{},opt=Object.assign({requiereLogin:true,colPacientes:"pct_pacientes",colAtenciones:"pct_atenciones",colConfig:"pct_config"},window.APP_CONFIG||{});
   const st=document.getElementById('syncStatus'),lg=document.getElementById('login'),salir=document.getElementById('btnSalir');
   const estado=(t,c)=>{st.textContent=t;st.className='syncStatus '+(c||'');};
+  // JSON con las claves ordenadas: Firestore devuelve los campos en orden alfabético y el navegador en el orden en que se crearon.
+  // Sin esto cada guardado parecía un cambio: se volvía a subir todo y la hoja HIS se redibujaba mientras se escribía.
+  const estable=o=>JSON.stringify(o,(k,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v);
+  // ¿Se está escribiendo en un campo? Entonces la hoja no se redibuja (se perdería lo que se escribe); se redibuja al salir del campo.
+  const editando=()=>{const a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!a.closest('#login'));};
   const S=window.Sync={programarPacientes(){},programarAtenciones(){},programarConfig(){},entrar(e){e.preventDefault();},cerrarSesion(){}};
   if(!cfg.apiKey||/^PEGAR/.test(cfg.apiKey)){estado("Sin Firebase · guardado solo en este navegador","off");return;}
   if(typeof firebase==="undefined"){estado("No se pudo cargar Firebase · guardado local","err");return;}
@@ -21,9 +26,9 @@
     escribiendo++;estado("Guardando en la nube…");
     return ejecutar(col,ops).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);
   }
-  function subirPacientes(){tPac=null;const a={};pacientes.forEach(r=>{if(!r.id)r.id=uid();a[r.id]=JSON.stringify(r);});return reconciliar(colPac,cachePac,a);}
-  function subirAtenciones(){tAt=null;const a={};for(const id in atenciones)a[id]=JSON.stringify(Object.assign({},atenciones[id],{id}));return reconciliar(colAt,cacheAt,a);}
-  function subirConfig(){tCfg=null;const j=JSON.stringify(config);if(j===cacheCfg)return;cacheCfg=j;escribiendo++;docCfg.set(config).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);}
+  function subirPacientes(){tPac=null;const a={};pacientes.forEach(r=>{if(!r.id)r.id=uid();a[r.id]=estable(r);});return reconciliar(colPac,cachePac,a);}
+  function subirAtenciones(){tAt=null;const a={};for(const id in atenciones)a[id]=estable(Object.assign({},atenciones[id],{id}));return reconciliar(colAt,cacheAt,a);}
+  function subirConfig(){tCfg=null;const j=estable(config);if(j===cacheCfg)return;cacheCfg=j;escribiendo++;docCfg.set(config).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);}
   S.programarPacientes=()=>{clearTimeout(tPac);tPac=setTimeout(subirPacientes,600);};
   S.programarAtenciones=()=>{clearTimeout(tAt);tAt=setTimeout(subirAtenciones,300);};
   S.programarConfig=()=>{clearTimeout(tCfg);tCfg=setTimeout(subirConfig,600);};
@@ -31,29 +36,37 @@
   function focoActual(){const el=document.activeElement;const tr=el&&el.closest&&el.closest('#tbodyDatos tr');return tr?{id:tr.dataset.id,k:el.dataset.k,s:el.selectionStart}:null;}
   function restaurarFoco(f){if(!f)return;const el=document.querySelector(`#tbodyDatos tr[data-id="${f.id}"] [data-k="${f.k}"]`);if(el){el.focus();try{el.setSelectionRange(f.s,f.s);}catch(e){}}}
   function aplicarPacientes(snap){
-    const remoto={};snap.forEach(d=>{remoto[d.id]=JSON.stringify(normalizar(Object.assign({},d.data(),{id:d.id})));});
+    const remoto={};snap.forEach(d=>{remoto[d.id]=estable(normalizar(Object.assign({},d.data(),{id:d.id})));});
     if(!snap.metadata.fromCache&&!semillaPac){semillaPac=true;if(!snap.size&&pacientes.length){cachePac={};subirPacientes();return;}}
     cachePac=remoto;
     if(snap.metadata.hasPendingWrites||tPac||escribiendo)return;
     const lista=Object.values(remoto).map(j=>JSON.parse(j)).sort((a,b)=>(parseInt(a.n)||1e9)-(parseInt(b.n)||1e9));
-    if(JSON.stringify(lista)===JSON.stringify(pacientes))return;
+    if(estable(lista)===estable(pacientes))return;
     pacientes=lista;try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){}
     const f=focoActual();renderDatos();restaurarFoco(f);if(window.alCambiarPacientes)alCambiarPacientes();
   }
   function aplicarAtenciones(snap){
-    const remoto={},obj={};snap.forEach(d=>{const v=d.data();obj[d.id]=Object.assign({},v,{id:d.id});remoto[d.id]=JSON.stringify(obj[d.id]);});
+    const remoto={},obj={};snap.forEach(d=>{const v=d.data();obj[d.id]=Object.assign({},v,{id:d.id});remoto[d.id]=estable(obj[d.id]);});
     if(!snap.metadata.fromCache&&!semillaAt){semillaAt=true;if(!snap.size&&Object.keys(atenciones).length){cacheAt={};subirAtenciones();return;}}
     cacheAt=remoto;
     if(snap.metadata.hasPendingWrites||tAt||escribiendo)return;
-    if(JSON.stringify(obj)===JSON.stringify(atenciones))return;
-    atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}
+    recibirAt(obj);
+  }
+  let atPend=false; // cambios de la nube que esperan a que se salga del campo para redibujar
+  function recibirAt(obj){
+    if(estable(obj)===estable(atenciones)){atPend=false;return;}
+    if(editando()){ // los datos se actualizan ya (menos la sección donde se escribe) y la hoja se redibuja al salir del campo
+      const b=document.activeElement.closest('.bloque[data-id]'),id=b&&b.dataset.id;if(id&&atenciones[id])obj[id]=atenciones[id];
+      atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}atPend=true;return;}
+    atPend=false;atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}
     if(window.alCambiarAtenciones)alCambiarAtenciones();
   }
+  document.addEventListener('focusout',()=>setTimeout(()=>{if(atPend&&!editando()){atPend=false;if(window.alCambiarAtenciones)alCambiarAtenciones();}},0));
   function aplicarConfig(snap){
     if(!snap.exists){if(!snap.metadata.fromCache&&cacheCfg==null){cacheCfg="";subirConfig();}return;}
-    const j=JSON.stringify(snap.data());cacheCfg=j;
+    const j=estable(snap.data());cacheCfg=j;
     if(snap.metadata.hasPendingWrites||tCfg||escribiendo)return;
-    if(j===JSON.stringify(config))return;
+    if(j===estable(config))return;
     config=Object.assign({},config,snap.data());try{localStorage.setItem(LS_CFG,JSON.stringify(config));}catch(e){}
     if(window.alCambiarConfig)alCambiarConfig();
   }
