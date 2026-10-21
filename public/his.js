@@ -411,7 +411,8 @@ window.showView=function(v){showViewBase(v);$('tabRegistro').classList.toggle('a
 /* ======================= ENLACE CON LA SINCRONIZACIÓN (firebase-sync.js) ======================= */
 window.HIS={
   atenciones:()=>atenciones,config:()=>config,
-  recibirAtenciones(obj){migrarCodigos(obj);atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}if(activa()){llenarDias();renderRegistro();}},
+  recibirAtenciones(obj,sinPintar){migrarCodigos(obj);atenciones=obj;try{localStorage.setItem(LS_AT,JSON.stringify(atenciones));}catch(e){}if(!sinPintar&&activa()){llenarDias();renderRegistro();}},
+  repintar(){if(activa()){llenarDias();renderRegistro();}},
   recibirConfig(c){config=Object.assign({},config,c);try{localStorage.setItem(LS_CFG,JSON.stringify(config));}catch(e){}pintarConfig();pintarCodigos();if(activa())renderRegistro();},
   alCambiarPacientes(){if(activa())renderRegistro();},
   predictivoCIE,abrirCodigos,cerrarCodigos,
