@@ -2,7 +2,7 @@
 /* ======================= DATOS INICIALES ======================= */
 const DATA_INICIAL = [];
 const COLS = ["n","nom","hc","dni","fn","edad","sexo","dx","peso","talla","tto"];
-const HEADERS = ["N° Reg","APELLIDOS Y NOMBRES","HISTORIA CLINICA","DNI","FECHA DE NACIMIENTO","EDAD","SEXO","DIAGNOSTICO","PESO","TALLA","TRATAMIENTO"];
+const HEADERS = ["N° Reg","N° CASO","APELLIDOS Y NOMBRES","HISTORIA CLINICA","DNI","FECHA DE NACIMIENTO","EDAD","SEXO","DIAGNOSTICO","PESO","TALLA","TRATAMIENTO","DIRECCION"]; // COLS = orden del Excel original (archivos sin encabezados)
 const OPC_SEXO = ["M","F","RM"];
 const OPC_DX = ["Pulmonar","Extra-pulmonar","Resistente","R-H","R-H (Resistente)","R"];
 const OPC_TTO = ["con","sensible","ECA MDR","ECA BLC MDR","ESQ Modif","Esquema A","Esquema B MDR"];
@@ -35,7 +35,7 @@ function resaltar(txt,q){const toks=normTxt(q).trim().split(/\s+/).filter(Boolea
   while(i<txt.length){let hit=null;for(const t of toks){if(n.startsWith(t,i)&&(!hit||t.length>hit.length))hit=t;}
     if(hit){out+="<mark>"+esc(txt.slice(i,i+hit.length))+"</mark>";i+=hit.length;}else{out+=esc(txt[i]);i++;}}
   return out;}
-function nuevoRegistro(){return {id:uid(),n:"",nom:"",hc:"",dni:"",fn:"",edad:"",sexo:"",dx:"",peso:"",talla:"",tto:"",tpt_ind:"",tpt_esq:"",tto_sit:"",f_ini:"",f_ini_ok:"",tpt_obs:"",mon_esq:"",mon:{}};} // tpt_*, tto_sit, f_ini: pestaña TPT · mon_esq, mon: pestaña MONITOREO
+function nuevoRegistro(){return {id:uid(),n:"",caso:"",nom:"",hc:"",dni:"",fn:"",edad:"",sexo:"",dx:"",peso:"",talla:"",tto:"",dir:"",tpt_ind:"",tpt_esq:"",tto_sit:"",f_ini:"",f_ini_ok:"",tpt_obs:"",mon_esq:"",mon:{}};} // tpt_*, tto_sit, f_ini: pestaña TPT · mon_esq, mon: pestaña MONITOREO
 function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o[k]=r[k];}o.id=String(o.id||uid());o.n=parseInt(o.n);if(isNaN(o.n))o.n="";o.dni=String(o.dni||"").replace(/\D/g,"");return o;}
 
 /* ======================= PERSISTENCIA ======================= */
@@ -56,13 +56,14 @@ function contarAt(r){let c=0;for(const id in atenciones){const a=atenciones[id];
 function renderDatos(){
   const q=document.getElementById('search').value.trim().toLowerCase();
   const tb=document.getElementById('tbodyDatos');
-  const todas=pacientes.map((r,i)=>({r,i})).filter(({r})=>{if(!q)return true;return normTxt([r.n,r.hc,r.dni,r.nom,r.sexo,r.dx,r.tto].join(" ")).includes(normTxt(q));});
+  const todas=pacientes.map((r,i)=>({r,i})).filter(({r})=>{if(!q)return true;return normTxt([r.n,r.caso,r.hc,r.dni,r.nom,r.sexo,r.dx,r.tto,r.dir].join(" ")).includes(normTxt(q));});
   if(q!==renderDatos._q){renderDatos._q=q;pagDatos=1;} // nueva búsqueda: volver a la página 1
   const totalPag=Math.max(1,Math.ceil(todas.length/FILAS_POR_PAGINA));if(pagDatos>totalPag)pagDatos=totalPag;if(pagDatos<1)pagDatos=1;
   const rows=todas.slice((pagDatos-1)*FILAS_POR_PAGINA,pagDatos*FILAS_POR_PAGINA);
   tb.innerHTML=rows.map(({r,i})=>`
   <tr data-i="${i}" data-id="${esc(r.id)}">
     <td class="num"><input class="w-num" data-k="n" value="${esc(r.n)}" style="text-align:center;font-weight:bold"></td>
+    <td><input data-k="caso" value="${esc(r.caso)}" style="text-align:center" title="N° de caso / tarjeta de tratamiento (ej. 45/2026)"></td>
     <td><input data-k="nom" value="${esc(r.nom)}"></td>
     <td><input data-k="hc" value="${esc(r.hc)}"></td>
     <td><input data-k="dni" value="${esc(r.dni)}" maxlength="8" inputmode="numeric" class="${r.dni&&r.dni.length!==8?'invalid':''}"></td>
@@ -73,6 +74,7 @@ function renderDatos(){
     <td><input data-k="peso" value="${esc(r.peso)}" inputmode="decimal" style="text-align:center"></td>
     <td><input data-k="talla" value="${esc(r.talla)}" inputmode="decimal" style="text-align:center"></td>
     <td><input data-k="tto" value="${esc(r.tto)}" class="mp" data-opc="tto"></td>
+    <td><input data-k="dir" value="${esc(r.dir)}"></td>
     <td class="calc" style="text-align:center"><a href="#" onclick="irAtencion('${esc(r.id)}');return false" title="Ver atenciones HIS de este paciente">${contarAt(r)} · abrir</a></td>
     <td class="actions"><button title="Eliminar fila" onclick="delRow(${i})">✕</button></td>
   </tr>`).join("");
@@ -143,18 +145,46 @@ function parseCSV(text){
   if(cell!==""||row.length){row.push(cell);rows.push(row);}
   return rows.filter(r=>r.some(x=>String(x).trim()!==""));
 }
+// Encabezados que reconoce la importación (en minúsculas, sin tildes, espacios ni signos). «esqdx» = columna mixta «Esquema / Diagnóstico»
+// de las tarjetas de tratamiento; «esq» = solo esquema.
+const IMP_MAP={n:["nreg","n","no","num","numero","nro","nregistro","nroreg","nderegistro"],caso:["caso","ncaso","nrocaso","ndecaso","numerodecaso","ntarjeta","tarjeta"],
+  nom:["apellidosynombres","nombres","nombre","paciente","apellidosnombres","nombresyapellidos"],hc:["historiaclinica","hc","historia","nhistoria","nrohc","nhc","nrohistoriaclinica","hcl"],
+  dni:["dni","documento","numerodedocumento","nrodni","ndni"],fn:["fechadenacimiento","fechanacimiento","fnac","nacimiento","fechanac"],edad:["edad","edadanos"],sexo:["sexo","genero"],
+  dx:["dx","diagnostico","localizacion"],esq:["esquema","esquemadetratamiento"],esqdx:["esquemadiagnostico","diagnosticoesquema"],peso:["peso","pesokg"],talla:["talla","tallam"],
+  tto:["tto","tratamiento","tipodetratamiento"],f_ini:["fechadeinicio","fechainicio","inicio","finicio","fechadeiniciodetratamiento","iniciodetratamiento","fechainiciotratamiento","iniciotto"],
+  dir:["direccion","domicilio","dir","direcciondomicilio"]};
+const IMP_VACIO=/^(no especificad[oa]|sin dato s?|s\/n|sn|n\/a|na|-|—|null|none)$/i;
+function fechaImportada(v){ // 45678 (serial de Excel) → dd/mm/aaaa · 2026-09-15 → 15/09/2026 · «2008» (solo año) y dd/mm/aaaa se respetan
+  if(/^\d{5}$/.test(v)){const d=new Date(Date.UTC(1899,11,30)+parseInt(v)*86400000);return String(d.getUTCDate()).padStart(2,"0")+"/"+String(d.getUTCMonth()+1).padStart(2,"0")+"/"+d.getUTCFullYear();}
+  const iso=/^(\d{4})-(\d{2})-(\d{2})/.exec(v);if(iso)return iso[3]+"/"+iso[2]+"/"+iso[1];const d=parseFecha(v);return d?fmtFecha(d):v;}
+function limpiarImportado(k,v){v=String(v==null?"":v).trim();if(IMP_VACIO.test(v))return "";
+  if(k==="edad"||k==="peso"||k==="talla"){const n=parseFloat(v.replace(",","."));return isNaN(n)||n<=0?"":String(+n.toFixed(2));} // «44.0» → 44 · «0.0» → vacío
+  if(k==="fn"||k==="f_ini")return fechaImportada(v);return v;}
+const casoValido=v=>/^(ca-?\d+|\d{1,4}[\/-]\d{2,4}|\d{1,5})$/i.test(v); // 45/2026, 47-26, CA-3242 · «H-P-B6» (esquema) no es un N° de caso
+// Columna «Esquema / Diagnóstico» → diagnóstico, tratamiento y observación: TPT → contacto; MDR/BLC/BPaLM → resistente; TB sin resistencia → sensible
+function esquemaDx(txt){const t=normTxt(txt).trim(),o={dx:"",tto:"",obs:""};if(!t)return o;
+  if(/\btpt\b|\b3hp\b|\b3hr\b|\b6h\b|\bh-?p-?b6\b|\bh-?h-?b6\b|\bhp\b/.test(t)){o.tto="con";o.obs=txt.trim();return o;}
+  if(/mdr|xdr|\brr\b|resist|bpal|blc|bedaq|\bmodif/.test(t)){o.dx="Resistente";o.tto=txt.replace(/^\s*tb\s*:?\s*/i,"").trim();}
+  else if(/sensible|rhze|hrze|4rh|\bds\b|\btb\b/.test(t))o.tto="sensible";
+  if(/pleur/.test(t))o.dx="Extra-pulmonar (pleural)";else if(/extra|gangli|mening|osea|renal|intestin|miliar|cutane|vertebr/.test(t))o.dx="Extra-pulmonar";else if(/pulmonar/.test(t)&&!o.dx)o.dx="Pulmonar";
+  if(!o.tto&&!o.dx)o.obs="Esquema en el archivo: "+txt.trim(); // XFX, Diario…: el médico elige el tratamiento
+  return o;}
 function filasAPacientes(rows){
   if(!rows.length)return [];
-  const norm=s=>normTxt(s).replace(/[^a-z0-9]/g,"");const hdr=rows[0].map(norm);
-  const map={n:["nreg","n","no","num","numero","nro","nregistro"],nom:["apellidosynombres","nombres","nombre","paciente"],hc:["historiaclinica","hc","historia","nhistoria"],dni:["dni","documento","numerodedocumento"],fn:["fechadenacimiento","fechanacimiento","fnac","nacimiento"],edad:["edad"],sexo:["sexo","genero"],dx:["dx","diagnostico","diagnostico"],peso:["peso","pesokg"],talla:["talla","tallam"],tto:["tto","tratamiento","esquema"]};
-  const idx={};let hits=0;for(const k in map){const j=hdr.findIndex(h=>map[k].includes(h));if(j>=0){idx[k]=j;hits++;}}
-  let body=rows.slice(1);
-  if(hits<4){body=rows;COLS.forEach((k,j)=>{idx[k]=j;});if(isNaN(parseInt(rows[0][0])))body=rows.slice(1);}
-  // el Excel original trae SEXO y DX intercambiados: corregir si los valores lo delatan
+  const norm=s=>normTxt(s).replace(/[^a-z0-9]/g,"");
+  const idxDe=row=>{const hdr=row.map(norm),idx={};let hits=0;for(const k in IMP_MAP){const j=hdr.findIndex(h=>h&&IMP_MAP[k].includes(h));if(j>=0){idx[k]=j;hits++;}}return {idx,hits};};
+  // fila de encabezados = la primera (entre las 10 primeras) con 4 o más títulos conocidos; así se saltan títulos como «REGISTRO CONSOLIDADO…»
+  let idx={},body=null;for(let i=0;i<Math.min(10,rows.length);i++){const r=idxDe(rows[i]);if(r.hits>=4){idx=r.idx;body=rows.slice(i+1);break;}}
+  if(!body){body=rows;COLS.forEach((k,j)=>{idx[k]=j;});if(isNaN(parseInt(rows[0][0])))body=rows.slice(1);} // sin encabezados: el orden del Excel original
   const out=[];
-  for(const r of body){const o=nuevoRegistro();for(const k in idx){let v=r[idx[k]];if(v==null)v="";o[k]=String(v).trim();}
+  for(const r of body){const o=nuevoRegistro(),obs=[];
+    for(const k in idx){const v=limpiarImportado(k,r[idx[k]]);
+      if(k==="esqdx"||k==="esq"){const e=esquemaDx(v);if(e.dx&&!o.dx)o.dx=e.dx;if(e.tto)o.tto=e.tto;if(e.obs)obs.push(e.obs);}
+      else if(k==="caso")o.caso=casoValido(v)?v.toUpperCase():"";
+      else o[k]=v;}
+    if(obs.length)o.tpt_obs=[o.tpt_obs].concat(obs).filter(Boolean).join(" · ");
+    // el Excel original trae SEXO y DX intercambiados: corregir si los valores lo delatan
     if(/^(pulmonar|extra|resist|r-h|r)$/i.test(o.sexo)&&/^(m|f|rm)$/i.test(o.dx)){const t=o.sexo;o.sexo=o.dx;o.dx=t;}
-    if(o.fn&&/^\d{4,5}$/.test(o.fn)){const d=new Date(Date.UTC(1899,11,30)+parseInt(o.fn)*86400000);o.fn=String(d.getUTCDate()).padStart(2,"0")+"/"+String(d.getUTCMonth()+1).padStart(2,"0")+"/"+d.getUTCFullYear();}
     if(o.n===""&&o.dni===""&&o.nom==="")continue;out.push(normalizar(o));}
   return out;
 }
@@ -162,7 +192,7 @@ function importFile(inp){
   const f=inp.files[0];if(!f)return;inp.value="";
   const done=async rows=>{const nuevos=filasAPacientes(rows);if(!nuevos.length){msg("No se encontraron registros válidos");return;}
     const modo=await dialogo({tipo:'pregunta',titulo:"Importar padrón",texto:`Se leyeron ${nuevos.length} registros del archivo. ¿Cómo desea incorporarlos?`,botones:[{txt:"Cancelar",val:null},{txt:"Agregar al padrón",val:false},{txt:"Reemplazar padrón",val:true,clase:"peligro"}],escape:null});if(modo===null)return;
-    if(modo){pacientes=nuevos;}else{let max=pacientes.reduce((m,r)=>Math.max(m,parseInt(r.n)||0),0);nuevos.forEach(r=>{if(r.n===""||pacientes.some(p=>p.n===r.n))r.n=++max;else max=Math.max(max,r.n);pacientes.push(r);});}
+    if(modo){let max=nuevos.reduce((m,r)=>Math.max(m,parseInt(r.n)||0),0);nuevos.forEach(r=>{if(r.n==="")r.n=++max;});pacientes=nuevos;}else{let max=pacientes.reduce((m,r)=>Math.max(m,parseInt(r.n)||0),0);nuevos.forEach(r=>{if(r.n===""||pacientes.some(p=>p.n===r.n))r.n=++max;else max=Math.max(max,r.n);pacientes.push(r);});}
     guardarPacientes();renderDatos();msg(`${nuevos.length} registros importados`);};
   if(/\.(xlsx|xls)$/i.test(f.name)){
     if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel. Importe el archivo como CSV.");return;}
@@ -171,14 +201,14 @@ function importFile(inp){
     rd.readAsArrayBuffer(f);
   }else{const rd=new FileReader();rd.onload=e=>done(parseCSV(e.target.result));rd.readAsText(f,"UTF-8");}
 }
-function filaExport(r){return [r.n,r.nom,r.hc,r.dni,r.fn,edadDe(r),r.sexo,r.dx,r.peso,r.talla,r.tto];}
+function filaExport(r){return [r.n,r.caso,r.nom,r.hc,r.dni,r.fn,edadDe(r),r.sexo,r.dx,r.peso,r.talla,r.tto,r.dir];}
 function descargar(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportCSV(){const q=v=>{v=String(v==null?"":v);return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
   const lines=[HEADERS.map(q).join(";")].concat(pacientes.map(r=>filaExport(r).map(q).join(";")));
   descargar(new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}),"PCT_pacientes.csv");}
 function exportXLSX(){
   if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel. Use Exportar CSV.");return;}
-  const aoa=[HEADERS].concat(pacientes.map(filaExport));const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[7,34,14,12,14,6,6,18,8,8,16].map(w=>({wch:w}));
+  const aoa=[HEADERS].concat(pacientes.map(filaExport));const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[7,10,34,14,12,14,6,6,18,8,8,16,30].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"PACIENTES");
   const ats=Object.values(atenciones).sort(ordenAt);
   if(ats.length){const ws2=XLSX.utils.aoa_to_sheet([CAB_AT].concat(ats.map(filaAt)));XLSX.utils.book_append_sheet(wb,ws2,"ATENCIONES");}

@@ -29,11 +29,11 @@ document.body.insertAdjacentHTML("afterbegin",`
     <button class="btn danger" onclick="vaciarPadron()" title="Borra todos los pacientes del padrón, por ejemplo para importar una data nueva">🗑 Vaciar padrón</button>
   </div>
   <div id="datosWrap">
-    <table class="datos" id="tblDatos" style="width:1560px">
-      <colgroup><col style="width:52px"><col style="width:300px"><col style="width:100px"><col style="width:110px"><col style="width:120px"><col style="width:60px"><col style="width:80px"><col style="width:170px"><col style="width:75px"><col style="width:75px"><col style="width:170px"><col style="width:120px"><col style="width:40px"></colgroup>
+    <table class="datos" id="tblDatos" style="width:1870px">
+      <colgroup><col style="width:52px"><col style="width:90px"><col style="width:300px"><col style="width:100px"><col style="width:110px"><col style="width:120px"><col style="width:60px"><col style="width:80px"><col style="width:170px"><col style="width:75px"><col style="width:75px"><col style="width:170px"><col style="width:220px"><col style="width:120px"><col style="width:40px"></colgroup>
       <thead>
         <tr>
-          <th>N° Reg</th><th>Apellidos y Nombres</th><th>Historia Clínica</th><th>DNI</th><th>Fecha de Nacimiento</th><th>Edad</th><th>Sexo</th><th>Diagnóstico</th><th>Peso (kg)</th><th>Talla (m)</th><th>Tratamiento</th><th>Atenciones</th><th></th>
+          <th>N° Reg</th><th>N° Caso</th><th>Apellidos y Nombres</th><th>Historia Clínica</th><th>DNI</th><th>Fecha de Nacimiento</th><th>Edad</th><th>Sexo</th><th>Diagnóstico</th><th>Peso (kg)</th><th>Talla (m)</th><th>Tratamiento</th><th>Dirección</th><th>Atenciones</th><th></th>
         </tr>
       </thead>
       <tbody id="tbodyDatos"></tbody>
