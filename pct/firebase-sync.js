@@ -26,7 +26,10 @@
     escribiendo++;estado("Guardando en la nube…");
     return ejecutar(col,ops).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);
   }
-  function subirPacientes(){tPac=null;const a={};pacientes.forEach(r=>{if(!r.id)r.id=uid();a[r.id]=estable(r);});return reconciliar(colPac,cachePac,a);}
+  // Padrón vaciado a propósito: queda en la nube el documento «_vacio» para que ningún equipo vuelva a subir su copia local
+  // (la semilla de abajo solo corre cuando la nube nunca tuvo pacientes). Desaparece solo al agregar o importar pacientes.
+  const VACIO='_vacio';
+  function subirPacientes(){tPac=null;const a={};pacientes.forEach(r=>{if(!r.id)r.id=uid();a[r.id]=estable(r);});if(!pacientes.length)a[VACIO]=cachePac[VACIO]||estable({vacio:true,fecha:new Date().toISOString()});return reconciliar(colPac,cachePac,a);}
   function subirAtenciones(){tAt=null;const a={};for(const id in atenciones)a[id]=estable(Object.assign({},atenciones[id],{id}));return reconciliar(colAt,cacheAt,a);}
   function subirConfig(){tCfg=null;const j=estable(config);if(j===cacheCfg)return;cacheCfg=j;escribiendo++;docCfg.set(config).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);}
   S.programarPacientes=()=>{clearTimeout(tPac);tPac=setTimeout(subirPacientes,600);};
@@ -36,11 +39,11 @@
   function focoActual(){const el=document.activeElement;const tr=el&&el.closest&&el.closest('#tbodyDatos tr');return tr?{id:tr.dataset.id,k:el.dataset.k,s:el.selectionStart}:null;}
   function restaurarFoco(f){if(!f)return;const el=document.querySelector(`#tbodyDatos tr[data-id="${f.id}"] [data-k="${f.k}"]`);if(el){el.focus();try{el.setSelectionRange(f.s,f.s);}catch(e){}}}
   function aplicarPacientes(snap){
-    const remoto={};snap.forEach(d=>{remoto[d.id]=estable(normalizar(Object.assign({},d.data(),{id:d.id})));});
+    const remoto={};snap.forEach(d=>{remoto[d.id]=d.id===VACIO?estable(d.data()):estable(normalizar(Object.assign({},d.data(),{id:d.id})));});
     if(!snap.metadata.fromCache&&!semillaPac){semillaPac=true;if(!snap.size&&pacientes.length){cachePac={};subirPacientes();return;}}
     cachePac=remoto;
     if(snap.metadata.hasPendingWrites||tPac||escribiendo)return;
-    const lista=Object.values(remoto).map(j=>JSON.parse(j)).sort((a,b)=>(parseInt(a.n)||1e9)-(parseInt(b.n)||1e9));
+    const lista=Object.keys(remoto).filter(id=>id!==VACIO).map(id=>JSON.parse(remoto[id])).sort((a,b)=>(parseInt(a.n)||1e9)-(parseInt(b.n)||1e9));
     if(estable(lista)===estable(pacientes))return;
     pacientes=lista;try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){}
     const f=focoActual();renderDatos();restaurarFoco(f);if(window.alCambiarPacientes)alCambiarPacientes();

@@ -253,6 +253,8 @@ table.datos td.calc a{color:#1e88e5;text-decoration:none;font-size:12px}table.da
 .dlg-btn.primario{background:#1F4E79;border-color:#1F4E79;color:#fff}.dlg-btn.primario:hover{background:#163a5c}
 .dlg-btn.peligro{background:#b00020;border-color:#b00020;color:#fff}.dlg-btn.peligro:hover{background:#8e001a}
 .dlg-btn:focus-visible{outline:3px solid #90caf9;outline-offset:1px}
+.dlg-btn:disabled{opacity:.45;cursor:not-allowed}
+.dlg-inp{margin-top:10px;width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:8px 10px;border:1px solid #cfd8dc;border-radius:8px;text-transform:uppercase;letter-spacing:1px}.dlg-inp:focus{outline:2px solid #90caf9;border-color:#1F4E79}
 @media (max-width:480px){.dlg{grid-template-columns:1fr}.dlg-ico{display:none}.dlg-btns .dlg-btn{flex:1}}
 @media print{.dlg-fondo{display:none!important}}
 
