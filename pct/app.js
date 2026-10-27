@@ -40,8 +40,8 @@ function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o
 
 /* ======================= PERSISTENCIA ======================= */
 function cargar(){
-  try{const p=JSON.parse(localStorage.getItem(LS_PAC));if(Array.isArray(p)&&p.length)pacientes=p.map(normalizar);}catch(e){}
-  if(!pacientes.length)pacientes=DATA_INICIAL.map(normalizar);
+  let guardado=false;try{const p=JSON.parse(localStorage.getItem(LS_PAC));if(Array.isArray(p)){pacientes=p.map(normalizar);guardado=true;}}catch(e){}
+  if(!guardado)pacientes=DATA_INICIAL.map(normalizar); // primera vez: el Excel original · un padrón vaciado a propósito queda vacío
   try{atenciones=JSON.parse(localStorage.getItem(LS_AT))||{};}catch(e){atenciones={};}
   Object.values(atenciones).forEach(a=>{if(a&&!a.creado)a.creado=a.guardado||"";}); // registros antiguos: orden de llegada = último guardado
   try{config=Object.assign(config,JSON.parse(localStorage.getItem(LS_CFG))||{});}catch(e){}
@@ -118,6 +118,19 @@ function addRow(){
 async function delRow(i){const r=pacientes[i];if(!await confirmar("Eliminar paciente",`Se eliminará del padrón la fila N° ${r.n} · ${r.nom||'sin nombre'}. Esta acción no se puede deshacer.`,{ok:"Eliminar",peligro:true}))return;pacientes.splice(i,1);guardarPacientes();renderDatos();msg("Fila eliminada");}
 async function resetData(){if(!await confirmar("Restaurar padrón original","Se reemplazará el padrón actual por los datos originales del Excel. Los cambios hechos en DATOS se perderán.",{ok:"Restaurar",peligro:true}))return;pacientes=DATA_INICIAL.map(normalizar);guardarPacientes();renderDatos();msg("Datos originales restaurados");}
 
+// Vaciar todo el padrón (para importar una data nueva): pide escribir BORRAR; las atenciones del REGISTRO HIS se conservan.
+async function vaciarPadron(){
+  const n=pacientes.length;if(!n){avisar("Padrón vacío","No hay pacientes que borrar. Use «Importar CSV/Excel» o «+ Agregar fila».");return;}
+  const tto=pacientes.filter(r=>r.f_ini).length,at=Object.keys(atenciones).length;
+  const r=await dialogo({tipo:'peligro',titulo:"Vaciar todo el padrón",
+    texto:`Se borrarán los ${n} pacientes de DATOS con sus datos de TPT y de MONITOREO${tto?` (${tto} con fecha de inicio de tratamiento)`:""}, en este equipo y en la nube. Esta acción no se puede deshacer.\n${at?`Las ${at} atenciones del REGISTRO HIS se conservan.`:"El REGISTRO HIS no tiene atenciones."}\nPara confirmar, escriba BORRAR.`,
+    escribir:"BORRAR",botones:[{txt:"Cancelar",val:null},{txt:"Descargar Excel y vaciar",val:"copia"},{txt:"Vaciar padrón",val:true,clase:"peligro"}],escape:null});
+  if(r===null)return;
+  if(r==="copia"){if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel: no se descargó la copia y el padrón no se vació.");return;}exportXLSX();}
+  pacientes=[];guardarPacientes();document.getElementById('search').value="";pagDatos=1;renderDatos();if(window.alCambiarPacientes)alCambiarPacientes();
+  msg(`Padrón vaciado: ${n} pacientes borrados`);
+}
+
 /* ======================= IMPORTAR / EXPORTAR ======================= */
 function parseCSV(text){
   text=text.replace(/^﻿/,"");const sep=(text.match(/;/g)||[]).length>(text.match(/,/g)||[]).length?";":",";
@@ -177,12 +190,17 @@ function dialogo(o){return new Promise(res=>{
   const ico={pregunta:'?',peligro:'!',info:'i',ok:'✓'}[o.tipo||'pregunta'];
   DLG.querySelector('.dlg-ico').textContent=ico;DLG.querySelector('.dlg').dataset.tipo=o.tipo||'pregunta';
   DLG.querySelector('.dlg-tit').textContent=o.titulo||"";DLG.querySelector('.dlg-txt').textContent=o.texto||"";
+  const cuerpo=DLG.querySelector('.dlg-cuerpo');let inp=cuerpo.querySelector('.dlg-inp');if(inp){inp.remove();inp=null;}
+  if(o.escribir){inp=document.createElement('input');inp.className='dlg-inp';inp.placeholder="Escriba "+o.escribir;inp.autocomplete="off";inp.setAttribute('aria-label',"Escriba "+o.escribir+" para confirmar");cuerpo.appendChild(inp);} // confirmación escrita (acciones irreversibles)
   const bs=DLG.querySelector('.dlg-btns');bs.innerHTML="";const prev=document.activeElement;
-  const cerrar=v=>{DLG.classList.remove('abierto');document.removeEventListener('keydown',tecla);if(prev&&prev.focus)prev.focus();res(v);};
+  const cerrar=v=>{DLG.classList.remove('abierto');document.removeEventListener('keydown',tecla);if(inp)inp.remove();if(prev&&prev.focus)prev.focus();res(v);};
   const tecla=e=>{if(e.key==='Escape'){e.preventDefault();cerrar(o.escape===undefined?false:o.escape);}};
-  (o.botones||[{txt:"Cancelar",val:false},{txt:"Aceptar",val:true,clase:"primario"}]).forEach(b=>{const el=document.createElement('button');el.type="button";el.className="dlg-btn "+(b.clase||"");el.textContent=b.txt;el.onclick=()=>cerrar(b.val);bs.appendChild(el);});
+  const botones=o.botones||[{txt:"Cancelar",val:false},{txt:"Aceptar",val:true,clase:"primario"}];
+  botones.forEach(b=>{const el=document.createElement('button');el.type="button";el.className="dlg-btn "+(b.clase||"");el.textContent=b.txt;el.onclick=()=>cerrar(b.val);if(inp&&b.val)el.disabled=true;bs.appendChild(el);});
+  if(inp){const ok=()=>{const v=normTxt(inp.value).trim()===normTxt(o.escribir).trim();bs.querySelectorAll('.dlg-btn').forEach((el,i)=>{if(botones[i]&&botones[i].val)el.disabled=!v;});};
+    inp.addEventListener('input',ok);inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const f=bs.querySelector('.peligro:not(:disabled), .primario:not(:disabled)');if(f)f.click();}});}
   document.addEventListener('keydown',tecla);DLG.classList.add('abierto');
-  const foco=bs.querySelector('.primario, .peligro')||bs.lastElementChild;if(foco)foco.focus();
+  const foco=inp||bs.querySelector('.primario, .peligro')||bs.lastElementChild;if(foco)foco.focus();
 });}
 function confirmar(titulo,texto,opc){opc=opc||{};return dialogo({tipo:opc.peligro?'peligro':'pregunta',titulo,texto,botones:[{txt:opc.cancelar||"Cancelar",val:false},{txt:opc.ok||"Aceptar",val:true,clase:opc.peligro?"peligro":"primario"}]});}
 function avisar(titulo,texto,tipo){return dialogo({tipo:tipo||'info',titulo,texto,botones:[{txt:"Entendido",val:true,clase:"primario"}],escape:true});}
