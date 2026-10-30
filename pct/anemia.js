@@ -108,9 +108,12 @@ function render(){if(!$('anemia').classList.contains('active'))return;$('aneMsnm
   $('aneInfo').textContent=`${lista.length} en la lista · ${n.anemia} con anemia · ${n.tto} en tratamiento · ${n.fin} corregidas · ${n.sin} sin dosaje`;}
 function refrescar(tr){const r=pacientes[+tr.dataset.i];if(!r)return;const t=document.createElement('tbody');t.innerHTML=fila(r);tr.replaceWith(t.firstElementChild);}
 $('tbodyAne').addEventListener('change',e=>{const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k)return;const r=pacientes[+tr.dataset.i],a=ane(r),k=el.dataset.k;
-  if(k==="f_ini"||k==="f_hb0")a[k]=deIso(el.value);else if(k==="obs")a.obs=el.value.trim();else a[k]=el.value.trim();
-  guardarPacientes();refrescar(tr);if(window.MON)MON.render();
-  if(k==="f_ini")msg(`N° ${r.n}: ${a.f_ini?"tratamiento de anemia desde el "+a.f_ini+" · 6 controles programados en MONITOREO":"inicio retirado"}`);});
+  if(k==="f_ini"||k==="f_hb0"){if(!fechaIsoValida(el.value))return;a[k]=deIso(el.value);}else if(k==="obs")a.obs=el.value.trim();else a[k]=el.value.trim();
+  guardarPacientes();if(window.MON)MON.render();
+  if(document.activeElement===el&&el.type==="date"){el.dataset.pend=k;return;} // se sigue escribiendo la fecha: la fila se redibuja al salir del campo
+  refrescar(tr);if(k==="f_ini")avisoInicio(r);});
+$('tbodyAne').addEventListener('focusout',e=>{const el=e.target;if(!(el.dataset&&el.dataset.pend))return;const k=el.dataset.pend,tr=el.closest('tr'),r=pacientes[+tr.dataset.i];delete el.dataset.pend;refrescar(tr);if(k==="f_ini")avisoInicio(r);});
+function avisoInicio(r){const a=ane(r);msg(`N° ${r.n}: ${a.f_ini?"tratamiento de anemia desde el "+a.f_ini+" · 6 controles programados en MONITOREO":"inicio retirado"}`);}
 $('tbodyAne').addEventListener('input',e=>{const el=e.target;if(el.dataset.k==="obs"){const r=pacientes[+el.closest('tr').dataset.i];ane(r).obs=el.value.trim();guardarPacientes();}});
 $('tbodyAne').addEventListener('click',e=>{const b=e.target.closest('[data-acc]');if(!b)return;const tr=b.closest('tr'),r=pacientes[+tr.dataset.i];
   if(b.dataset.acc==="his"){const a=ane(r);a.hb0=b.dataset.hb;a.f_hb0=b.dataset.f;guardarPacientes();refrescar(tr);msg(`N° ${r.n}: hemoglobina ${a.hb0} tomada del REGISTRO HIS`);}

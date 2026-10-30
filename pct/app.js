@@ -22,6 +22,8 @@ function msg(t){const m=document.getElementById('msg');m.textContent=t;m.classLi
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function num(v){if(v===""||v==null)return null;const n=parseFloat(String(v).replace(",","."));return isNaN(n)?null:n;}
 function parseFecha(s){if(!s)return null;const m=String(s).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);if(!m)return null;let y=parseInt(m[3]);if(y<100)y+=y<30?2000:1900;const d=new Date(y,parseInt(m[2])-1,parseInt(m[1]));return isNaN(d)?null:d;}
+// Valor de un <input type="date"> completo y verosímil: al escribir el año, Chrome avisa «change» con cada dígito (0002, 0020, 0202…)
+function fechaIsoValida(v){if(!v)return true;const m=/^(\d{4})-\d{2}-\d{2}$/.exec(v);return !!m&&+m[1]>=1900&&+m[1]<=2100;}
 function fmtFecha(d){return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
 function hoy(){return fmtFecha(new Date());}
 function anioSolo(s){const m=String(s||"").trim().match(/^(\d{4})$/);return m?parseInt(m[1]):null;} // «2008» = solo año de nacimiento
