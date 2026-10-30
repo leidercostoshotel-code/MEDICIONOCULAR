@@ -16,6 +16,9 @@ table.tpt-tabla td.tpt-dosis{font-size:12px;line-height:1.35}
 .tpt-lin div.piri{font-weight:normal;color:#455a64}
 .tpt-frec{color:#455a64;font-size:11px;margin-top:2px}
 .tpt-aviso{color:#b00020;font-size:11.5px;font-weight:bold}
+.tpt-med label{display:block;font-size:10.5px;font-weight:bold;color:#6a1b9a;margin-bottom:2px}
+.tpt-med textarea{width:100%;box-sizing:border-box;font:inherit;font-size:11.5px;line-height:1.3;padding:4px 6px;border:1px solid #cfd8dc;border-radius:6px;resize:vertical;min-height:52px;color:#1a2b3c;background:#fdfbff}
+@media print{.tpt-med label{display:none}.tpt-med textarea{border:0;background:transparent;resize:none;padding:0;min-height:0}}
 .tpt-nota-l{color:#6d4c41;font-size:11px;font-style:italic}
 .tpt-gris{color:#90a4ae;font-size:11.5px}
 .tpt-esq{font-weight:bold;color:#1b5e20}
