@@ -21,7 +21,8 @@ const EX={
   enf:["Evaluación por enfermería","eva"],med:["Evaluación por médico cirujano del E.S.","eva"],cons:["Evaluación por médico consultor","eva"],
   ts:["Evaluación por trabajador social","eva"],psi:["Evaluación por psicología","eva"],nut:["Evaluación nutricional","eva"],
   pf:["Control por planificación familiar","eva"],peso:["Control de peso","eva"],esp:["Evaluación por especialidad según comorbilidad o localización de TB","eva"],
-  card:["Evaluación por cardiología (si el ECG es anormal)","eva"],av:["Evaluación de agudeza visual y visión de colores","eva"],psiq:["Evaluación por psiquiatría (según criterio del médico consultor)","eva"]};
+  card:["Evaluación por cardiología (si el ECG es anormal)","eva"],av:["Evaluación de agudeza visual y visión de colores","eva"],psiq:["Evaluación por psiquiatría (según criterio del médico consultor)","eva"],
+  an_hb:["Dosaje de hemoglobina","lab"],an_fe:["Entrega del hierro del mes y revisión de la toma diaria","eva"],an_adh:["Adherencia y efectos adversos del hierro","eva"],an_nut:["Consejería nutricional (alimentos ricos en hierro)","eva"]}; // an_* = tratamiento de anemia (pestaña ANEMIA)
 const GRUPO={lab:"Laboratorio",bac:"Bacteriología",img:"Imágenes y ECG",eva:"Evaluaciones y controles"};
 const M="M"; // basal + mensual hasta el final del tratamiento
 
@@ -45,7 +46,7 @@ const ESQUEMAS={
   blcc:{txt:"BLCC · 18 meses",tabla:17,meses:18},
   xdr:{txt:"TB-XDR parenteral · 18 meses",tabla:17,meses:18},
   mod17:{txt:"Esquema modificado · 18 meses (Tabla 17)",tabla:17,meses:18}};
-function esqAuto(r){const m=TPT.modoDe(r);if(m==="sens")return "ds";if(m!=="otro")return "";const t=normTxt(r.tto+" "+r.dx);
+function esqAuto(r){const m=TPT.modoDe(r);if(m==="sens")return "ds";if(m!=="otro")return "";const t=normTxt(r.tto+" "+r.dx+" "+(r.tto_med||""));
   if(t.includes("blcc"))return "blcc";if(t.includes("blc"))return "blc";if(t.includes("bpal"))return "bpalm";if(t.includes("xdr"))return "xdr";if(t.includes("hr")&&!t.includes("mdr"))return "hr";
   if(t.includes("modif"))return "mod16";return "blc";}
 function esqDe(r){return ESQUEMAS[r.mon_esq]?r.mon_esq:esqAuto(r);}
@@ -131,10 +132,14 @@ function filtrar(r){const f=$('monFiltro').value,q=normTxt($('monBuscar').value)
   if(f==="ds")return m==="sens";if(f==="dr")return m==="otro";if(f==="tpt")return m==="tpt";return true;}
 function eventos(){ // {clave: [{tipo:'c', p, c} | {tipo:'h', h}]}
   const ev={},add=(d,o)=>{(ev[clave(d)]=ev[clave(d)]||[]).push(o);};
-  pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(p)p.controles.forEach(c=>{add(c.fecha,{tipo:"c",p,c});
+  const addPlan=p=>p.controles.forEach(c=>{add(c.fecha,{tipo:"c",p,c});
       const vistos=new Set([clave(c.fecha)]);c.hist.forEach(x=>{const d=parseFecha(x.de);if(d&&!vistos.has(clave(d))){vistos.add(clave(d));add(d,{tipo:"m",p,c,x});}});}); // «m» = cita que se reprogramó a otro día
-    hitos(r).forEach(h=>{if(h.f)add(h.f,{tipo:"h",h});});});
+  pacientes.filter(filtrar).forEach(r=>{planes(r).forEach(addPlan);hitos(r).forEach(h=>{if(h.f)add(h.f,{tipo:"h",h});});});
   return ev;}
+
+// planes de un paciente: el de TB (plan) y el de anemia (pestaña ANEMIA, cid «a1»…«a6»); comparten las marcas en r.mon
+function planes(r){const l=[],p=plan(r);if(p)l.push(p);const a=window.ANE&&ANE.plan(r);if(a)l.push(a);return l;}
+function controlDe(r,cid){const p=/^a/.test(cid||"")?(window.ANE&&ANE.plan(r)):plan(r);return p&&p.controles.find(x=>x.cid===cid)||null;}
 
 /* ======================= DIBUJO ======================= */
 const nom=r=>`N° ${esc(r.n)} · ${esc(r.nom||"(sin nombre)")}`;
@@ -144,7 +149,7 @@ function chipsItems(c,editable){
     return editable?`<label class="mon-ex${ok?' ok':''}"><input type="checkbox" data-k="${k}" ${ok?'checked':''}> <span>${esc(EX[k][0])}</span>${ok?'<em class="mon-hecho">✔ Realizado</em>':''}</label>`:`<span class="mon-ex${ok?' ok':''}">${ok?'✔ ':''}${esc(EX[k][0])}</span>`;}).join("")}</div>`).join("")+
     c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("");}
 function tarjeta(p,c){const [cls,txt]=estado(c),r=p.r;
-  return `<div class="mon-card st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}">
+  return `<div class="mon-card st-${cls}${p.tipo==="ane"?" ane":""}" data-id="${esc(r.id)}" data-cid="${c.cid}">
     <div class="mon-card-cab"><div><b>${nom(r)}</b><small>${esc(p.E.txt)} · ${esc(c.nombre)}${c.m===0?(r.f_ini_ok?' · <span class="conf-t ok">✔ inicio conforme</span>':' · <span class="conf-t pend">'+(c.fecha>hoy0()?'inicio por confirmar':'⚠ inicio sin conformidad')+'</span>'):""}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</small></div><span class="mon-st st-${cls}">${txt}</span></div>
     <div class="mon-items">${chipsItems(c,true)}</div>
     <div class="mon-acc"><button class="btn primary" data-acc="todo">✔ Todo realizado</button>
@@ -165,7 +170,7 @@ function pintarCal(ev){
     const venc=cs.some(e=>estado(e.c)[0]==="vencido");
     html+=`<div class="mon-d${+f===+h?' hoy':''}${+f===+diaSel?' sel':''}${f.getDay()===0?' dom':''}${fer?' fer':''}${venc?' venc':''}" data-dia="${k}" title="${fer?esc(fer):""}">
       <div class="mon-dnum"><span class="mon-n">${d}</span>${cs.length?`<span class="mon-cnt" title="${cs.length} paciente(s) citado(s)">${cs.length}</span>`:""}${fer?`<span class="mon-fer">${esc(fer)}</span>`:""}</div>
-      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}">${e.c.movido==="reprogramada"?"↪ ":""}N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
+      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}${e.p.tipo==="ane"?" ane":""}">${e.c.movido==="reprogramada"?"↪ ":""}${e.p.tipo==="ane"?"🩸 ":""}N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
       ${cs.length>3?`<div class="mon-mas">+${cs.length-3} más</div>`:""}
       ${ms.slice(0,2).map(e=>`<div class="mon-ev movida" title="Cita reprogramada al ${fmtFecha(e.c.fecha)}">N° ${esc(e.p.r.n)} ↪ ${p2(e.c.fecha.getDate())}/${p2(e.c.fecha.getMonth()+1)}</div>`).join("")}${ms.length>2?`<div class="mon-mas">+${ms.length-2} reprogramadas</div>`:""}
       ${hs.slice(0,2).map(e=>`<div class="mon-hito">◆ ${esc(e.h.txt)} · N° ${esc(e.h.r.n)}</div>`).join("")}${hs.length>2?`<div class="mon-mas">+${hs.length-2} fechas clave</div>`:""}
@@ -215,9 +220,10 @@ const LISTAS_CTRL=["hoy","prox","venc","prog","ok","repro"];
 let lista=null;
 function datosListas(){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7);const D={};Object.keys(LISTAS).forEach(k=>{D[k]=[];});
   pacientes.filter(filtrar).forEach(r=>{const m=TPT.modoDe(r),p=plan(r);
-    if(p){D.pac.push({r,p});p.controles.forEach(c=>{const e={p,c},s=estado(c)[0];
+    if(p)D.pac.push({r,p});
+    planes(r).forEach(pl=>pl.controles.forEach(c=>{const e={p:pl,c},s=estado(c)[0];
       if(c.movido==="reprogramada"&&!c.completo)D.repro.push(e);
-      if(s==="ok")D.ok.push(e);else if(s==="vencido")D.venc.push(e);else{if(s==="hoy")D.hoy.push(e);if(c.fecha<=sem)D.prox.push(e);else D.prog.push(e);}});}
+      if(s==="ok")D.ok.push(e);else if(s==="vencido")D.venc.push(e);else{if(s==="hoy")D.hoy.push(e);if(c.fecha<=sem)D.prox.push(e);else D.prog.push(e);}}));
     if(m==="sens"||m==="otro"){const ini=parseFecha(r.f_ini);if(!ini)D.sin.push({r,p});else if(!r.f_ini_ok&&ini<=h)D.noconf.push({r,p});}});
   const porN=(a,b)=>(+a.n||0)-(+b.n||0),porF=(a,b)=>a.c.fecha-b.c.fecha||porN(a.p.r,b.p.r);
   ["hoy","prox","venc","prog","repro"].forEach(k=>D[k].sort(porF));D.ok.sort((a,b)=>porF(b,a)); // realizados: lo más reciente primero
@@ -238,7 +244,7 @@ function fila(r,key,cls,detalle){const ab=abiertos.has(key);
 function itemCtrl(e){const c=e.c,p=e.p,r=p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
   return fila(r,r.id+"|"+c.cid,cls,()=>`<div class="mon-det" data-id="${esc(r.id)}" data-cid="${c.cid}">
     ${cabDet(r,`<span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt}</span><small>${relTxt(c.fecha,cls==="vencido")}</small>`)}
-    <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${esc(r.f_ini)} ${confTxt(r)}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</div>
+    <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${fmtFecha(p.ini)} ${p.tipo==="ane"?"":confTxt(r)}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</div>
     ${avance(c.hechos.length,c.items.length,"exámenes y evaluaciones realizados")}${chips(c)}
     ${falta.length?`<div class="mon-li-falta"><b>Falta (${falta.length}):</b> ${falta.map(k=>esc(EX[k][0])).join(" · ")}</div>`:""}${c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("")}${c.hist.length?histHtml(c):""}
     <div class="mon-acc no-print">${c.completo?"":`<button class="btn primary" data-acc="todo">✔ Todo realizado</button>`}${c.completo?"":`<button class="btn mon-btn-rep" data-acc="repro">↪ Reprogramar</button>`}<button class="btn" data-acc="plan">📋 Plan completo</button><button class="btn" data-acc="ver" data-f="${clave(c.fecha)}">📅 Ver en el calendario</button></div>
@@ -285,7 +291,7 @@ function abrirPlan(id,refrescar){const r=pacientes.find(x=>x.id===id);if(!r)retu
     $('monPlan').innerHTML=cab+`<div class="mon-pinfo">
       <div><span>Esquema</span><b>${TPT.modoDe(r)==="sens"?esc(p.E.txt):`<select id="monEsq" class="no-print-sel">${opc}</select><b class="solo-print">${esc(p.E.txt)}</b>`}</b></div>
       <div class="${r.f_ini_ok?'conf-ok':'conf-pend'}"><span>Inicio</span><b>${fmtFecha(p.ini)}</b><small>${r.f_ini_ok?"✔ Inicio conforme ("+esc(r.f_ini_ok)+")":"⚠ Inicio sin conformidad"}</small><label class="no-print"><input type="checkbox" id="monConf" ${r.f_ini_ok?'checked':''}> Conforme</label></div>${h.map(x=>`<div><span>${esc(x.txt)}</span><b>${x.f?fmtFecha(x.f):"—"}</b></div>`).join("")}
-      <div><span>Monitoreo</span><b>${esc(p.T.nombre)} (${p.T.pag})</b></div></div>
+      ${r.tto_med?`<div><span>Medicamentos (médico consultor)</span><b>${esc(r.tto_med)}</b></div>`:""}<div><span>Monitoreo</span><b>${esc(p.T.nombre)} (${p.T.pag})</b></div></div>
       <table class="mon-ptab"><thead><tr><th>Control</th><th>Fecha</th><th>Exámenes y evaluaciones</th><th>Estado</th></tr></thead><tbody>${p.controles.map(c=>{const [cls,txt]=estado(c);
         return `<tr class="st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}"><td><b>${esc(c.nombre)}</b></td><td class="mon-pf"><b>${fmtFecha(c.fecha)}</b><br>${DIAS[c.fecha.getDay()]}${c.movido?`<br><i class="mon-mov">${movTxt(c)}</i>`:""}${c.completo?"":`<br><button class="btn no-print mon-btn-rep" data-acc="repro">↪ Reprogramar</button>`}</td>
           <td>${chipsItems(c,true)}</td><td><span class="mon-st st-${cls}">${txt}</span><br><small>${c.hechos.length}/${c.items.length}</small><br><button class="btn no-print" data-acc="todo">✔ Todo</button></td></tr>`;}).join("")}</tbody></table>
@@ -299,7 +305,7 @@ function cerrarPlan(){planAbierto=null;$('monModal').classList.remove('abierto')
 function ordenar(o){if(!o||typeof o!=="object"||Array.isArray(o))return o;const x={};Object.keys(o).sort().forEach(k=>{x[k]=ordenar(o[k]);});return x;}
 function guardar(r){r.mon=ordenar(r.mon&&typeof r.mon==="object"?r.mon:{});guardarPacientes();render();if(window.TPT)TPT.render();}
 function accion(e){const t=e.target,cont=t.closest('[data-id]');if(!cont)return;const r=pacientes.find(x=>x.id===cont.dataset.id);if(!r)return;const acc=t.dataset.acc,clic=e.type==="click",cambio=e.type==="change";
-  if(acc==="plan"&&clic){abrirPlan(r.id);return;}
+  if(acc==="plan"&&clic){if(/^a/.test(cont.dataset.cid||""))showView('anemia');else abrirPlan(r.id);return;}
   if(acc==="ver"&&clic){verDia(t.dataset.f);return;}
   if(acc==="tpt"&&clic){showView('tpt');return;}
   if(acc==="conf"&&cambio){r.f_ini_ok=t.checked?fmtFecha(new Date()):"";guardar(r);msg(`N° ${r.n}: ${r.f_ini_ok?"inicio conforme":"conformidad retirada"}`);return;}
@@ -307,7 +313,7 @@ function accion(e){const t=e.target,cont=t.closest('[data-id]');if(!cont)return;
   if(!cont.dataset.cid)return;
   r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[cont.dataset.cid]=r.mon[cont.dataset.cid]||{};st.ok=st.ok||{};
   if(t.matches('input[type=checkbox][data-k]')){if(!cambio)return;if(t.checked)st.ok[t.dataset.k]=1;else delete st.ok[t.dataset.k];guardar(r);return;}
-  if(acc==="todo"&&clic){const p=plan(r),c=p&&p.controles.find(x=>x.cid===cont.dataset.cid);if(c)c.items.forEach(k=>{st.ok[k]=1;});guardar(r);msg(`N° ${r.n}: ${c?c.nombre.toLowerCase():"control"} realizado`);}
+  if(acc==="todo"&&clic){const c=controlDe(r,cont.dataset.cid);if(c)c.items.forEach(k=>{st.ok[k]=1;});guardar(r);msg(`N° ${r.n}: ${c?c.nombre.toLowerCase():"control"} realizado`);}
   else if(acc==="repro"&&clic)abrirRepro([{id:r.id,cid:cont.dataset.cid}]);}
 ['click','change'].forEach(tp=>{$('monDia').addEventListener(tp,accion);$('monPlan').addEventListener(tp,accion);$('monCal').addEventListener(tp,accion);});
 $('monResumen').addEventListener('click',e=>{const b=e.target.closest('[data-lista]');if(!b)return;lista=lista===b.dataset.lista?null:b.dataset.lista;render();});
@@ -331,7 +337,7 @@ function movTxt(c){const u=c.hist[c.hist.length-1];return c.movido==="reprograma
 function obsFecha(c){const u=c.hist[c.hist.length-1];if(c.movido==="reprogramada"&&u)return `Reprogramada del ${u.de} al ${u.a}${u.mot?" · "+u.mot:""}${u.obs?" ("+u.obs+")":""}`;return c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):"";}
 function histHtml(c){return `<ul class="mon-hist">${c.hist.slice().reverse().map(x=>`<li><b>${esc(x.de)} → ${esc(x.a)}</b>${x.mot?" · "+esc(x.mot):""}${x.obs?` · <i>${esc(x.obs)}</i>`:""}<small>Registrado el ${esc(x.reg||"")}</small></li>`).join("")}</ul>`;}
 let repSel=[];
-function objetivos(){return repSel.map(o=>{const r=pacientes.find(x=>x.id===o.id),p=r&&plan(r),c=p&&p.controles.find(x=>x.cid===o.cid);return c?{r,p,c}:null;}).filter(Boolean);}
+function objetivos(){return repSel.map(o=>{const r=pacientes.find(x=>x.id===o.id);if(!r)return null;const p=/^a/.test(o.cid)?(window.ANE&&ANE.plan(r)):plan(r),c=p&&p.controles.find(x=>x.cid===o.cid);return c?{r,p,c}:null;}).filter(Boolean);}
 const sigHabil=(d,n)=>habil(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)).f;
 function abrirRepro(lst){repSel=lst;const T=objetivos();if(!T.length)return;pintarRepro(T);$('monRepModal').classList.add('abierto');
   setTimeout(()=>{const b=$('monRep').querySelector('.mon-rap.sel');if(b)b.focus();},50);}
@@ -374,7 +380,7 @@ $('monDia').addEventListener('click',e=>{const v=e.target.closest('[data-ver]');
 /* ======================= EXCEL E IMPRESIÓN ======================= */
 function exportar(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la librería de Excel (sin conexión)");return;}
   const cab=["Fecha","Día","N° Reg","Apellidos y Nombres","DNI","Inicio conforme","Esquema","Tabla NTS","Control","Exámenes y evaluaciones","Realizados","Estado","Observación de fecha"];
-  const filas=[];pacientes.filter(filtrar).forEach(r=>{const p=plan(r);if(!p)return;p.controles.forEach(c=>filas.push([c.fecha,fmtFecha(c.fecha),DIAS[c.fecha.getDay()],r.n,r.nom,r.dni,r.f_ini_ok?"Sí ("+r.f_ini_ok+")":"Pendiente",p.E.txt,p.T.nombre,c.nombre,c.items.map(k=>EX[k][0]).join(" | "),c.hechos.length+"/"+c.items.length,estado(c)[1],obsFecha(c)]));});
+  const filas=[];pacientes.filter(filtrar).forEach(r=>planes(r).forEach(p=>{p.controles.forEach(c=>filas.push([c.fecha,fmtFecha(c.fecha),DIAS[c.fecha.getDay()],r.n,r.nom,r.dni,p.tipo==="ane"?"":(r.f_ini_ok?"Sí ("+r.f_ini_ok+")":"Pendiente"),p.E.txt,p.T.nombre,c.nombre,c.items.map(k=>EX[k][0]).join(" | "),c.hechos.length+"/"+c.items.length,estado(c)[1],obsFecha(c)]));}));
   filas.sort((a,b)=>a[0]-b[0]);const ws=XLSX.utils.aoa_to_sheet([cab].concat(filas.map(f=>f.slice(1))));ws['!cols']=[11,10,7,34,11,16,30,40,18,90,10,11,22].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Monitoreo");XLSX.writeFile(wb,"Monitoreo_PCT.xlsx");msg("Excel exportado");}
 function exportarLista(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la librería de Excel (sin conexión)");return;}if(!lista)return;
@@ -393,6 +399,6 @@ const showBase=window.showView;
 window.showView=function(v){showBase(v);$('tabMon').classList.toggle('active',v==='monitoreo');document.body.classList.toggle('ver-mon',v==='monitoreo');if(v==='monitoreo')render();};
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();const a=document.activeElement;if(!(a&&a.closest&&a.closest('#monitoreo,#monPlan')))render();};
-window.MON={plan,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,abrirRepro,cerrarRepro,
+window.MON={plan,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,abrirRepro,cerrarRepro,habil,masMeses,estado,hoy0,irDia:k=>{showView('monitoreo');verDia(k);},
   verLista:k=>{lista=LISTAS[k]?k:null;showView('monitoreo');}};
 })();
