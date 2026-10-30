@@ -141,8 +141,9 @@ function celdaEsq(r,c){
     return `<select data-k="tpt_esq">${`<option value="">Automático${auto?" · "+auto:""}</option>`}${ops.map(o=>`<option value="${o}" ${r.tpt_esq===o?'selected':''}>${ESQ[o]}</option>`).join("")}</select>`;}
   if(c.modo==="sens")return `<span class="tpt-esq">${esc(c.esq)}</span>`;
   return `<span class="tpt-gris">—</span>`;}
-function celdaDosis(c){
-  return (c.lin.length?`<div class="tpt-lin">${c.lin.map(l=>`<div${/^Piridoxina/.test(l)?' class="piri"':""}>${esc(l)}</div>`).join("")}</div>`:"")+
+function celdaDosis(c,r){
+  return (c.modo==="otro"&&r?`<div class="tpt-med"><label>Medicamentos y dosis indicados por el médico consultor (Tabla N° 10)</label><textarea data-k="tto_med" rows="3" placeholder="Ej.: Bedaquilina 400 mg/día x 2 sem, luego 200 mg 3 v/sem · Linezolid 600 mg/día · Levofloxacino 1 g/día · Clofazimina 100 mg/día">${esc(r.tto_med||"")}</textarea></div>`:"")+
+    (c.lin.length?`<div class="tpt-lin">${c.lin.map(l=>`<div${/^Piridoxina/.test(l)?' class="piri"':""}>${esc(l)}</div>`).join("")}</div>`:"")+
     (c.frec&&c.lin.length?`<div class="tpt-frec">${esc(c.frec)}${c.tabla?` · <b>${esc(c.tabla)}</b>`:""}</div>`:"")+
     c.aviso.map(a=>`<div class="tpt-aviso">⚠ ${esc(a)}</div>`).join("")+c.nota.map(a=>`<div class="tpt-nota-l">${esc(a)}</div>`).join("");}
 // conformidad del inicio: el inicio se dio (primera dosis administrada); guarda la fecha en que se marcó
@@ -159,7 +160,7 @@ function filaTPT(r){const i=pacientes.indexOf(r),c=calcular(r);const e=edadDe(r)
     <td><select data-k="tto" title="Tratamiento (el mismo de DATOS)">${opcionesTto(r.tto)}</select></td>
     <td data-c="sel">${celdaSel(r,c.modo)}</td>
     <td data-c="esq">${celdaEsq(r,c)}</td>
-    <td class="tpt-dosis" data-c="dosis">${celdaDosis(c)}</td>
+    <td class="tpt-dosis" data-c="dosis">${celdaDosis(c,r)}</td>
     <td class="tpt-ini"><input type="date" required data-k="f_ini" value="${(d=>d?iso(d):"")(parseFecha(r.f_ini))}" title="Fecha de inicio indicada por el médico: desde aquí empieza el monitoreo">${celdaConf(r)}</td>
     <td class="tpt-fechas" data-c="fechas">${celdaFechas(r,c)}</td>
     <td><input data-k="tpt_obs" value="${esc(r.tpt_obs)}" placeholder="—"></td>
@@ -174,11 +175,12 @@ function render(){if(!$('tpt').classList.contains('active'))return;const l=lista
   [...$('tptFiltro').options].forEach(o=>{o.textContent=`${base[o.value]} (${cuenta[o.value]})`;});
   $('tptInfo').textContent=`${l.length} en la lista · ${cuenta.tpt} con TPT · ${cuenta.sens} en esquema sensible`+(cuenta.nd?` · ${cuenta.nd} sin tratamiento: elíjalo en la columna Tratamiento`:"");}
 function refrescarFila(tr){const r=pacientes[+tr.dataset.i];if(!r)return;const c=calcular(r);
-  tr.className="m-"+(c.modo||"nd");tr.querySelector('[data-c=esq]').innerHTML=celdaEsq(r,c);tr.querySelector('[data-c=dosis]').innerHTML=celdaDosis(c);tr.querySelector('[data-c=fechas]').innerHTML=celdaFechas(r,c);}
+  tr.className="m-"+(c.modo||"nd");tr.querySelector('[data-c=esq]').innerHTML=celdaEsq(r,c);tr.querySelector('[data-c=dosis]').innerHTML=celdaDosis(c,r);tr.querySelector('[data-c=fechas]').innerHTML=celdaFechas(r,c);}
 let datosSucio=false;
-$('tbodyTPT').addEventListener('input',e=>{const el=e.target,tr=el.closest('tr');if(!tr||el.dataset.k!=="peso"&&el.dataset.k!=="tpt_obs")return;const r=pacientes[+tr.dataset.i];
-  r[el.dataset.k]=el.value.trim();if(el.dataset.k==="peso")el.classList.toggle('invalid',num(el.value)==null);guardarPacientes();datosSucio=true;refrescarFila(tr);});
-$('tbodyTPT').addEventListener('change',e=>{const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k||el.dataset.k==="peso"||el.dataset.k==="tpt_obs")return;const r=pacientes[+tr.dataset.i];
+$('tbodyTPT').addEventListener('input',e=>{const el=e.target,tr=el.closest('tr');if(!tr||!["peso","tpt_obs","tto_med"].includes(el.dataset.k))return;const r=pacientes[+tr.dataset.i];
+  r[el.dataset.k]=el.value.trim();if(el.dataset.k==="tto_med"){guardarPacientes();datosSucio=true;return;} // se guarda sin redibujar (se está escribiendo)
+  if(el.dataset.k==="peso")el.classList.toggle('invalid',num(el.value)==null);guardarPacientes();datosSucio=true;refrescarFila(tr);});
+$('tbodyTPT').addEventListener('change',e=>{const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k||["peso","tpt_obs","tto_med"].includes(el.dataset.k))return;const r=pacientes[+tr.dataset.i];
   if(el.dataset.k==="f_ini"){r.f_ini=deIso(el.value);if(!r.f_ini)r.f_ini_ok="";}
   else if(el.dataset.k==="f_ini_ok")r.f_ini_ok=el.checked?fmtFecha(new Date()):"";else r[el.dataset.k]=el.value;
   if(el.dataset.k==="tpt_ind")r.tpt_esq=""; // otro caso índice: volver al esquema automático
@@ -194,7 +196,7 @@ $('tptFiltro').addEventListener('change',render);$('tptBuscar').addEventListener
 function exportar(){if(typeof XLSX==="undefined"){msg("No se pudo cargar la librería de Excel (sin conexión)");return;}
   const cab=["N° Reg","Apellidos y Nombres","DNI","Edad","Peso (kg)","Tratamiento","Caso índice / Situación","Esquema","Dosis","Frecuencia","Tabla NTS 221-2024","Avisos","Inicio","Inicio conforme","Fechas","Observación"];
   const filas=lista().map(r=>{const c=calcular(r),m=c.modo;
-    return [r.n,r.nom,r.dni,edadDe(r),r.peso,r.tto,m==="tpt"?IND[r.tpt_ind||"ds"]:m==="sens"?SIT[r.tto_sit||"normal"]:"",m==="tpt"?(ESQ[c.esq]||""):c.esq,c.lin.join(" | "),c.frec||"",c.tabla,c.aviso.concat(c.nota).join(" | "),r.f_ini,r.f_ini_ok?"Sí ("+r.f_ini_ok+")":(r.f_ini?"Pendiente":""),fechas(r,c).map(([k,v])=>k+": "+v).join(" | "),r.tpt_obs];});
+    return [r.n,r.nom,r.dni,edadDe(r),r.peso,r.tto,m==="tpt"?IND[r.tpt_ind||"ds"]:m==="sens"?SIT[r.tto_sit||"normal"]:"",m==="tpt"?(ESQ[c.esq]||""):c.esq,c.lin.join(" | ")||(m==="otro"?(r.tto_med||""):""),c.frec||"",c.tabla,c.aviso.concat(c.nota).join(" | "),r.f_ini,r.f_ini_ok?"Sí ("+r.f_ini_ok+")":(r.f_ini?"Pendiente":""),fechas(r,c).map(([k,v])=>k+": "+v).join(" | "),r.tpt_obs];});
   const ws=XLSX.utils.aoa_to_sheet([cab].concat(filas));ws['!cols']=[7,34,11,6,8,12,26,26,60,30,14,40,11,16,40,24].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"TPT");XLSX.writeFile(wb,"TPT_PCT.xlsx");msg("Excel exportado");}
 
