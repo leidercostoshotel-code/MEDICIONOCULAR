@@ -181,7 +181,7 @@ $('tbodyTPT').addEventListener('input',e=>{const el=e.target,tr=el.closest('tr')
   r[el.dataset.k]=el.value.trim();if(el.dataset.k==="tto_med"){guardarPacientes();datosSucio=true;return;} // se guarda sin redibujar (se está escribiendo)
   if(el.dataset.k==="peso")el.classList.toggle('invalid',num(el.value)==null);guardarPacientes();datosSucio=true;refrescarFila(tr);});
 $('tbodyTPT').addEventListener('change',e=>{const el=e.target,tr=el.closest('tr');if(!tr||!el.dataset.k||["peso","tpt_obs","tto_med"].includes(el.dataset.k))return;const r=pacientes[+tr.dataset.i];
-  if(el.dataset.k==="f_ini"){r.f_ini=deIso(el.value);if(!r.f_ini)r.f_ini_ok="";}
+  if(el.dataset.k==="f_ini"){if(!fechaIsoValida(el.value))return;r.f_ini=deIso(el.value);if(!r.f_ini)r.f_ini_ok="";}
   else if(el.dataset.k==="f_ini_ok")r.f_ini_ok=el.checked?fmtFecha(new Date()):"";else r[el.dataset.k]=el.value;
   if(el.dataset.k==="tpt_ind")r.tpt_esq=""; // otro caso índice: volver al esquema automático
   guardarPacientes();datosSucio=true;
