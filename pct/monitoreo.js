@@ -310,8 +310,7 @@ function accion(e){const t=e.target,cont=t.closest('[data-id]');if(!cont)return;
   if(acc==="tpt"&&clic){showView('tpt');return;}
   if(acc==="conf"&&cambio){r.f_ini_ok=t.checked?fmtFecha(new Date()):"";guardar(r);msg(`N° ${r.n}: ${r.f_ini_ok?"inicio conforme":"conformidad retirada"}`);return;}
   if(acc==="ini"&&cambio){if(!fechaIsoValida(t.value))return;const f=deIso(t.value);if(!f)return;r.f_ini=f;guardarPacientes();if(window.TPT)TPT.render();
-    if(document.activeElement===t){t.dataset.pend="1";return;} // se sigue escribiendo la fecha: la lista se redibuja al salir del campo
-    render();msg(`N° ${r.n}: inicio ${f} · plan de monitoreo armado`);return;}
+    t.dataset.pend="1";msg(`N° ${r.n}: inicio ${f} guardado · plan de monitoreo armado`);return;} // la lista se redibuja al salir del campo (Chrome avisa cada cambio mientras se escribe)
   if(!cont.dataset.cid)return;
   r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[cont.dataset.cid]=r.mon[cont.dataset.cid]||{};st.ok=st.ok||{};
   if(t.matches('input[type=checkbox][data-k]')){if(!cambio)return;if(t.checked)st.ok[t.dataset.k]=1;else delete st.ok[t.dataset.k];guardar(r);return;}
