@@ -309,13 +309,16 @@ function accion(e){const t=e.target,cont=t.closest('[data-id]');if(!cont)return;
   if(acc==="ver"&&clic){verDia(t.dataset.f);return;}
   if(acc==="tpt"&&clic){showView('tpt');return;}
   if(acc==="conf"&&cambio){r.f_ini_ok=t.checked?fmtFecha(new Date()):"";guardar(r);msg(`N° ${r.n}: ${r.f_ini_ok?"inicio conforme":"conformidad retirada"}`);return;}
-  if(acc==="ini"&&cambio){const f=deIso(t.value);if(!f)return;r.f_ini=f;guardar(r);msg(`N° ${r.n}: inicio ${f} · plan de monitoreo armado`);return;}
+  if(acc==="ini"&&cambio){if(!fechaIsoValida(t.value))return;const f=deIso(t.value);if(!f)return;r.f_ini=f;guardarPacientes();if(window.TPT)TPT.render();
+    if(document.activeElement===t){t.dataset.pend="1";return;} // se sigue escribiendo la fecha: la lista se redibuja al salir del campo
+    render();msg(`N° ${r.n}: inicio ${f} · plan de monitoreo armado`);return;}
   if(!cont.dataset.cid)return;
   r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[cont.dataset.cid]=r.mon[cont.dataset.cid]||{};st.ok=st.ok||{};
   if(t.matches('input[type=checkbox][data-k]')){if(!cambio)return;if(t.checked)st.ok[t.dataset.k]=1;else delete st.ok[t.dataset.k];guardar(r);return;}
   if(acc==="todo"&&clic){const c=controlDe(r,cont.dataset.cid);if(c)c.items.forEach(k=>{st.ok[k]=1;});guardar(r);msg(`N° ${r.n}: ${c?c.nombre.toLowerCase():"control"} realizado`);}
   else if(acc==="repro"&&clic)abrirRepro([{id:r.id,cid:cont.dataset.cid}]);}
 ['click','change'].forEach(tp=>{$('monDia').addEventListener(tp,accion);$('monPlan').addEventListener(tp,accion);$('monCal').addEventListener(tp,accion);});
+$('monCal').addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&t.dataset.pend){delete t.dataset.pend;render();}});
 $('monResumen').addEventListener('click',e=>{const b=e.target.closest('[data-lista]');if(!b)return;lista=lista===b.dataset.lista?null:b.dataset.lista;render();});
 $('monCal').addEventListener('click',e=>{const fl=e.target.closest('[data-fila]');if(fl){const k=fl.dataset.fila;if(abiertos.has(k))abiertos.delete(k);else abiertos.add(k);render();return;}
   const b=e.target.closest('[data-l]');if(!b)return;const a=b.dataset.l;
