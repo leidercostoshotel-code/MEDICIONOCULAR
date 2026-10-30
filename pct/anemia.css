@@ -1,0 +1,39 @@
+/* PCT · Pestaña ANEMIA (NTS 213-2024) */
+.ane-info{margin:8px 16px 0;background:#fff5f8;border:1px solid #f3c6d5;border-left:5px solid #c2185b;border-radius:8px;padding:8px 12px;font-size:12px;color:#4a2c3a;line-height:1.45}
+.ane-info i{color:#7b3f5a}
+#aneWrap{overflow:auto;max-height:calc(100vh - var(--tb,60px) - 150px);max-height:calc(100svh - var(--tb,60px) - 150px);background:#fff;margin:8px 16px 0}
+.ane-tabla{width:1846px;table-layout:fixed}
+.ane-tabla td{vertical-align:top;padding:6px 6px;font-size:12.5px}
+.ane-tabla td small{display:block;color:#607d8b;font-size:11px;margin-top:2px;white-space:normal}
+.ane-nom div{font-weight:bold;color:#1a2b3c}
+.ane-gest select{margin-top:4px;font:inherit;font-size:11.5px;padding:2px 4px;border:1px solid #cfd8dc;border-radius:6px;max-width:100%}
+.ane-tabla input[type=number],.ane-tabla input[type=date]{font:inherit;font-size:12px;padding:3px 4px;border:1px solid #cfd8dc;border-radius:6px;margin:1px 2px 1px 0}
+.ane-tabla input[data-k=obs]{width:100%;box-sizing:border-box;font:inherit;font-size:12px;padding:3px 5px;border:1px solid #cfd8dc;border-radius:6px}
+.ane-his{display:block;margin-top:3px;background:#e3f2fd;color:#0d47a1;border:1px solid #90caf9;border-radius:8px;font:inherit;font-size:11px;padding:2px 7px;cursor:pointer}
+.ane-dx{display:inline-block;border-radius:10px;padding:2px 9px;font-weight:bold;font-size:12px;color:#fff;background:#78909c}
+.ane-dx.sev-ok{background:#43a047}.ane-dx.sev-leve{background:#f9a825;color:#3e2b00}.ane-dx.sev-moderada{background:#ef6c00}.ane-dx.sev-severa{background:#c62828}
+.ane-tto b{display:block;color:#ad1457;font-size:12px;white-space:normal}.ane-aviso{margin-top:4px;color:#b00020;font-weight:bold;font-size:11.5px}
+.ane-gris{color:#90a4ae;font-size:11.5px}
+.ane-ctrls{white-space:normal}
+.ane-ctrl{display:inline-flex;align-items:center;gap:3px;border:1px solid #dfe5ea;border-left:4px solid #5c7f9e;border-radius:7px;padding:2px 5px;margin:0 4px 4px 0;font-size:11.5px;background:#fff}
+.ane-ctrl.st-prox{border-left-color:#f9a825}.ane-ctrl.st-hoy{border-left-color:#1e88e5}.ane-ctrl.st-vencido{border-left-color:#d32f2f;background:#fff7f7}.ane-ctrl.st-ok{border-left-color:#43a047;background:#f2faf2}
+.ane-mes{background:none;border:0;font:inherit;font-size:11.5px;font-weight:bold;color:#1F4E79;cursor:pointer;padding:0}.ane-mes:hover{text-decoration:underline}
+.ane-st{color:#607d8b;font-size:10.5px}.ane-ctrl.st-vencido .ane-st{color:#b00020;font-weight:bold}.ane-ctrl.st-ok .ane-st{color:#2e7d32;font-weight:bold}
+.ane-ctrl input[type=number]{width:52px;padding:1px 3px;font-size:11.5px}
+.ane-ok{background:#1F4E79;color:#fff;border:0;border-radius:6px;font-size:11px;padding:1px 6px;cursor:pointer}
+.ane-sit{display:inline-block;border-radius:10px;padding:2px 9px;font-size:11.5px;font-weight:bold;background:#eceff1;color:#455a64}
+.ane-sit.s-ok{background:#e6f4e6;color:#2e7d32}.ane-sit.s-ini{background:#fff6d6;color:#8a6100}.ane-sit.s-tto{background:#e3f2fd;color:#1565c0}.ane-sit.s-nores{background:#fdeaea;color:#b23b3b}.ane-sit.s-fin{background:#e6f4e6;color:#1b5e20}
+tr.s-nores td:first-child{border-left:4px solid #d32f2f}tr.s-ini td:first-child{border-left:4px solid #f9a825}
+/* citas de anemia en el calendario de MONITOREO */
+.mon-ev.ane{border-left-color:#c2185b!important}.mon-card.ane,.mon-li.ane{border-left-color:#c2185b!important}
+/* impresión: horizontal, solo esta pestaña */
+@page ane{size:A4 landscape;margin:8mm}
+@media print{
+  body.ver-ane #registro{display:none!important}
+  body.ver-ane #anemia{display:block!important;page:ane}
+  body.ver-ane #aneWrap{overflow:visible;max-height:none;margin:0}
+  body.ver-ane .ane-tabla{zoom:.6}
+  body.ver-ane .ane-ok,body.ver-ane .ane-his{display:none}
+  body.ver-ane .ane-dx,body.ver-ane .ane-sit,body.ver-ane .ane-info{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (max-width:700px){.ane-info{margin:6px 8px 0;font-size:11.5px}#aneWrap{margin:6px 8px 0}}
