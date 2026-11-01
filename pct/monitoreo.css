@@ -205,3 +205,6 @@ i.mon-mov{color:#5e35b1}
 /* calendario en pantallas pequeñas (al final para que prevalezca) */
 @media (max-width:900px){.mon-cuerpo{grid-template-columns:minmax(0,1fr);padding:8px}.mon-d{min-height:64px;padding:3px}.mon-ev{font-size:9.5px;padding:1px 2px}.mon-hito,.mon-fer{display:none}.mon-cnt{display:inline-block}.mon-calcard .mon-grid{padding:4px}.mon-semana{padding:6px 4px}.mon-calstats span{min-width:0;flex:1}.mon-calstats{width:100%}.mon-calt p{display:none}}
 @media (max-width:600px){.mon-ev{font-size:0;height:6px;padding:0;margin-top:3px;border-radius:3px;border-left:0}.mon-ev.movida{display:none}.mon-ev.st-prog{background:#90a4ae}.mon-ev.st-prox{background:#f9a825}.mon-ev.st-hoy{background:#42a5f5}.mon-ev.st-vencido{background:#e57373}.mon-ev.st-ok{background:#66bb6a}.mon-d{min-height:56px}.mon-mas{display:none}.mon-semana div{letter-spacing:0;font-size:11px}.mon-calcab{padding:10px}.mon-calt h2{font-size:17px}.mon-calico{width:36px;height:36px;font-size:18px}.mon-dnum{flex-wrap:nowrap;gap:2px}.mon-n{min-width:19px;height:19px;font-size:12px}}
+/* contactos con TPT en el calendario (💊, verde azulado) */
+.g-tpt .mon-gt{color:#00796b}
+.mon-ev.tpt{border-left-color:#00897b!important}.mon-card.tpt{border-left-color:#00897b!important}
