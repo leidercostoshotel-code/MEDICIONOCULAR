@@ -166,7 +166,7 @@ function filaTPT(r){const i=pacientes.indexOf(r),c=calcular(r);const e=edadDe(r)
     <td><input data-k="tpt_obs" value="${esc(r.tpt_obs)}" placeholder="—"></td>
   </tr>`;}
 function lista(){const f=$('tptFiltro').value,q=normTxt($('tptBuscar').value).trim();
-  return pacientes.filter(r=>{const m=modoDe(r)||"nd";if(f!=="todos"&&m!==f)return false;return !q||normTxt([r.n,r.dni,r.hc,r.nom].join(" ")).includes(q);});}
+  return ordenarPacientes(pacientes).filter(r=>{const m=modoDe(r)||"nd";if(f!=="todos"&&m!==f)return false;return !q||normTxt([r.n,r.dni,r.hc,r.nom].join(" ")).includes(q);});}
 function render(){if(!$('tpt').classList.contains('active'))return;const l=lista();
   $('tbodyTPT').innerHTML=l.map(filaTPT).join("");$('tptVacio').style.display=l.length?'none':'block';
   // todo lo de DATOS aparece aquí: el filtro muestra cuántos hay de cada tipo
