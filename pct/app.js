@@ -135,7 +135,6 @@ function addRow(){
   msg("Fila N° "+r.n+" agregada");
 }
 async function delRow(i){const r=pacientes[i];if(!await confirmar("Eliminar paciente",`Se eliminará del padrón la fila N° ${r.n} · ${r.nom||'sin nombre'}. Esta acción no se puede deshacer.`,{ok:"Eliminar",peligro:true}))return;pacientes.splice(i,1);guardarPacientes();renderDatos();msg("Fila eliminada");}
-async function resetData(){if(!await confirmar("Restaurar padrón original","Se reemplazará el padrón actual por los datos originales del Excel. Los cambios hechos en DATOS se perderán.",{ok:"Restaurar",peligro:true}))return;pacientes=DATA_INICIAL.map(normalizar);guardarPacientes();renderDatos();msg("Datos originales restaurados");}
 
 // Vaciar todo el padrón (para importar una data nueva): pide escribir BORRAR; las atenciones del REGISTRO HIS se conservan.
 async function vaciarPadron(){
