@@ -103,7 +103,7 @@ function fila(r){const i=pacientes.indexOf(r),a=ane(r),e=edadDe(r),sx=String(r.s
     <td><span class="ane-sit s-${st.k}">${esc(st.txt)}</span>${p&&num(a.hb0)!=null?`<small>Inicio ${fmtFecha(p.ini)} · fin ${fmtFecha(p.fin)}</small>`:""}</td>
     <td><input data-k="obs" value="${esc(a.obs||"")}" placeholder="—"></td></tr>`;}
 function render(){if(!$('anemia').classList.contains('active'))return;$('aneMsnm').value=config.msnm||"";
-  const lista=pacientes.filter(filtrar);$('tbodyAne').innerHTML=lista.map(fila).join("");
+  const lista=ordenarPacientes(pacientes).filter(filtrar);$('tbodyAne').innerHTML=lista.map(fila).join("");
   const n={anemia:0,tto:0,fin:0,sin:0};pacientes.forEach(r=>{const k=situacion(r).k;if(["ini","tto","nores","fin"].includes(k))n.anemia++;if(k==="tto")n.tto++;if(k==="fin")n.fin++;if(k==="sin")n.sin++;});
   $('aneInfo').textContent=`${lista.length} en la lista · ${n.anemia} con anemia · ${n.tto} en tratamiento · ${n.fin} corregidas · ${n.sin} sin dosaje`;}
 // Redibuja la fila; si se está escribiendo en una celda (fecha, Hb…), esa celda se conserva y solo se actualizan las demás
