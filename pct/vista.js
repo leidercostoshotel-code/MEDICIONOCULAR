@@ -20,6 +20,8 @@ document.body.insertAdjacentHTML("afterbegin",`
   <div class="toolbar">
     <button class="btn primary" onclick="addRow()">+ Agregar fila</button>
     <input type="text" id="search" placeholder="Buscar (N°, DNI, HC, apellidos, nombres…)" oninput="renderDatos()">
+    <label class="lbl" title="Orden de las listas de DATOS, TPT y ANEMIA">Orden <select id="ordenDatos" onchange="cambiarOrden(this.value)"><option value="inicio">Inicio de tratamiento (más antiguos primero)</option><option value="n">N° de registro</option><option value="nom">Apellidos y nombres</option></select></label>
+    <button class="btn warn" onclick="renumerar()" title="Asigna N° 1, 2, 3… según el orden que se ve (también en las atenciones HIS ya registradas)">Renumerar según este orden</button>
     <span class="status" id="countInfo"></span>
     <span class="sep"></span>
     <label class="file btn">Importar CSV/Excel<input type="file" id="fileImport" accept=".csv,.xlsx,.xls,.txt" onchange="importFile(this)"></label>
