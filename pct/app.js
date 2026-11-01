@@ -55,10 +55,25 @@ function guardarConfig(){try{localStorage.setItem(LS_CFG,JSON.stringify(config))
 
 /* ======================= TABLA DATOS ======================= */
 function contarAt(r){let c=0;for(const id in atenciones){const a=atenciones[id];if(a.pacId===r.id||(r.dni&&a.dni===r.dni))c++;}return c;}
+/* ======================= ORDEN DE LAS LISTAS (DATOS, TPT y ANEMIA) ======================= */
+// config.orden: «inicio» = fecha de inicio de tratamiento, los más antiguos primero (sin fecha al final, por N°) · «n» = N° de registro · «nom» = apellidos
+function ordenarPacientes(l){const o=config.orden||"inicio",porN=(a,b)=>(parseInt(a.n)||1e9)-(parseInt(b.n)||1e9),ini=r=>{const d=parseFecha(r.f_ini);return d?d.getTime():Infinity;};
+  if(o==="n")return l.slice().sort(porN);
+  if(o==="nom")return l.slice().sort((a,b)=>normTxt(a.nom).localeCompare(normTxt(b.nom))||porN(a,b));
+  return l.slice().sort((a,b)=>ini(a)-ini(b)||porN(a,b));}
+function cambiarOrden(v){config.orden=v;guardarConfig();renderDatos();msg("Orden: "+document.getElementById('ordenDatos').selectedOptions[0].text);}
+async function renumerar(){const l=ordenarPacientes(pacientes),txt=document.getElementById('ordenDatos').selectedOptions[0].text;
+  const cambios=l.filter((r,k)=>parseInt(r.n)!==k+1).length;if(!cambios){avisar("Sin cambios","Los N° ya siguen este orden.");return;}
+  if(!await confirmar("Renumerar el padrón",`Se asignará N° 1, 2, 3… a los ${l.length} pacientes según el orden «${txt}» (cambian ${cambios}). El N° también se actualiza en las atenciones del REGISTRO HIS ya registradas de cada paciente. Esta acción no se puede deshacer.`,{ok:"Renumerar",peligro:true}))return;
+  const mapa={};l.forEach((r,k)=>{if(parseInt(r.n)!==k+1){r.n=k+1;mapa[r.id]=k+1;}});
+  let at=0;for(const id in atenciones){const a=atenciones[id];if(a.pacId&&mapa[a.pacId]!=null&&a.n!==""&&a.n!=null){a.n=mapa[a.pacId];at++;}}
+  guardarPacientes();if(at)guardarAtenciones();pagDatos=1;renderDatos();if(window.alCambiarPacientes)alCambiarPacientes();if(window.alCambiarAtenciones)alCambiarAtenciones();
+  msg(`${cambios} pacientes renumerados${at?" · "+at+" atenciones HIS actualizadas":""}`);}
 function renderDatos(){
+  const sel=document.getElementById('ordenDatos');if(sel&&sel.value!==(config.orden||"inicio"))sel.value=config.orden||"inicio";
   const q=document.getElementById('search').value.trim().toLowerCase();
   const tb=document.getElementById('tbodyDatos');
-  const todas=pacientes.map((r,i)=>({r,i})).filter(({r})=>{if(!q)return true;return normTxt([r.n,r.caso,r.hc,r.dni,r.nom,r.sexo,r.dx,r.tto,r.dir].join(" ")).includes(normTxt(q));});
+  const todas=ordenarPacientes(pacientes.map((r,i)=>({r,i,n:r.n,nom:r.nom,f_ini:r.f_ini}))).filter(({r})=>{if(!q)return true;return normTxt([r.n,r.caso,r.hc,r.dni,r.nom,r.sexo,r.dx,r.tto,r.dir].join(" ")).includes(normTxt(q));});
   if(q!==renderDatos._q){renderDatos._q=q;pagDatos=1;} // nueva búsqueda: volver a la página 1
   const totalPag=Math.max(1,Math.ceil(todas.length/FILAS_POR_PAGINA));if(pagDatos>totalPag)pagDatos=totalPag;if(pagDatos<1)pagDatos=1;
   const rows=todas.slice((pagDatos-1)*FILAS_POR_PAGINA,pagDatos*FILAS_POR_PAGINA);
@@ -206,11 +221,11 @@ function importFile(inp){
 function filaExport(r){return [r.n,r.caso,r.nom,r.hc,r.dni,r.fn,edadDe(r),r.sexo,r.dx,r.peso,r.talla,r.tto,r.dir];}
 function descargar(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
 function exportCSV(){const q=v=>{v=String(v==null?"":v);return /[";\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
-  const lines=[HEADERS.map(q).join(";")].concat(pacientes.map(r=>filaExport(r).map(q).join(";")));
+  const lines=[HEADERS.map(q).join(";")].concat(ordenarPacientes(pacientes).map(r=>filaExport(r).map(q).join(";")));
   descargar(new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}),"PCT_pacientes.csv");}
 function exportXLSX(){
   if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel. Use Exportar CSV.");return;}
-  const aoa=[HEADERS].concat(pacientes.map(filaExport));const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[7,10,34,14,12,14,6,6,18,8,8,16,30].map(w=>({wch:w}));
+  const aoa=[HEADERS].concat(ordenarPacientes(pacientes).map(filaExport));const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[7,10,34,14,12,14,6,6,18,8,8,16,30].map(w=>({wch:w}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"PACIENTES");
   const ats=Object.values(atenciones).sort(ordenAt);
   if(ats.length){const ws2=XLSX.utils.aoa_to_sheet([CAB_AT].concat(ats.map(filaAt)));XLSX.utils.book_append_sheet(wb,ws2,"ATENCIONES");}
