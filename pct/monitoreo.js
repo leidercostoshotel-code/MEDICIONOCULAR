@@ -3,6 +3,7 @@
    mes con los exámenes y evaluaciones que tocan, según la NTS N° 221-MINSA/DGIESP-2024:
    · Tabla N° 13 (pág. 37): esquema sensible TB-DS.        · Tabla N° 15 (págs. 39–40): esquema TB-Hr.
    · Tabla N° 16 (pág. 43): BPaLM / BPaL / BLC / modificado. · Tabla N° 17 (págs. 44–45): BLCC / TB-XDR / modificado.
+   · Contactos con TPT (págs. 24–27 y Anexo N° 6, págs. 104–106): 3HP = una cita por dosis semanal; esquemas diarios = inicio y control mensual.
    Las citas que caen domingo o feriado nacional pasan al siguiente día hábil; se pueden reprogramar y marcar como realizadas. */
 (function(){
 "use strict";
@@ -22,8 +23,13 @@ const EX={
   ts:["Evaluación por trabajador social","eva"],psi:["Evaluación por psicología","eva"],nut:["Evaluación nutricional","eva"],
   pf:["Control por planificación familiar","eva"],peso:["Control de peso","eva"],esp:["Evaluación por especialidad según comorbilidad o localización de TB","eva"],
   card:["Evaluación por cardiología (si el ECG es anormal)","eva"],av:["Evaluación de agudeza visual y visión de colores","eva"],psiq:["Evaluación por psiquiatría (según criterio del médico consultor)","eva"],
-  an_hb:["Dosaje de hemoglobina","lab"],an_fe:["Entrega del hierro del mes y revisión de la toma diaria","eva"],an_adh:["Adherencia y efectos adversos del hierro","eva"],an_nut:["Consejería nutricional (alimentos ricos en hierro)","eva"]}; // an_* = tratamiento de anemia (pestaña ANEMIA)
-const GRUPO={lab:"Laboratorio",bac:"Bacteriología",img:"Imágenes y ECG",eva:"Evaluaciones y controles"};
+  an_hb:["Dosaje de hemoglobina","lab"],an_fe:["Entrega del hierro del mes y revisión de la toma diaria","eva"],an_adh:["Adherencia y efectos adversos del hierro","eva"],an_nut:["Consejería nutricional (alimentos ricos en hierro)","eva"], // an_* = tratamiento de anemia (pestaña ANEMIA)
+  // tp_* = terapia preventiva (TPT) de contactos: NTS 221-2024, págs. 24–25 y tarjeta de control (Anexo N° 6)
+  tp_ini:["Descarte de TB activa e indicación de la TPT por el médico del E.S.","eva"],tp_cons:["Consentimiento informado firmado (Anexo N° 9)","eva"],
+  tp_edu:["Educación al contacto y su familia: cumplir la TPT y reconocer reacciones adversas","eva"],tp_pt:["Peso y talla iniciales","eva"],tp_ram:["Vigilancia de reacciones adversas (RAM)","eva"],
+  tp_d1:["Primera dosis de TPT por DOT","tpt"],tp_dosis:["Dosis semanal de TPT por DOT (anotar en la tarjeta, Anexo N° 6)","tpt"],
+  tp_mes:["Dosis del mes por DOT: dosis completas y acumulado en la tarjeta (Anexo N° 6)","tpt"],tp_fin:["Término de TPT: resultado en la tarjeta (Anexo N° 6) y en el SIGTB","tpt"]};
+const GRUPO={lab:"Laboratorio",bac:"Bacteriología",img:"Imágenes y ECG",eva:"Evaluaciones y controles",tpt:"Terapia preventiva (DOT)"};
 const M="M"; // basal + mensual hasta el final del tratamiento
 
 /* ======================= TABLAS DE MONITOREO (NTS 221-2024) ======================= */
@@ -49,7 +55,7 @@ const ESQUEMAS={
 function esqAuto(r){const m=TPT.modoDe(r);if(m==="sens")return "ds";if(m!=="otro")return "";const t=normTxt(r.tto+" "+r.dx+" "+(r.tto_med||""));
   if(t.includes("blcc"))return "blcc";if(t.includes("blc"))return "blc";if(t.includes("bpal"))return "bpalm";if(t.includes("xdr"))return "xdr";if(t.includes("hr")&&!t.includes("mdr"))return "hr";
   if(t.includes("modif"))return "mod16";return "blc";}
-function esqDe(r){return ESQUEMAS[r.mon_esq]?r.mon_esq:esqAuto(r);}
+function esqDe(r){const m=TPT.modoDe(r);if(m!=="sens"&&m!=="otro")return "";return ESQUEMAS[r.mon_esq]?r.mon_esq:esqAuto(r);} // contactos (TPT) y sin tratamiento: sin plan de TB
 
 /* ======================= FECHAS: domingos y feriados nacionales del Perú ======================= */
 function pascua(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;return new Date(y,mes-1,dia);}
@@ -96,8 +102,40 @@ function plan(r){
   return {r,id,E,T,meses,ini,controles,fin:masMeses(ini,meses)};
 }
 function estado(c){const h=hoy0();if(c.completo)return ["ok","Realizado"];const d=c.fecha-h;if(d<0)return ["vencido","Vencido"];if(d===0)return ["hoy","Hoy"];if(d<=7*864e5)return ["prox","Próximo"];return ["prog","Programado"];}
-function hitos(r){ // fechas clave sin exámenes: cambio de fase, término de tratamiento o de TPT
-  const c=TPT.calcular(r);return TPT.fechas(r,c).filter(([k])=>!/^Dosis/.test(k)).map(([k,v])=>({txt:(c.modo==="tpt"?"TPT · ":"")+k,f:parseFecha(v),r}));}
+function hitos(r){ // fechas clave sin exámenes: cambio de fase o término del tratamiento (el término de la TPT ya es una cita de su plan)
+  const c=TPT.calcular(r);if(c.modo==="tpt")return [];return TPT.fechas(r,c).filter(([k])=>!/^Dosis/.test(k)).map(([k,v])=>({txt:k,f:parseFecha(v),r}));}
+
+/* ======================= TPT DE CONTACTOS (págs. 24–27 y tarjeta de control, Anexo N° 6) ======================= */
+// 3HP: una cita por cada dosis semanal (12), el mismo día de la semana del inicio. Esquemas diarios (3HR, 4R, 6H, 6Lfx): inicio y un control por mes.
+// La TPT se da de lunes a domingo, incluidos feriados (pág. 25): el inicio y las dosis semanales no se mueven; los controles mensuales pasan al siguiente día hábil.
+const TPT_MESES={"3HR-DFC":3,"3HR":3,"6H":6,"4R":4,"6Lfx":6}; // 3HP y 3HP-DFC: semanal, 12 dosis
+function planTPT(r){
+  if(TPT.modoDe(r)!=="tpt")return null;const ini=parseFecha(r.f_ini);if(!ini)return null;
+  const c=TPT.calcular(r),esq=c.esq,sem=/^3HP/.test(esq||""),meses=sem?3:TPT_MESES[esq];if(!esq||!meses)return null;
+  const est=(r.mon&&typeof r.mon==="object")?r.mon:{},lfx=esq==="6Lfx",controles=[];
+  const inicio=["tp_ini"].concat(lfx?["cons"]:[],["tp_cons","tp_edu","tp_pt","enf"]);
+  const nuevo=(m,cid,nombre,corto,base,items,notas,mover)=>{const aj=mover?habil(base):{f:base,motivo:""},st=est[cid]||{},rep=parseFecha(st.f),hechos=items.filter(k=>st.ok&&st.ok[k]);
+    controles.push({m,cid,nombre,corto,fecha:rep||aj.f,base,orig:aj.f,movido:rep?"reprogramada":aj.motivo,hist:Array.isArray(st.hist)?st.hist:[],items,hechos,notas,completo:items.length>0&&hechos.length===items.length});};
+  let fin;
+  if(sem){
+    for(let k=1;k<=12;k++){const f=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+7*(k-1)),dia=f.getDay()===0?"domingo":feriado(f),notas=[];
+      const items=k===1?inicio.concat(["tp_dosis"]):["tp_dosis","tp_ram"];if(k===5||k===9)items.push("peso");if(k===12)items.push("peso","tp_fin");
+      if(dia)notas.push(`Cae ${dia==="domingo"?"domingo":"feriado ("+dia+")"}: la TPT se da también domingos y feriados (pág. 25).`);
+      nuevo(k-1,"tw"+k,k===1?"Inicio de TPT · dosis 1 de 12":k===12?"Dosis 12 de 12 · término de TPT":`Dosis ${k} de 12`,`Dosis ${k}/12`,f,items,notas,false);}
+    fin=controles[11].base;}
+  else{
+    fin=new Date(ini.getFullYear(),ini.getMonth()+meses,ini.getDate());fin.setDate(fin.getDate()-1); // igual que la fecha de término de la pestaña TPT
+    nuevo(0,"t0","Inicio de TPT","Inicio TPT",new Date(ini),inicio.concat(["tp_d1"]),[],false);
+    for(let m=1;m<=meses;m++){const ult=m===meses,items=["tp_mes","peso","tp_ram"].concat(lfx?["med"]:[],ult?["tp_fin"]:[]);
+      nuevo(m,"t"+m,ult?`Término de TPT · mes ${m} de ${meses}`:`Control del mes ${m} de ${meses}`,ult?"Término TPT":"Mes "+m,ult?new Date(fin):masMeses(ini,m),items,[],true);}}
+  const notas=[sem?"3HP: una cita por cada dosis semanal, el mismo día de la semana del inicio. La TPT se da de lunes a domingo, incluidos feriados (pág. 25): estas citas no se pasan a otro día."
+      :"Dosis diaria por DOT, de lunes a domingo, incluidos feriados (pág. 25). Cada mes: dosis completas y acumulado en la tarjeta, peso y vigilancia de RAM; si el control cae domingo o feriado pasa al siguiente día hábil.",
+    "Cada dosis se anota en la tarjeta de control de TPT (Anexo N° 6) y en el SIGTB en un plazo no mayor de 24 horas (pág. 25)."];
+  if(/H/.test(esq))notas.push("Todo esquema con isoniacida (H) lleva piridoxina 50 mg por cada dosis de H (pág. 25).");
+  if(lfx)notas.push("Contacto de TB-RR/MDR: Lfx indicado por el médico consultor y controlado por el médico del E.S. (pág. 27). Dar 2 h antes o después de lácteos, antiácidos, hierro, calcio, zinc o vitaminas.");
+  notas.push("Resultado al terminar (Anexo N° 6): terapia completa, suspensión, fallecido, pérdida en el seguimiento, cambio de TPT o diagnóstico de TB.");
+  return {r,tipo:"tpt",id:esq,c,E:{txt:"💊 TPT · "+((TPT.ESQ&&TPT.ESQ[esq])||esq)},T:{nombre:"NTS N° 221-2024 · TPT de contactos y tarjeta de control (Anexo N° 6)",pag:"págs. 24–27 y 104–106",notas},meses,ini,fin,controles};
+}
 
 /* ======================= VISTA ======================= */
 $('tabTPT').insertAdjacentHTML('afterend',`<button id="tabMon" onclick="showView('monitoreo')" title="Calendario de seguimiento y monitoreo (NTS 221-2024, Tablas 13, 15, 16 y 17)">MONITOREO</button>`);
@@ -138,8 +176,13 @@ function eventos(){ // {clave: [{tipo:'c', p, c} | {tipo:'h', h}]}
   return ev;}
 
 // planes de un paciente: el de TB (plan) y el de anemia (pestaña ANEMIA, cid «a1»…«a6»); comparten las marcas en r.mon
-function planes(r){const l=[],p=plan(r);if(p)l.push(p);const a=window.ANE&&ANE.plan(r);if(a)l.push(a);return l;}
-function controlDe(r,cid){const p=/^a/.test(cid||"")?(window.ANE&&ANE.plan(r)):plan(r);return p&&p.controles.find(x=>x.cid===cid)||null;}
+// y el de TPT de los contactos (cid «t0»…«tN» mensual o «tw1»…«tw12» semanal)
+function principal(r){return plan(r)||planTPT(r);} // plan de TB o de TPT (un paciente tiene uno u otro según su tratamiento)
+function planes(r){const l=[],p=principal(r);if(p)l.push(p);const a=window.ANE&&ANE.plan(r);if(a)l.push(a);return l;}
+function planDeCid(r,cid){return /^a/.test(cid||"")?(window.ANE&&ANE.plan(r)):/^t/.test(cid||"")?planTPT(r):plan(r);}
+function controlDe(r,cid){const p=planDeCid(r,cid);return p&&p.controles.find(x=>x.cid===cid)||null;}
+const tipoCls=p=>p.tipo?" "+p.tipo:"",ico=p=>p.tipo==="ane"?"🩸 ":p.tipo==="tpt"?"💊 ":"",corto=c=>c.corto||(c.m===0?"Basal":"Mes "+c.m);
+const fechaNorma=c=>c.orig||habil(c.base).f; // fecha que le toca sin reprogramar
 
 /* ======================= DIBUJO ======================= */
 const nom=r=>`N° ${esc(r.n)} · ${esc(r.nom||"(sin nombre)")}`;
@@ -149,7 +192,7 @@ function chipsItems(c,editable){
     return editable?`<label class="mon-ex${ok?' ok':''}"><input type="checkbox" data-k="${k}" ${ok?'checked':''}> <span>${esc(EX[k][0])}</span>${ok?'<em class="mon-hecho">✔ Realizado</em>':''}</label>`:`<span class="mon-ex${ok?' ok':''}">${ok?'✔ ':''}${esc(EX[k][0])}</span>`;}).join("")}</div>`).join("")+
     c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("");}
 function tarjeta(p,c){const [cls,txt]=estado(c),r=p.r;
-  return `<div class="mon-card st-${cls}${p.tipo==="ane"?" ane":""}" data-id="${esc(r.id)}" data-cid="${c.cid}">
+  return `<div class="mon-card st-${cls}${tipoCls(p)}" data-id="${esc(r.id)}" data-cid="${c.cid}">
     <div class="mon-card-cab"><div><b>${nom(r)}</b><small>${esc(p.E.txt)} · ${esc(c.nombre)}${c.m===0?(r.f_ini_ok?' · <span class="conf-t ok">✔ inicio conforme</span>':' · <span class="conf-t pend">'+(c.fecha>hoy0()?'inicio por confirmar':'⚠ inicio sin conformidad')+'</span>'):""}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</small></div><span class="mon-st st-${cls}">${txt}</span></div>
     <div class="mon-items">${chipsItems(c,true)}</div>
     <div class="mon-acc"><button class="btn primary" data-acc="todo">✔ Todo realizado</button>
@@ -162,7 +205,7 @@ function cuentaEv(lst){const pac=new Set();let c=0,ok=0,v=0,hi=0;lst.forEach(e=>
 function pintarCal(ev){
   const y=mesVista.getFullYear(),mo=mesVista.getMonth(),prim=new Date(y,mo,1),offset=(prim.getDay()+6)%7,dias=new Date(y,mo+1,0).getDate(),h=hoy0(),antes=new Date(y,mo,0).getDate();
   const n=cuentaEv([].concat(...Array.from({length:dias},(_,i)=>ev[clave(new Date(y,mo,i+1))]||[])));
-  let html=`<div class="mon-calcard">`+cabCal(MESES_LARGO[mo]+" "+y,"Calendario de monitoreo y seguimiento · NTS N° 221-MINSA/DGIESP-2024",
+  let html=`<div class="mon-calcard">`+cabCal(MESES_LARGO[mo]+" "+y,"Calendario de monitoreo y seguimiento · NTS N° 221-MINSA/DGIESP-2024 · 💊 contactos con TPT · 🩸 anemia",
       [[n.c,n.c===1?"cita":"citas"],[n.pac,n.pac===1?"paciente":"pacientes"],[n.ok,"realizadas","ok"],[n.v,"vencidas","venc"],[n.hi,"fechas clave","hito"]])+
     `<div class="mon-semana">${DIAS_C.map((d,i)=>`<div class="${i===6?"dom":""}">${d}</div>`).join("")}</div><div class="mon-grid">`;
   for(let i=0;i<offset;i++)html+=`<div class="mon-d vacio"><div class="mon-dnum"><span class="mon-n">${antes-offset+1+i}</span></div></div>`;
@@ -170,7 +213,7 @@ function pintarCal(ev){
     const venc=cs.some(e=>estado(e.c)[0]==="vencido");
     html+=`<div class="mon-d${+f===+h?' hoy':''}${+f===+diaSel?' sel':''}${f.getDay()===0?' dom':''}${fer?' fer':''}${venc?' venc':''}" data-dia="${k}" title="${fer?esc(fer):""}">
       <div class="mon-dnum"><span class="mon-n">${d}</span>${cs.length?`<span class="mon-cnt" title="${cs.length} paciente(s) citado(s)">${cs.length}</span>`:""}${fer?`<span class="mon-fer">${esc(fer)}</span>`:""}</div>
-      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}${e.p.tipo==="ane"?" ane":""}">${e.c.movido==="reprogramada"?"↪ ":""}${e.p.tipo==="ane"?"🩸 ":""}N° ${esc(e.p.r.n)} · ${e.c.m===0?"Basal":"Mes "+e.c.m}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
+      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}${tipoCls(e.p)}">${e.c.movido==="reprogramada"?"↪ ":""}${ico(e.p)}N° ${esc(e.p.r.n)} · ${corto(e.c)}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
       ${cs.length>3?`<div class="mon-mas">+${cs.length-3} más</div>`:""}
       ${ms.slice(0,2).map(e=>`<div class="mon-ev movida" title="Cita reprogramada al ${fmtFecha(e.c.fecha)}">N° ${esc(e.p.r.n)} ↪ ${p2(e.c.fecha.getDate())}/${p2(e.c.fecha.getMonth()+1)}</div>`).join("")}${ms.length>2?`<div class="mon-mas">+${ms.length-2} reprogramadas</div>`:""}
       ${hs.slice(0,2).map(e=>`<div class="mon-hito">◆ ${esc(e.h.txt)} · N° ${esc(e.h.r.n)}</div>`).join("")}${hs.length>2?`<div class="mon-mas">+${hs.length-2} fechas clave</div>`:""}
@@ -212,19 +255,19 @@ const LISTAS={
   venc:{t:"Controles vencidos",ico:"⚠️",d:"La fecha ya pasó y faltan exámenes o evaluaciones: comuníquese con el paciente y reprograme la cita.",vacio:"¡Muy bien! No hay controles vencidos."},
   prog:{t:"Controles programados",ico:"🗓️",d:"Controles a más de 7 días, agendados según la NTS N° 221-2024.",vacio:"No hay controles programados."},
   ok:{t:"Controles realizados",ico:"✅",d:"Controles con todos sus exámenes y evaluaciones marcados como realizados.",vacio:"Todavía no hay controles completos.<br><small>Marque los exámenes en el calendario, la agenda o el plan del paciente.</small>"},
-  pac:{t:"Pacientes con plan de monitoreo",ico:"👥",d:"Avance de cada paciente: controles realizados, vencidos y su próxima cita.",vacio:"Ningún paciente tiene plan: ponga la fecha de inicio en la pestaña TPT."},
+  pac:{t:"Pacientes con plan de monitoreo",ico:"👥",d:"Avance de cada paciente y de cada contacto con TPT: controles realizados, vencidos y su próxima cita.",vacio:"Ningún paciente tiene plan: ponga la fecha de inicio en la pestaña TPT."},
   noconf:{t:"Inicio sin conformidad",ico:"☑️",d:"La fecha de inicio ya pasó y falta marcar la conformidad del médico.",vacio:"Todos los inicios tienen conformidad. ✔"},
   repro:{t:"Citas reprogramadas",ico:"↪️",d:"Controles pendientes que se pasaron a otro día: fecha anterior, nueva fecha y motivo.",vacio:"No hay citas reprogramadas pendientes."},
-  sin:{t:"Sin fecha de inicio",ico:"✏️",d:"Pacientes en tratamiento sin fecha de inicio: escríbala aquí y el plan de monitoreo se arma solo.",vacio:"Todos los pacientes en tratamiento tienen fecha de inicio. ✔"}};
+  sin:{t:"Sin fecha de inicio",ico:"✏️",d:"Pacientes en tratamiento y contactos con TPT sin fecha de inicio: escríbala aquí y el plan de monitoreo se arma solo.",vacio:"Todos los pacientes en tratamiento tienen fecha de inicio. ✔"}};
 const LISTAS_CTRL=["hoy","prox","venc","prog","ok","repro"];
 let lista=null;
 function datosListas(){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7);const D={};Object.keys(LISTAS).forEach(k=>{D[k]=[];});
-  pacientes.filter(filtrar).forEach(r=>{const m=TPT.modoDe(r),p=plan(r);
+  pacientes.filter(filtrar).forEach(r=>{const m=TPT.modoDe(r),p=principal(r);
     if(p)D.pac.push({r,p});
     planes(r).forEach(pl=>pl.controles.forEach(c=>{const e={p:pl,c},s=estado(c)[0];
       if(c.movido==="reprogramada"&&!c.completo)D.repro.push(e);
       if(s==="ok")D.ok.push(e);else if(s==="vencido")D.venc.push(e);else{if(s==="hoy")D.hoy.push(e);if(c.fecha<=sem)D.prox.push(e);else D.prog.push(e);}}));
-    if(m==="sens"||m==="otro"){const ini=parseFecha(r.f_ini);if(!ini)D.sin.push({r,p});else if(!r.f_ini_ok&&ini<=h)D.noconf.push({r,p});}});
+    if(m==="sens"||m==="otro"||(m==="tpt"&&(r.tpt_ind||"ds")!=="xdr")){const ini=parseFecha(r.f_ini);if(!ini)D.sin.push({r,p});else if(!r.f_ini_ok&&ini<=h)D.noconf.push({r,p});}});
   const porN=(a,b)=>(+a.n||0)-(+b.n||0),porF=(a,b)=>a.c.fecha-b.c.fecha||porN(a.p.r,b.p.r);
   ["hoy","prox","venc","prog","repro"].forEach(k=>D[k].sort(porF));D.ok.sort((a,b)=>porF(b,a)); // realizados: lo más reciente primero
   ["pac","noconf","sin"].forEach(k=>D[k].sort((a,b)=>porN(a.r,b.r)));
@@ -244,14 +287,14 @@ function fila(r,key,cls,detalle){const ab=abiertos.has(key);
 function itemCtrl(e){const c=e.c,p=e.p,r=p.r,[cls,txt]=estado(c),falta=c.items.filter(k=>!c.hechos.includes(k));
   return fila(r,r.id+"|"+c.cid,cls,()=>`<div class="mon-det" data-id="${esc(r.id)}" data-cid="${c.cid}">
     ${cabDet(r,`<span class="mon-st st-${cls}">${c.completo?"✔ Realizado":txt}</span><small>${relTxt(c.fecha,cls==="vencido")}</small>`)}
-    <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${fmtFecha(p.ini)} ${p.tipo==="ane"?"":confTxt(r)}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</div>
+    <div class="mon-li-ctrl">📌 <b>${esc(c.nombre)}</b>${c.m&&p.tipo!=="tpt"?` de ${p.meses}`:""} · ${fmtFecha(c.fecha)} (${DIAS[c.fecha.getDay()]}) · ${esc(p.E.txt)} · Inicio ${fmtFecha(p.ini)} ${p.tipo==="ane"?"":confTxt(r)}${c.movido?` · <i class="mon-mov">${movTxt(c)}</i>`:""}</div>
     ${avance(c.hechos.length,c.items.length,"exámenes y evaluaciones realizados")}${chips(c)}
     ${falta.length?`<div class="mon-li-falta"><b>Falta (${falta.length}):</b> ${falta.map(k=>esc(EX[k][0])).join(" · ")}</div>`:""}${c.notas.map(n=>`<div class="mon-nota">${esc(n)}</div>`).join("")}${c.hist.length?histHtml(c):""}
     <div class="mon-acc no-print">${c.completo?"":`<button class="btn primary" data-acc="todo">✔ Todo realizado</button>`}${c.completo?"":`<button class="btn mon-btn-rep" data-acc="repro">↪ Reprogramar</button>`}<button class="btn" data-acc="plan">📋 Plan completo</button><button class="btn" data-acc="ver" data-f="${clave(c.fecha)}">📅 Ver en el calendario</button></div>
   </div>`);}
 function itemPac(o){const r=o.r,p=o.p;
   return fila(r,lista+"|"+r.id,lista==="pac"?"pac":"falta",()=>{let est,cuerpo="",acc;
-  if(lista==="sin"){est=`<span class="mon-st st-falta">Sin fecha de inicio</span>`;cuerpo=`<div class="mon-li-ctrl">💊 Tratamiento: <b>${esc(r.tto||"—")}</b> · ${TPT.modoDe(r)==="sens"?"se monitoreará con la Tabla N° 13 (TB-DS)":"TB resistente: luego elija el esquema en el plan completo"}</div>`;
+  if(lista==="sin"){est=`<span class="mon-st st-falta">Sin fecha de inicio</span>`;cuerpo=`<div class="mon-li-ctrl">💊 Tratamiento: <b>${esc(r.tto||"—")}</b> · ${TPT.modoDe(r)==="sens"?"se monitoreará con la Tabla N° 13 (TB-DS)":TPT.modoDe(r)==="tpt"?"contacto con TPT: se programarán sus dosis y controles":"TB resistente: luego elija el esquema en el plan completo"}</div>`;
     acc=`<label class="lbl mon-li-ini">Fecha de inicio <input type="date" data-acc="ini"></label><button class="btn" data-acc="tpt">Ir a TPT</button>`;}
   else{const C=p?p.controles:[],venc=C.filter(c=>estado(c)[0]==="vencido").length,hech=C.filter(c=>c.completo).length,sig=C.find(c=>!c.completo),sv=sig&&estado(sig)[0]==="vencido";
     est=lista==="noconf"?`<span class="mon-st st-falta">Falta conformidad</span><small>Inicio ${relTxt(parseFecha(r.f_ini)).toLowerCase()}</small>`:venc?`<span class="mon-st st-vencido">${venc} control${venc>1?"es":""} vencido${venc>1?"s":""}</span>`:`<span class="mon-st st-ok">${C.length&&hech===C.length?"✔ Completo":"Al día"}</span>`;
@@ -282,20 +325,22 @@ function render(){if(!$('monitoreo').classList.contains('active'))return;const e
   if(lista)pintarLista(D);else if($('monVista').value==="agenda")pintarAgenda(ev);else pintarCal(ev);pintarDia(ev);pintarResumen(D);if(planAbierto)abrirPlan(planAbierto,true);}
 
 /* ======================= PLAN COMPLETO (ventana) ======================= */
-function abrirPlan(id,refrescar){const r=pacientes.find(x=>x.id===id);if(!r)return;planAbierto=id;const p=plan(r);
+function abrirPlan(id,refrescar){const r=pacientes.find(x=>x.id===id);if(!r)return;planAbierto=id;const p=principal(r),tpt=TPT.modoDe(r)==="tpt";
   const opc=Object.entries(ESQUEMAS).filter(([k])=>TPT.modoDe(r)==="sens"?k==="ds":k!=="ds").map(([k,e])=>`<option value="${k}" ${esqDe(r)===k?'selected':''}>${esc(e.txt)}</option>`).join("");
   const cab=`<div class="mon-pcab"><div><h2>Plan de monitoreo y seguimiento</h2><div class="mon-psub">${nom(r)} · DNI ${esc(r.dni||"—")} · HC ${esc(r.hc||"—")} · Edad ${esc(edadDe(r)||"—")} · Peso ${esc(r.peso||"—")} kg · ${esc(r.dx||"")}</div></div>
     <div class="mon-pbtn no-print"><button class="btn" onclick="MON.imprimirPlan()">🖨 Imprimir plan</button><button class="btn" onclick="MON.cerrarPlan()">✕ Cerrar</button></div></div>`;
-  if(!p){$('monPlan').innerHTML=cab+`<div class="mon-vacio">${TPT.modoDe(r)==="tpt"?"Los contactos con TPT no tienen tabla de monitoreo en estas páginas de la norma; vea sus fechas en la pestaña TPT.":"Falta la <b>fecha de inicio</b> del tratamiento: póngala en la pestaña TPT."}</div>`;}
-  else{const h=hitos(r);
+  if(!p){$('monPlan').innerHTML=cab+`<div class="mon-vacio">${!r.f_ini?`Falta la <b>fecha de inicio</b> ${tpt?"de la TPT":"del tratamiento"}: póngala en la pestaña TPT.`:tpt?((r.tpt_ind||"ds")==="xdr"?"La TPT no está indicada en contactos de TB pre-XDR y TB-XDR.":"Falta la <b>edad</b> en DATOS para definir el esquema de TPT."):"Falta el esquema de tratamiento."}</div>`;}
+  else{const h=hitos(r),pt=p.tipo==="tpt";
     $('monPlan').innerHTML=cab+`<div class="mon-pinfo">
-      <div><span>Esquema</span><b>${TPT.modoDe(r)==="sens"?esc(p.E.txt):`<select id="monEsq" class="no-print-sel">${opc}</select><b class="solo-print">${esc(p.E.txt)}</b>`}</b></div>
+      ${pt?`<div><span>Esquema de TPT</span><b>${esc(((TPT.ESQ&&TPT.ESQ[p.id])||p.id))}</b><small>Se cambia en la pestaña TPT</small></div><div><span>Caso índice</span><b>${esc((TPT.IND&&TPT.IND[r.tpt_ind||"ds"])||"—")}</b></div>`
+        :`<div><span>Esquema</span><b>${TPT.modoDe(r)==="sens"?esc(p.E.txt):`<select id="monEsq" class="no-print-sel">${opc}</select><b class="solo-print">${esc(p.E.txt)}</b>`}</b></div>`}
       <div class="${r.f_ini_ok?'conf-ok':'conf-pend'}"><span>Inicio</span><b>${fmtFecha(p.ini)}</b><small>${r.f_ini_ok?"✔ Inicio conforme ("+esc(r.f_ini_ok)+")":"⚠ Inicio sin conformidad"}</small><label class="no-print"><input type="checkbox" id="monConf" ${r.f_ini_ok?'checked':''}> Conforme</label></div>${h.map(x=>`<div><span>${esc(x.txt)}</span><b>${x.f?fmtFecha(x.f):"—"}</b></div>`).join("")}
+      ${pt?`<div><span>Término de TPT</span><b>${fmtFecha(p.fin)}</b></div><div><span>Dosis según peso y edad</span><b>${p.c.lin.length?p.c.lin.map(esc).join("<br>"):"Falta el peso o la edad en DATOS"}</b>${p.c.frec?`<small>${esc(p.c.frec)}</small>`:""}</div>`:""}
       ${r.tto_med?`<div><span>Medicamentos (médico consultor)</span><b>${esc(r.tto_med)}</b></div>`:""}<div><span>Monitoreo</span><b>${esc(p.T.nombre)} (${p.T.pag})</b></div></div>
       <table class="mon-ptab"><thead><tr><th>Control</th><th>Fecha</th><th>Exámenes y evaluaciones</th><th>Estado</th></tr></thead><tbody>${p.controles.map(c=>{const [cls,txt]=estado(c);
         return `<tr class="st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}"><td><b>${esc(c.nombre)}</b></td><td class="mon-pf"><b>${fmtFecha(c.fecha)}</b><br>${DIAS[c.fecha.getDay()]}${c.movido?`<br><i class="mon-mov">${movTxt(c)}</i>`:""}${c.completo?"":`<br><button class="btn no-print mon-btn-rep" data-acc="repro">↪ Reprogramar</button>`}</td>
           <td>${chipsItems(c,true)}</td><td><span class="mon-st st-${cls}">${txt}</span><br><small>${c.hechos.length}/${c.items.length}</small><br><button class="btn no-print" data-acc="todo">✔ Todo</button></td></tr>`;}).join("")}</tbody></table>
-      <div class="mon-pnotas">${p.T.notas.map(n=>`<div>• ${esc(n)}</div>`).join("")}<div>• Las citas que caen domingo o feriado pasan al siguiente día hábil. Fuente: NTS N° 221-MINSA/DGIESP-2024.</div></div>`;}
+      <div class="mon-pnotas">${p.T.notas.map(n=>`<div>• ${esc(n)}</div>`).join("")}<div>• ${pt?"":"Las citas que caen domingo o feriado pasan al siguiente día hábil. "}Fuente: NTS N° 221-MINSA/DGIESP-2024.</div></div>`;}
   if(!refrescar)$('monModal').classList.add('abierto');
   const sel=$('monEsq');if(sel)sel.onchange=()=>{r.mon_esq=sel.value;guardar(r);};
   const cf=$('monConf');if(cf)cf.onchange=()=>{r.f_ini_ok=cf.checked?fmtFecha(new Date()):"";guardar(r);msg(`N° ${r.n}: ${r.f_ini_ok?"inicio conforme":"conformidad retirada"}`);};}
@@ -339,7 +384,7 @@ function movTxt(c){const u=c.hist[c.hist.length-1];return c.movido==="reprograma
 function obsFecha(c){const u=c.hist[c.hist.length-1];if(c.movido==="reprogramada"&&u)return `Reprogramada del ${u.de} al ${u.a}${u.mot?" · "+u.mot:""}${u.obs?" ("+u.obs+")":""}`;return c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):"";}
 function histHtml(c){return `<ul class="mon-hist">${c.hist.slice().reverse().map(x=>`<li><b>${esc(x.de)} → ${esc(x.a)}</b>${x.mot?" · "+esc(x.mot):""}${x.obs?` · <i>${esc(x.obs)}</i>`:""}<small>Registrado el ${esc(x.reg||"")}</small></li>`).join("")}</ul>`;}
 let repSel=[];
-function objetivos(){return repSel.map(o=>{const r=pacientes.find(x=>x.id===o.id);if(!r)return null;const p=/^a/.test(o.cid)?(window.ANE&&ANE.plan(r)):plan(r),c=p&&p.controles.find(x=>x.cid===o.cid);return c?{r,p,c}:null;}).filter(Boolean);}
+function objetivos(){return repSel.map(o=>{const r=pacientes.find(x=>x.id===o.id);if(!r)return null;const p=planDeCid(r,o.cid),c=p&&p.controles.find(x=>x.cid===o.cid);return c?{r,p,c}:null;}).filter(Boolean);}
 const sigHabil=(d,n)=>habil(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)).f;
 function abrirRepro(lst){repSel=lst;const T=objetivos();if(!T.length)return;pintarRepro(T);$('monRepModal').classList.add('abierto');
   setTimeout(()=>{const b=$('monRep').querySelector('.mon-rap.sel');if(b)b.focus();},50);}
@@ -352,7 +397,7 @@ function pintarRepro(T){const h=hoy0(),uno=T.length===1,c0=T[0].c,dia1=sigHabil(
       <div class="mon-rep-otra"><span>u otra fecha:</span><input type="date" id="repFecha" value="${iso(dia1)}" min="${iso(h)}"></div><div id="repAviso" class="mon-rep-aviso"></div></div>
     <div class="mon-rep-sec"><label for="repMot">Motivo</label><select id="repMot">${MOTIVOS.map(m=>`<option>${m}</option>`).join("")}</select><input type="text" id="repObs" placeholder="Observación (opcional)" maxlength="120" autocomplete="off"></div>
     ${uno&&c0.hist.length?`<div class="mon-rep-sec"><label>Historial de esta cita</label>${histHtml(c0)}</div>`:""}
-    <div class="mon-rep-pie">${uno&&c0.movido==="reprogramada"?`<button type="button" class="btn" data-r="original" title="Quita la reprogramación">↺ Volver a la fecha de la norma (${fmtFecha(habil(c0.base).f)})</button>`:""}<span class="sep"></span><button type="button" class="btn" data-r="cerrar">Cancelar</button><button type="button" class="btn primary" data-r="ok" id="repOk">✔ Reprogramar</button></div>`;
+    <div class="mon-rep-pie">${uno&&c0.movido==="reprogramada"?`<button type="button" class="btn" data-r="original" title="Quita la reprogramación">↺ Volver a la fecha de la norma (${fmtFecha(fechaNorma(c0))})</button>`:""}<span class="sep"></span><button type="button" class="btn" data-r="cerrar">Cancelar</button><button type="button" class="btn primary" data-r="ok" id="repOk">✔ Reprogramar</button></div>`;
   validarRepro();}
 function validarRepro(){const v=$('repFecha').value,d=v?parseFecha(deIso(v)):null,T=objetivos(),h=hoy0();let av="",ok=!!d,bien=false;
   $('monRep').querySelectorAll('.mon-rap').forEach(b=>b.classList.toggle('sel',b.dataset.f===v));
@@ -366,11 +411,11 @@ function validarRepro(){const v=$('repFecha').value,d=v?parseFecha(deIso(v)):nul
 function guardarRepro(original){const T=objetivos();if(!T.length)return;const ahora=new Date(),reg=fmtFecha(ahora)+" "+p2(ahora.getHours())+":"+p2(ahora.getMinutes());
   const mot=original?"Vuelve a la fecha de la norma":$('repMot').value,obs=$('repObs').value.trim();let nueva="";
   if(!original){nueva=deIso($('repFecha').value);if(!nueva)return;}
-  T.forEach(({r,c})=>{const a=original?fmtFecha(habil(c.base).f):nueva;if(a===fmtFecha(c.fecha))return;
+  T.forEach(({r,c})=>{const a=original?fmtFecha(fechaNorma(c)):nueva;if(a===fmtFecha(c.fecha))return;
     r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[c.cid]=r.mon[c.cid]||{};
     st.hist=(Array.isArray(st.hist)?st.hist:[]).concat([{de:fmtFecha(c.fecha),a,mot,obs,reg}]);if(original)delete st.f;else st.f=a;r.mon=ordenar(r.mon);});
   cerrarRepro();guardarPacientes();render();if(window.TPT)TPT.render();
-  msg(T.length===1?`N° ${T[0].r.n}: cita ${original?"devuelta al "+fmtFecha(habil(T[0].c.base).f):"reprogramada al "+DIAS[parseFecha(nueva).getDay()]+" "+nueva}`:`${T.length} citas reprogramadas al ${DIAS[parseFecha(nueva).getDay()]} ${nueva}`);}
+  msg(T.length===1?`N° ${T[0].r.n}: cita ${original?"devuelta al "+fmtFecha(fechaNorma(T[0].c)):"reprogramada al "+DIAS[parseFecha(nueva).getDay()]+" "+nueva}`:`${T.length} citas reprogramadas al ${DIAS[parseFecha(nueva).getDay()]} ${nueva}`);}
 $('monRep').addEventListener('click',e=>{const b=e.target.closest('[data-r],[data-f]');if(!b)return;
   if(b.dataset.f){$('repFecha').value=b.dataset.f;validarRepro();return;}
   if(b.dataset.r==="cerrar")cerrarRepro();else if(b.dataset.r==="ok"&&!$('repOk').disabled)guardarRepro(false);else if(b.dataset.r==="original")guardarRepro(true);});
@@ -401,6 +446,6 @@ const showBase=window.showView;
 window.showView=function(v){showBase(v);$('tabMon').classList.toggle('active',v==='monitoreo');document.body.classList.toggle('ver-mon',v==='monitoreo');if(v==='monitoreo')render();};
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();const a=document.activeElement;if(!(a&&a.closest&&a.closest('#monitoreo,#monPlan')))render();};
-window.MON={plan,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,abrirRepro,cerrarRepro,habil,masMeses,estado,hoy0,irDia:k=>{showView('monitoreo');verDia(k);},
+window.MON={plan,planTPT,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,abrirRepro,cerrarRepro,habil,masMeses,estado,hoy0,irDia:k=>{showView('monitoreo');verDia(k);},
   verLista:k=>{lista=LISTAS[k]?k:null;showView('monitoreo');}};
 })();

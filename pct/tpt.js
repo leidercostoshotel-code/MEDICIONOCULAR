@@ -149,7 +149,7 @@ function celdaDosis(c,r){
 // conformidad del inicio: el inicio se dio (primera dosis administrada); guarda la fecha en que se marcó
 function celdaConf(r){if(!r.f_ini)return "";const ok=!!r.f_ini_ok,venc=!ok&&parseFecha(r.f_ini)<=new Date();
   return `<label class="tpt-conf${ok?' ok':venc?' pend':''}" title="${ok?'Inicio conforme (marcado el '+esc(r.f_ini_ok)+')':'Marque cuando el inicio ya se dio'}"><input type="checkbox" data-k="f_ini_ok" ${ok?'checked':''}> ${ok?'Inicio conforme':venc?'Confirmar inicio':'Conforme'}</label>`;}
-function celdaFechas(r,c){const f=fechas(r,c),plan=r.f_ini&&c.modo!=="tpt"&&window.MON?`<a href="#" class="tpt-plan no-print" onclick="MON.abrirPlan('${esc(r.id)}');return false" title="Calendario de exámenes y controles (pestaña MONITOREO)">📅 Plan de monitoreo</a>`:"";
+function celdaFechas(r,c){const f=fechas(r,c),plan=r.f_ini&&window.MON?`<a href="#" class="tpt-plan no-print" onclick="MON.abrirPlan('${esc(r.id)}');return false" title="Calendario de exámenes y controles (pestaña MONITOREO)">📅 ${c.modo==="tpt"?"Dosis y controles":"Plan de monitoreo"}</a>`:"";
   if(!f.length)return r.f_ini?plan:`<span class="tpt-gris">Ponga la fecha de inicio</span>`;return f.map(([k,v])=>`<div><span class="tpt-gris">${k}:</span> <b>${v}</b></div>`).join("")+plan;}
 function filaTPT(r){const i=pacientes.indexOf(r),c=calcular(r);const e=edadDe(r);
   return `<tr data-i="${i}" data-id="${esc(r.id)}" class="m-${c.modo||'nd'}">
@@ -205,5 +205,5 @@ const showBase=window.showView;
 window.showView=function(v){showBase(v);$('tabTPT').classList.toggle('active',v==='tpt');document.body.classList.toggle('ver-tpt',v==='tpt');if(v==='tpt')render();if(v==='datos'&&datosSucio){datosSucio=false;renderDatos();}};
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();const a=document.activeElement;if(!(a&&a.closest&&a.closest('#tbodyTPT')))render();};
-window.TPT={exportar,calcular,render,modoDe,fechas};
+window.TPT={exportar,calcular,render,modoDe,fechas,ESQ,IND};
 })();
