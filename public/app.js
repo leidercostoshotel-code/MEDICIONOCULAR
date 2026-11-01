@@ -151,10 +151,6 @@ function delRow(i){
   const r=pacientes[i];if(!confirm(`¿Eliminar la fila N° ${r.n} (${calcNombre(r)||'sin nombre'})?`))return;
   pacientes.splice(i,1);guardarPacientes();renderDatos();msg("Fila eliminada");
 }
-function resetData(){
-  if(!confirm("Se reemplazará el padrón actual por los datos originales del archivo. ¿Continuar?"))return;
-  pacientes=DATA_INICIAL.map(normalizar);guardarPacientes();renderDatos();msg("Datos originales restaurados");
-}
 
 /* ======================= IMPORTAR / EXPORTAR ======================= */
 function parseCSV(text){

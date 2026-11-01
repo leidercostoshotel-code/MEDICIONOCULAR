@@ -27,7 +27,6 @@ document.body.insertAdjacentHTML("afterbegin",`
     <label class="file btn">Importar CSV/Excel<input type="file" id="fileImport" accept=".csv,.xlsx,.xls,.txt" onchange="importFile(this)"></label>
     <button class="btn" onclick="exportCSV()">Exportar CSV</button>
     <button class="btn" onclick="exportXLSX()">Exportar Excel</button>
-    <button class="btn warn" onclick="resetData()">Restaurar datos originales</button>
     <button class="btn danger" onclick="vaciarPadron()" title="Borra todos los pacientes del padrón, por ejemplo para importar una data nueva">🗑 Vaciar padrón</button>
   </div>
   <div id="datosWrap">
