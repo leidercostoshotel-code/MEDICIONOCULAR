@@ -1,56 +1,36 @@
-/* PCT · Portada con video de bienvenida (debajo de la barra superior) */
-.hero{position:relative;overflow:hidden;color:#fff;background:linear-gradient(115deg,#3d0909 0%,#6e1414 34%,#8e1b1b 62%,#a8322c 100%);border-bottom:1px solid rgba(0,0,0,.3);box-shadow:inset 0 10px 18px -12px rgba(0,0,0,.5)}
-.hero::before{content:"";position:absolute;inset:-40px;background:url("video/bienvenida.jpg") 85% center/cover no-repeat;filter:blur(26px) saturate(1.15);opacity:.26;pointer-events:none}
-.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 12% 0%,rgba(255,255,255,.12),transparent 46%),radial-gradient(circle at 100% 100%,rgba(0,0,0,.28),transparent 55%);pointer-events:none}
-.hero-in{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"txt media" "kpi media";column-gap:32px;row-gap:14px;align-items:center;padding:20px 28px;max-width:1520px;margin:0 auto}
-.hero-txt{grid-area:txt;align-self:end;animation:heroIn .6s ease both}
-.hero-kpi{grid-area:kpi;align-self:start;display:flex;flex-wrap:wrap;gap:8px;animation:heroIn .6s .12s ease both}
-.hero-media{grid-area:media}
-.hero-eti{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.24);padding:4px 11px;border-radius:999px}
-.hero-eti i{width:7px;height:7px;border-radius:50%;background:#ffd54f;box-shadow:0 0 0 3px rgba(255,213,79,.25)}
-.hero h2{margin:12px 0 6px;font-size:clamp(21px,2.3vw,31px);line-height:1.15;font-weight:800;letter-spacing:-.3px;text-shadow:0 2px 14px rgba(0,0,0,.3)}
-.hero p{margin:0;font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.86);max-width:660px}
+/* PCT · Portada con video de fondo (como las portadas de Leitime): recuadro horizontal con el video de fondo que se funde con el
+   lado oscuro donde va el texto, a la izquierda. 270 px completa (primera vez del día) y 118 px compacta; en el celular sigue a su contenido. */
+.hero{position:relative;overflow:hidden;isolation:isolate;height:270px;margin:12px 16px 4px;border-radius:16px;background:radial-gradient(120% 160% at 0% 0%,rgba(142,27,27,.5),transparent 58%),#1c0a0e;box-shadow:0 8px 24px rgba(40,10,14,.22)}
+/* el video cubre el lado derecho y se funde con el lado oscuro del texto (en un recuadro tan bajo, a todo el ancho la cara de la doctora quedaría cortada) */
+.hero-video{position:absolute;top:0;right:0;width:64%;height:100%;object-fit:cover;object-position:center 15%;z-index:-2;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 34%);mask-image:linear-gradient(90deg,transparent 0,#000 34%)}
+.hero-sombra{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(28,10,14,.5) 0%,rgba(28,10,14,.22) 42%,rgba(28,10,14,0) 62%),linear-gradient(0deg,rgba(28,10,14,.4),transparent 42%)}
+.hero-txt{position:relative;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;max-width:610px;padding:24px 30px;color:#fff}
+.hero-eti{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#ffab91}
+.hero-eti svg{width:15px;height:15px;fill:currentColor;flex:none}
+.hero h2{margin:8px 0 6px;font-size:28px;font-weight:700;line-height:1.15;letter-spacing:-.2px;color:#fff}
+.hero p{margin:0;font-size:14px;line-height:1.5;color:#e6dadc}
 .hero p b{color:#fff}
-.hero-kpi button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:122px;padding:8px 13px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:#fff;font:inherit;text-align:left;cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:background .15s,transform .15s,border-color .15s}
-.hero-kpi button:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4);transform:translateY(-1px)}
-.hero-kpi button:focus-visible,.hero-ctl button:focus-visible,.hero-play:focus-visible,.hero-mini button:focus-visible{outline:2px solid #ffd54f;outline-offset:2px}
-.hero-kpi b{font-size:21px;line-height:1.1;font-weight:800}
-.hero-kpi span{font-size:11px;color:rgba(255,255,255,.82);white-space:nowrap}
-.hero-kpi .alerta{border-color:rgba(255,213,79,.55);background:rgba(255,213,79,.14)}.hero-kpi .alerta b{color:#ffe082}
-/* video */
-.hero-media{position:relative;width:clamp(290px,26vw,410px);aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#111;box-shadow:0 20px 44px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.2);animation:heroIn .7s .05s ease both}
-.hero-media video{display:block;width:100%;height:100%;object-fit:cover}
-.hero-media::after{content:"";position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(transparent,rgba(0,0,0,.55));pointer-events:none;transition:opacity .2s}
-.hero-ctl{position:absolute;left:10px;right:10px;bottom:11px;z-index:2;display:flex;gap:6px;align-items:center}
-.hero-ctl button{display:inline-flex;align-items:center;gap:5px;border:0;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font:inherit;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:background .15s}
-.hero-ctl button:hover{background:rgba(0,0,0,.8)}
-.hero-ctl .hero-ocultar{margin-left:auto}
-.hero-ctl svg,.hero-mini svg{width:15px;height:15px;fill:currentColor;flex:none}
-.hero-barra{position:absolute;left:0;bottom:0;z-index:2;height:3px;width:0;background:#ffd54f}
-.hero-play{position:absolute;inset:0;margin:auto;z-index:2;width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:rgba(142,27,27,.82);color:#fff;padding:0;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:transform .15s,background .15s}
-.hero-play:hover{transform:scale(1.07);background:#b71c1c}
-.hero-play svg{width:28px;height:28px;fill:currentColor;margin-left:3px}
-.hero-media.pausado .hero-play{display:flex}
-/* oculta: queda una franja para volver a mostrarla */
-.hero-mini{display:none;position:relative;z-index:1;align-items:center;justify-content:space-between;gap:10px;padding:6px 18px;font-size:12px;font-weight:600;color:rgba(255,255,255,.9)}
-.hero.min::before{opacity:.12}
-.hero.min .hero-in{display:none}.hero.min .hero-mini{display:flex}
-.hero-mini button{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font:inherit;font-size:12px;font-weight:600;padding:4px 12px;cursor:pointer}
-.hero-mini button:hover{background:rgba(255,255,255,.24)}
-@keyframes heroIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.hero-txt,.hero-kpi,.hero-media{animation:none}}
-@media (max-width:1100px){.hero-in{column-gap:20px;padding:16px 18px}.hero-media{width:clamp(250px,36vw,380px)}.hero p{font-size:12.5px}}
-/* celular: texto y video lado a lado, accesos debajo en una fila que se desliza */
-@media (max-width:700px){
-  .hero-in{grid-template-columns:minmax(0,1fr) 46%;grid-template-areas:"txt media" "kpi kpi";column-gap:12px;row-gap:10px;padding:12px}
-  .hero-eti{display:none}
-  .hero h2{font-size:17px;margin:0}
-  .hero p{display:none}
-  .hero-txt{align-self:center}
-  .hero-media{width:100%;border-radius:12px}
-  .hero-ctl{left:6px;right:6px;bottom:6px;gap:4px}.hero-ctl button{font-size:11px;padding:5px}.hero-ctl .txt{display:none}.hero-ctl svg{width:13px;height:13px}
-  .hero-play{width:44px;height:44px}.hero-play svg{width:20px;height:20px}
-  .hero-kpi{flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:2px;scrollbar-width:none}.hero-kpi::-webkit-scrollbar{display:none}
-  .hero-kpi button{min-width:0;flex:none;padding:6px 10px;border-radius:10px}.hero-kpi b{font-size:17px}.hero-kpi span{font-size:10.5px}
-  .hero-mini{padding:6px 10px}.hero-mini span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hero-kpi{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+.hero-kpi button{display:inline-flex;align-items:baseline;gap:6px;font:inherit;font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:5px 13px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:background .15s,border-color .15s}
+.hero-kpi button:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.4)}
+.hero-kpi button:focus-visible{outline:2px solid #ffab91;outline-offset:2px}
+.hero-kpi b{font-size:15px;font-weight:800}
+.hero-kpi .alerta{background:rgba(255,193,7,.16);border-color:rgba(255,213,79,.55)}.hero-kpi .alerta b{color:#ffe082}
+/* compacta: desde la segunda vez del día (video, título y accesos siguen) */
+.hero.compacta{height:118px}
+.hero.compacta .hero-txt{padding-top:14px;padding-bottom:14px}
+.hero.compacta h2{font-size:21px;margin:4px 0 0}
+.hero.compacta p{display:none}
+.hero.compacta .hero-kpi{margin-top:9px}
+.hero.compacta .hero-video{object-position:center 27%}
+@media (max-width:1100px){.hero-video{width:70%}.hero-txt{max-width:560px}}
+@media (max-width:640px){
+  .hero,.hero.compacta{height:auto;margin:8px 8px 4px;border-radius:14px}
+  .hero-video{width:100%;-webkit-mask-image:none;mask-image:none}
+  .hero-sombra{background:linear-gradient(0deg,rgba(28,10,14,.95) 30%,rgba(28,10,14,.55))}
+  .hero-txt{height:auto;padding:18px 16px}
+  .hero h2,.hero.compacta h2{font-size:21px}
+  .hero p{font-size:13px}
+  .hero-kpi{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding-bottom:2px;scrollbar-width:none}.hero-kpi::-webkit-scrollbar{display:none}
+  .hero-kpi button{flex:none}
 }
