@@ -13,7 +13,7 @@
   const estable=o=>JSON.stringify(o,(k,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v);
   // ¿Se está escribiendo en un campo? Entonces la hoja no se redibuja (se perdería lo que se escribe); se redibuja al salir del campo.
   const editando=()=>{const a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!a.closest('#login'));};
-  const S=window.Sync={programarPacientes(){},programarAtenciones(){},programarConfig(){},subirPendiente(){},entrar(e){e.preventDefault();},cerrarSesion(){}};
+  const S=window.Sync={programarPacientes(){},programarAtenciones(){},programarConfig(){},programar(){},subirPendiente(){},nube(){return null;},usuario(){return "";},entrar(e){e.preventDefault();},cerrarSesion(){}};
   if(!cfg.apiKey||/^PEGAR/.test(cfg.apiKey)){estado("Sin Firebase · guardado solo en este navegador","off");return;}
   if(typeof firebase==="undefined"){estado("No se pudo cargar Firebase · guardado local","err");return;}
   if(!firebase.apps.length)firebase.initializeApp(cfg);
@@ -116,17 +116,25 @@
     if(window.alCambiarConfig)alCambiarConfig();
   }
 
+  /* ======================= COLECCIONES DE OTROS MÓDULOS ======================= */
+  // p. ej. imagenes.js: window.SYNC_EXTRA = [{col, local, norm, aplicar}] (se cargan antes que este archivo)
+  const extras={};(window.SYNC_EXTRA||[]).forEach(x=>{extras[x.col]=coleccion(db.collection(x.col),x.col,x);});
+  const todas=()=>[sPac,sAt].concat(Object.values(extras));
+  S.programar=n=>{if(extras[n])extras[n].programar();};
+  S.nube=()=>(!opt.requiereLogin||auth.currentUser)?{db,Blob:firebase.firestore.Blob}:null; // para leer y escribir archivos a pedido
+  S.usuario=()=>(auth.currentUser&&auth.currentUser.email)||"";
+
   S.programarPacientes=()=>sPac.programar();
   S.programarAtenciones=()=>sAt.programar();
   S.programarConfig=()=>{clearTimeout(tCfg);tCfg=setTimeout(subirConfig,1500);};
-  S.subirPendiente=()=>{sPac.ya();sAt.ya();if(tCfg){clearTimeout(tCfg);subirConfig();}};
+  S.subirPendiente=()=>{todas().forEach(c=>c.ya());if(tCfg){clearTimeout(tCfg);subirConfig();}};
   // al salir de la app o cambiar de pestaña o de aplicación en el celular: subir lo pendiente sin esperar
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')S.subirPendiente();});
   window.addEventListener('pagehide',()=>S.subirPendiente());
 
-  function escuchar(){parar();estado("Conectando…");sPac.iniciar();sAt.iniciar();
+  function escuchar(){parar();estado("Conectando…");todas().forEach(c=>c.iniciar());
     paroCfg=docCfg.onSnapshot(aplicarConfig,e=>console.error(e));}
-  function parar(){sPac.parar();sAt.parar();if(paroCfg){paroCfg();paroCfg=null;}}
+  function parar(){todas().forEach(c=>c.parar());if(paroCfg){paroCfg();paroCfg=null;}}
   window.addEventListener('offline',()=>estado("Sin conexión · se guarda local y se sube al reconectar","off"));
 
   const ERR={"auth/invalid-email":"El correo no es válido","auth/user-not-found":"No existe un usuario con ese correo","auth/wrong-password":"Contraseña incorrecta","auth/invalid-credential":"Correo o contraseña incorrectos","auth/too-many-requests":"Demasiados intentos; espere unos minutos","auth/network-request-failed":"Sin conexión a internet","auth/user-disabled":"Usuario deshabilitado"};

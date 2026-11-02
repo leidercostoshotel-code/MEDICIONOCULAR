@@ -25,5 +25,12 @@ service cloud.firestore {
     match /pct_config/{id} {
       allow read, write: if request.auth != null;
     }
+    // PCT · Diagnóstico por imagen: datos de cada estudio y el archivo en partes
+    match /pct_imagenes/{id} {
+      allow read, write: if request.auth != null;
+    }
+    match /pct_archivos/{id} {
+      allow read, write: if request.auth != null;
+    }
   }
 }
