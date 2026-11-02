@@ -25,7 +25,6 @@
 .hero-ctl button{display:inline-flex;align-items:center;gap:5px;border:0;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font:inherit;font-size:12px;font-weight:600;padding:6px 12px;cursor:pointer;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);transition:background .15s}
 .hero-ctl button:hover{background:rgba(0,0,0,.8)}
 .hero-ctl .hero-ocultar{margin-left:auto}
-.hero-ctl button.on{background:#ffd54f;color:#3d2a00}
 .hero-ctl svg,.hero-mini svg{width:15px;height:15px;fill:currentColor;flex:none}
 .hero-barra{position:absolute;left:0;bottom:0;z-index:2;height:3px;width:0;background:#ffd54f}
 .hero-play{position:absolute;inset:0;margin:auto;z-index:2;width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:rgba(142,27,27,.82);color:#fff;padding:0;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:transform .15s,background .15s}
