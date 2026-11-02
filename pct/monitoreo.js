@@ -261,8 +261,8 @@ const LISTAS={
   sin:{t:"Sin fecha de inicio",ico:"✏️",d:"Pacientes en tratamiento y contactos con TPT sin fecha de inicio: escríbala aquí y el plan de monitoreo se arma solo.",vacio:"Todos los pacientes en tratamiento tienen fecha de inicio. ✔"}};
 const LISTAS_CTRL=["hoy","prox","venc","prog","ok","repro"];
 let lista=null;
-function datosListas(){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7);const D={};Object.keys(LISTAS).forEach(k=>{D[k]=[];});
-  pacientes.filter(filtrar).forEach(r=>{const m=TPT.modoDe(r),p=principal(r);
+function datosListas(todos){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7);const D={};Object.keys(LISTAS).forEach(k=>{D[k]=[];});
+  pacientes.filter(todos?()=>true:filtrar).forEach(r=>{const m=TPT.modoDe(r),p=principal(r);
     if(p)D.pac.push({r,p});
     planes(r).forEach(pl=>pl.controles.forEach(c=>{const e={p:pl,c},s=estado(c)[0];
       if(c.movido==="reprogramada"&&!c.completo)D.repro.push(e);
@@ -447,5 +447,5 @@ window.showView=function(v){showBase(v);$('tabMon').classList.toggle('active',v=
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();const a=document.activeElement;if(!(a&&a.closest&&a.closest('#monitoreo,#monPlan')))render();};
 window.MON={plan,planTPT,abrirPlan:id=>{showView('monitoreo');abrirPlan(id);},cerrarPlan,exportar,exportarLista,imprimir,imprimirPlan,render,feriado,abrirRepro,cerrarRepro,habil,masMeses,estado,hoy0,irDia:k=>{showView('monitoreo');verDia(k);},
-  verLista:k=>{lista=LISTAS[k]?k:null;showView('monitoreo');}};
+  verLista:k=>{lista=LISTAS[k]?k:null;showView('monitoreo');},contar:()=>{const D=datosListas(true);return {hoy:D.hoy.length,venc:D.venc.length};}};
 })();
