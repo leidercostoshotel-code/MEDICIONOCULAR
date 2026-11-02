@@ -1,66 +1,108 @@
-/* Sincronización con Firestore (pacientes, evaluaciones y REGISTRO HIS). Guardado local siempre; la nube cuando está configurada. */
+/* Sincronización con Firestore (pacientes, evaluaciones y REGISTRO HIS). Guardado local siempre; la nube cuando está configurada.
+   Pocas lecturas y escrituras:
+   · Cada equipo lee toda la colección solo la primera vez y luego una vez por semana (por seguridad). El resto del tiempo baja
+     solo lo que cambió: cada documento lleva _t (hora del servidor de su último cambio) y se piden los de _t mayor al último visto.
+   · Un borrado se guarda como marca {_del:true} para que los otros equipos se enteren sin volver a leer todo.
+   · Solo se suben los documentos que cambiaron (se compara una huella de cada uno con la última versión sincronizada), 2 s después
+     del último cambio; al salir de la app o cambiar de pestaña se sube lo pendiente. */
 (function(){
   const cfg=window.FIREBASE_CONFIG||{},opt=Object.assign({requiereLogin:true},window.APP_CONFIG||{});
   const st=document.getElementById('syncStatus'),lg=document.getElementById('login'),salir=document.getElementById('btnSalir');
   const estado=(t,c)=>{st.textContent=t;st.className='syncStatus '+(c||'');};
   // JSON con las claves ordenadas: Firestore devuelve los campos en orden alfabético y el navegador en el orden en que se crearon.
-  // Sin esto cada guardado parecía un cambio: se volvía a subir todo y la hoja HIS se redibujaba mientras se escribía.
   const estable=o=>JSON.stringify(o,(k,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.keys(v).sort().reduce((a,x)=>(a[x]=v[x],a),{}):v);
   // ¿Se está escribiendo en un campo? Entonces la hoja no se redibuja (se perdería lo que se escribe); se redibuja al salir del campo.
   const editando=()=>{const a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!a.closest('#login'));};
   const S=window.Sync={programarPacientes(){},programarEvaluaciones(){},programarAtenciones(){},programarConfig(){},subirPendiente(){},entrar(e){e.preventDefault();},cerrarSesion(){}};
   if(!cfg.apiKey||/^PEGAR/.test(cfg.apiKey)){estado("Sin Firebase · guardado solo en este navegador","off");return;}
   if(typeof firebase==="undefined"){estado("No se pudo cargar Firebase · guardado local","err");return;}
-  firebase.initializeApp(cfg);
-  const db=firebase.firestore(),auth=firebase.auth();
+  if(!firebase.apps.length)firebase.initializeApp(cfg);
+  const db=firebase.firestore(),auth=firebase.auth(),FV=firebase.firestore.FieldValue,TS=firebase.firestore.Timestamp;
   try{db.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
   const colPac=db.collection('pacientes'),colEval=db.collection('evaluaciones'),colAt=db.collection('his_atenciones'),docCfg=db.collection('his_config').doc('general');
-  let cachePac={},cacheEval={},cacheAt={},cacheCfg=null,tPac=null,tEval=null,tAt=null,tCfg=null,escribiendo=0,paros=[],semilla=false,semillaAt=false;
+  const H=()=>window.HIS; // REGISTRO HIS (his.js): atenciones y configuración de la hoja
 
-  async function ejecutar(col,ops){ // ops: {id,data} para guardar, {id,del:true} para borrar; lotes de 400
-    for(let i=0;i<ops.length;i+=400){const b=db.batch();ops.slice(i,i+400).forEach(o=>o.del?b.delete(col.doc(o.id)):b.set(col.doc(o.id),o.data));await b.commit();}
+  /* ======================= SINCRONIZACIÓN POR CAMBIOS ======================= */
+  const SEMANA=7*864e5,MARGEN=10*60*1000,ESPERA=2000;
+  const VACIO='_vacio'; // (solo existe en PCT) se ignora
+  function huella(s){let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677);}
+    a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return (b>>>0).toString(36)+(a>>>0).toString(36);}
+  const h=x=>huella(estable(x));
+  const ms=t=>t&&typeof t.toMillis==="function"?t.toMillis():0;
+  const sinMarcas=x=>{const o=Object.assign({},x);delete o._t;delete o._del;return o;};
+  let escribiendo=0;
+  // o.local() → {id: objeto} de este equipo · o.norm(id, datos) → objeto local desde la nube · o.aplicar({id: objeto|null}) mezcla los cambios y redibuja
+  function coleccion(col,clave,o){
+    const LS='sync_'+clave;let est=null; // {d: mayor _t visto (ms), f: última lectura completa (ms), h: {id: huella de lo último sincronizado}}
+    try{const x=JSON.parse(localStorage.getItem(LS));if(x&&typeof x==="object"&&x.h&&typeof x.h==="object")est=x;}catch(e){}
+    let tGuardar=null,tSubir=null,paro=null,activo=false;
+    const guardarEst=()=>{clearTimeout(tGuardar);tGuardar=setTimeout(()=>{try{localStorage.setItem(LS,JSON.stringify(est));}catch(e){}},300);};
+    const listo=()=>!o.listo||o.listo();
+    async function subir(){tSubir=null;if(!activo||!est||!listo())return;const loc=o.local(),ops=[];
+      for(const id in loc){const x=h(loc[id]);if(est.h[id]!==x){ops.push({id,antes:est.h[id],data:Object.assign(JSON.parse(estable(loc[id])),{_t:FV.serverTimestamp()})});est.h[id]=x;}}
+      for(const id in est.h)if(!(id in loc)){ops.push({id,antes:est.h[id],data:{_del:true,_t:FV.serverTimestamp()}});delete est.h[id];}
+      if(!ops.length)return;guardarEst();escribiendo++;estado("Guardando en la nube…");let fallo=false;
+      for(let i=0;i<ops.length;i+=400){const lote=ops.slice(i,i+400);
+        try{const b=db.batch();lote.forEach(x=>b.set(col.doc(x.id),x.data));await b.commit();}
+        catch(e){console.error(e);fallo=true;estado("Error al guardar en la nube (se guardó local)","err"); // se vuelve a intentar en el próximo cambio
+          lote.forEach(x=>{if(x.antes===undefined)delete est.h[x.id];else est.h[x.id]=x.antes;});guardarEst();}}
+      escribiendo--;if(!fallo)estado("☁ Sincronizado","ok");}
+    // Mezcla de 3 vías con la huella de lo último sincronizado: si un documento cambió en este equipo y aún no se sube, gana lo local.
+    function recibir(docs,completa){if(!listo())return;const loc=o.local(),cambios={},vistos=new Set();let n=0;
+      docs.forEach(({id,x})=>{vistos.add(id);const remoto=x&&!x._del?o.norm(id,sinMarcas(x)):null,hr=remoto?h(remoto):undefined,hl=id in loc?h(loc[id]):undefined;
+        if(est.h[id]!==hl)return;                          // cambiado aquí y sin subir: se sube después
+        if(hr===undefined)delete est.h[id];else est.h[id]=hr;
+        if(hr!==hl){cambios[id]=remoto;n++;}});
+      if(completa)for(const id in loc)if(!vistos.has(id)&&est.h[id]===h(loc[id])){cambios[id]=null;delete est.h[id];n++;} // ya no está en la nube
+      if(completa)for(const id in est.h)if(!vistos.has(id)&&!(id in loc))delete est.h[id];
+      guardarEst();if(n)o.aplicar(cambios);}
+    async function completa(){if(!listo())return false;let s;try{s=await col.get();}catch(e){console.error(e);estado("Sin permiso o sin conexión · guardado local","err");return false;}
+      if(s.metadata&&s.metadata.fromCache)return false; // sin conexión: se intenta al reconectar
+      const loc=o.local(),docs=[];let max=0;
+      if(!est){est={d:0,f:0,h:{}};for(const id in loc)est.h[id]=h(loc[id]);} // primera vez en este equipo: manda la nube
+      if(!s.size&&Object.keys(loc).length){est.h={};est.f=Date.now();guardarEst();subir();return true;} // nube vacía: se sube lo de este equipo
+      s.forEach(d=>{if(d.id===VACIO)return;const x=d.data();max=Math.max(max,ms(x._t));docs.push({id:d.id,x});});
+      est.d=Math.max(est.d||0,max);est.f=Date.now();recibir(docs,true);programar();return true;}
+    function escucharCambios(){if(paro)paro();const desde=TS.fromMillis(Math.max(0,(est.d||0)-MARGEN));
+      paro=col.where('_t','>',desde).onSnapshot(s=>{const docs=[];let max=est.d||0;
+        s.docChanges().forEach(c=>{if(c.type==="removed"||c.doc.id===VACIO||(c.doc.metadata&&c.doc.metadata.hasPendingWrites))return; // lo propio aún sin confirmar se ignora
+          const x=c.doc.data();max=Math.max(max,ms(x._t));docs.push({id:c.doc.id,x});});
+        if(max>(est.d||0)){est.d=max;guardarEst();}if(docs.length)recibir(docs,false);
+        if(!(s.metadata&&s.metadata.fromCache)&&!escribiendo)estado("☁ Sincronizado","ok");},
+        e=>{console.error(e);estado("Sin permiso o sin conexión · guardado local","err");});}
+    async function iniciar(){activo=true;
+      if(!est||!est.f||Date.now()-est.f>SEMANA){const ok=await completa();if(!activo)return;
+        if(!ok&&!est){window.addEventListener('online',()=>{if(activo)iniciar();},{once:true});return;}}
+      escucharCambios();programar();} // programar: sube lo que quedó pendiente de la vez anterior (si no hay nada, no escribe)
+    function parar(){activo=false;if(paro){paro();paro=null;}}
+    function programar(){clearTimeout(tSubir);tSubir=setTimeout(subir,ESPERA);}
+    function ya(){if(tSubir){clearTimeout(tSubir);subir();}}
+    return {iniciar,parar,programar,ya};
   }
-  function reconciliar(col,cache,actual){
-    const ops=[];for(const id in actual)if(cache[id]!==actual[id])ops.push({id,data:JSON.parse(actual[id])});
-    for(const id in cache)if(!(id in actual))ops.push({id,del:true});
-    ops.forEach(o=>{if(o.del)delete cache[o.id];else cache[o.id]=actual[o.id];});
-    if(!ops.length)return Promise.resolve();
-    escribiendo++;estado("Guardando en la nube…");
-    return ejecutar(col,ops).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);
-  }
-  function subirPacientes(){tPac=null;const a={};pacientes.forEach(r=>{if(!r.id)r.id=uid();a[r.id]=estable(r);});return reconciliar(colPac,cachePac,a);}
-  function subirEvaluaciones(){tEval=null;const a={};for(const n in evaluaciones)a[String(n)]=estable({n:parseInt(n),campos:evaluaciones[n]});return reconciliar(colEval,cacheEval,a);}
-  // REGISTRO HIS (his.js): atenciones y configuración de la hoja
-  const H=()=>window.HIS;
-  function subirAtenciones(){tAt=null;if(!H())return;const at=H().atenciones(),a={};for(const id in at)a[id]=estable(Object.assign({},at[id],{id}));return reconciliar(colAt,cacheAt,a);}
-  function subirConfig(){tCfg=null;if(!H())return;const c=H().config(),j=estable(c);if(j===cacheCfg)return;cacheCfg=j;escribiendo++;docCfg.set(c).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);}
-  S.programarAtenciones=()=>{clearTimeout(tAt);tAt=setTimeout(subirAtenciones,300);};
-  S.programarConfig=()=>{clearTimeout(tCfg);tCfg=setTimeout(subirConfig,600);};
-  S.programarPacientes=()=>{clearTimeout(tPac);tPac=setTimeout(subirPacientes,600);};
-  S.programarEvaluaciones=()=>{clearTimeout(tEval);tEval=setTimeout(subirEvaluaciones,300);};
-  S.subirPendiente=()=>{if(tEval){clearTimeout(tEval);subirEvaluaciones();}if(tPac){clearTimeout(tPac);subirPacientes();}};
 
+  /* ======================= PACIENTES ======================= */
   function focoActual(){const el=document.activeElement;const tr=el&&el.closest&&el.closest('#tbodyDatos tr');return tr?{id:tr.dataset.id,k:el.dataset.k,s:el.selectionStart}:null;}
   function restaurarFoco(f){if(!f)return;const el=document.querySelector(`#tbodyDatos tr[data-id="${f.id}"] [data-k="${f.k}"]`);if(el){el.focus();try{el.setSelectionRange(f.s,f.s);}catch(e){}}}
-  function aplicarPacientes(snap){
-    const remoto={};snap.forEach(d=>{remoto[d.id]=estable(normalizar(Object.assign({},d.data(),{id:d.id})));});
-    if(!snap.metadata.fromCache&&!semilla){semilla=true;if(!snap.size&&pacientes.length){cachePac={};subirPacientes();return;}}
-    cachePac=remoto;
-    if(snap.metadata.hasPendingWrites||tPac||escribiendo)return;
-    const lista=Object.values(remoto).map(j=>JSON.parse(j)).sort((a,b)=>(parseInt(a.n)||1e9)-(parseInt(b.n)||1e9));
-    if(estable(lista)===estable(pacientes))return;
-    pacientes=lista;try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){}
-    const f=focoActual();renderDatos();restaurarFoco(f);
-    if(document.getElementById('evaluacion').classList.contains('active'))setAutos(buscarPaciente(numActual));
-    if(H())H().alCambiarPacientes();
-  }
-  function aplicarAtenciones(snap){
-    if(!H())return;const remoto={},obj={};snap.forEach(d=>{obj[d.id]=Object.assign({},d.data(),{id:d.id});remoto[d.id]=estable(obj[d.id]);});
-    if(!snap.metadata.fromCache&&!semillaAt){semillaAt=true;if(!snap.size&&Object.keys(H().atenciones()).length){cacheAt={};subirAtenciones();return;}}
-    cacheAt=remoto;
-    if(snap.metadata.hasPendingWrites||tAt||escribiendo)return;
-    recibirAt(obj);
-  }
+  const sPac=coleccion(colPac,'pacientes',{
+    local:()=>{const m={};pacientes.forEach(r=>{if(!r.id)r.id=uid();m[r.id]=r;});return m;},
+    norm:(id,x)=>normalizar(Object.assign({},x,{id})),
+    aplicar:c=>{const l=pacientes.map(r=>r.id in c?c[r.id]:r).filter(Boolean),ya=new Set(pacientes.map(r=>r.id));for(const id in c)if(c[id]&&!ya.has(id))l.push(c[id]);
+      pacientes=l.sort((a,b)=>(parseInt(a.n)||1e9)-(parseInt(b.n)||1e9));try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){}
+      const f=focoActual();renderDatos();restaurarFoco(f);
+      if(document.getElementById('evaluacion').classList.contains('active'))setAutos(buscarPaciente(numActual));
+      if(H())H().alCambiarPacientes();}});
+
+  /* ======================= EVALUACIONES (una por N° de paciente) ======================= */
+  const sEval=coleccion(colEval,'evaluaciones',{
+    local:()=>{const m={};for(const n in evaluaciones)m[String(n)]={n:parseInt(n),campos:evaluaciones[n]};return m;},
+    norm:(id,x)=>({n:parseInt(id),campos:x.campos||{}}),
+    aplicar:c=>{const antes=numActual!=null?estable(evaluaciones[numActual]||null):null,obj=Object.assign({},evaluaciones);
+      for(const id in c){if(c[id])obj[id]=c[id].campos;else delete obj[id];}
+      evaluaciones=obj;if(window.migrarCodigos)migrarCodigos(evaluaciones);try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){}
+      const ahora=numActual!=null?estable(evaluaciones[numActual]||null):null;
+      if(numActual!=null&&antes!==ahora&&estable(leerForm())===antes)cargarPaciente(numActual);}});
+
+  /* ======================= ATENCIONES (REGISTRO HIS) ======================= */
   let atPend=false; // cambios de la nube que esperan a que se salga del campo para redibujar el REGISTRO HIS
   function recibirAt(obj){const at=H().atenciones();
     if(estable(obj)===estable(at)){atPend=false;return;}
@@ -70,6 +112,14 @@
     atPend=false;H().recibirAtenciones(obj);
   }
   document.addEventListener('focusout',()=>setTimeout(()=>{if(atPend&&!editando()&&H()){atPend=false;H().repintar();}},0));
+  const sAt=coleccion(colAt,'his_atenciones',{listo:()=>!!H(),
+    local:()=>{const at=H().atenciones(),m={};for(const id in at)m[id]=Object.assign({},at[id],{id});return m;},
+    norm:(id,x)=>Object.assign({},x,{id}),
+    aplicar:c=>{const obj=Object.assign({},H().atenciones());for(const id in c){if(c[id])obj[id]=c[id];else delete obj[id];}recibirAt(obj);}});
+
+  /* ======================= CONFIGURACIÓN (un solo documento) ======================= */
+  let cacheCfg=null,tCfg=null,paroCfg=null;
+  function subirConfig(){tCfg=null;if(!H())return;const c=H().config(),j=estable(c);if(j===cacheCfg)return;cacheCfg=j;escribiendo++;docCfg.set(c).then(()=>estado("☁ Sincronizado","ok")).catch(e=>{console.error(e);estado("Error al guardar en la nube (se guardó local)","err");}).finally(()=>escribiendo--);}
   function aplicarConfig(snap){
     if(!H())return;
     if(!snap.exists){if(!snap.metadata.fromCache&&cacheCfg==null){cacheCfg="";subirConfig();}return;}
@@ -78,24 +128,19 @@
     if(j===estable(H().config()))return;
     H().recibirConfig(snap.data());
   }
-  function aplicarEvaluaciones(snap){
-    const remoto={},obj={};snap.forEach(d=>{const v=d.data();obj[d.id]=v.campos||{};remoto[d.id]=estable({n:parseInt(d.id),campos:obj[d.id]});});
-    if(!snap.metadata.fromCache&&!snap.size&&Object.keys(evaluaciones).length&&!Object.keys(cacheEval).length){subirEvaluaciones();return;}
-    cacheEval=remoto;
-    if(snap.metadata.hasPendingWrites||tEval||escribiendo)return;
-    const antes=numActual!=null?estable(evaluaciones[numActual]||null):null;
-    evaluaciones=obj;if(window.migrarCodigos)migrarCodigos(evaluaciones);try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){}
-    const ahora=numActual!=null?estable(evaluaciones[numActual]||null):null;
-    if(numActual!=null&&antes!==ahora&&estable(leerForm())===antes)cargarPaciente(numActual);
-  }
-  function escuchar(){
-    parar();estado("Conectando…");
-    paros.push(colPac.onSnapshot({includeMetadataChanges:true},s=>{aplicarPacientes(s);if(!s.metadata.fromCache&&!s.metadata.hasPendingWrites)estado("☁ Sincronizado","ok");},e=>{console.error(e);estado("Sin permiso o sin conexión · guardado local","err");}));
-    paros.push(colEval.onSnapshot({includeMetadataChanges:true},aplicarEvaluaciones,e=>console.error(e)));
-    paros.push(colAt.onSnapshot({includeMetadataChanges:true},aplicarAtenciones,e=>console.error(e)));
-    paros.push(docCfg.onSnapshot({includeMetadataChanges:true},aplicarConfig,e=>console.error(e)));
-  }
-  function parar(){paros.forEach(f=>f());paros=[];}
+
+  S.programarPacientes=()=>sPac.programar();
+  S.programarEvaluaciones=()=>sEval.programar();
+  S.programarAtenciones=()=>sAt.programar();
+  S.programarConfig=()=>{clearTimeout(tCfg);tCfg=setTimeout(subirConfig,1500);};
+  S.subirPendiente=()=>{sPac.ya();sEval.ya();sAt.ya();if(tCfg){clearTimeout(tCfg);subirConfig();}};
+  // al salir de la app o cambiar de pestaña o de aplicación en el celular: subir lo pendiente sin esperar
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')S.subirPendiente();});
+  window.addEventListener('pagehide',()=>S.subirPendiente());
+
+  function escuchar(){parar();estado("Conectando…");sPac.iniciar();sEval.iniciar();sAt.iniciar();
+    paroCfg=docCfg.onSnapshot(aplicarConfig,e=>console.error(e));}
+  function parar(){sPac.parar();sEval.parar();sAt.parar();if(paroCfg){paroCfg();paroCfg=null;}}
   window.addEventListener('offline',()=>estado("Sin conexión · se guarda local y se sube al reconectar","off"));
 
   const ERR={"auth/invalid-email":"El correo no es válido","auth/user-not-found":"No existe un usuario con ese correo","auth/wrong-password":"Contraseña incorrecta","auth/invalid-credential":"Correo o contraseña incorrectos","auth/too-many-requests":"Demasiados intentos; espere unos minutos","auth/network-request-failed":"Sin conexión a internet","auth/user-disabled":"Usuario deshabilitado"};
@@ -103,7 +148,7 @@
     const em=document.getElementById('lgEmail').value.trim(),pw=document.getElementById('lgPass').value;if(!em||!pw){err.textContent="Escriba su correo y contraseña";return;}
     btn.disabled=true;btn.textContent="Entrando…";
     auth.signInWithEmailAndPassword(em,pw).catch(x=>{err.textContent=(ERR[x.code]||"No se pudo iniciar sesión")+(x.code?" · "+x.code.replace("auth/",""):"");}).finally(()=>{btn.disabled=false;btn.textContent="Entrar";});};
-  S.cerrarSesion=()=>auth.signOut();
+  S.cerrarSesion=()=>auth.signOut(); // lo pendiente se sube al volver a entrar
   if(opt.requiereLogin){
     auth.onAuthStateChanged(u=>{lg.style.display=u?'none':'flex';document.body.classList.toggle('login-abierto',!u);salir.style.display=u?'':'none';if(u)escuchar();else{parar();estado("Inicie sesión para sincronizar","off");}});
   }else escuchar();
