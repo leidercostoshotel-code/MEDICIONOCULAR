@@ -85,3 +85,18 @@
 .img-ierr{margin:12px 18px;padding:10px 12px;border-radius:10px;background:#fdecea;color:#8e1b1b;font-size:12.5px}.img-ierr ul{margin:6px 0 0;padding-left:18px}
 @media (max-width:700px){.img-itabla thead{display:none}.img-itabla tr{display:grid;grid-template-columns:28px 1fr;gap:4px 8px;padding:8px 10px;border-bottom:1px solid #e1e6eb}
   .img-itabla td{border:0;padding:0}.img-itabla td:nth-child(n+3){grid-column:2}.img-itabla td:nth-child(3){min-width:0}.img-itabla tr.falta{background:#fffbea}.img-itabla tr.falta td{background:none}}
+/* enlaces de Google Drive (sin copiar el archivo) */
+.img-cabd{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+.img-bdrive{background:#fff;color:#1a237e;border:0;font-weight:bold;text-decoration:none;white-space:nowrap}.img-bdrive:hover{background:#e8eaf6}
+.img-mini.drive{background:#f1f6ff;text-decoration:none;cursor:pointer}.img-mini.drive svg{width:54px;height:54px}
+.img-card.enlace{border-color:#c5cae9}.img-card.enlace .img-mini{width:88px;height:88px}
+#imgRaiz,.img-acc a.btn{text-decoration:none}#imgRaiz[hidden]{display:none}
+.img-tipo.t-carpeta-de-drive{background:#e8eaf6;color:#283593}
+.img-acc a.btn{text-decoration:none}
+.img-enl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:#546e7a}
+.img-enl span{flex-basis:100%}.img-enl input{flex:1 1 260px;min-width:0;font:inherit;font-size:13px;padding:6px 8px;border:1px solid #cfd8dc;border-radius:8px}
+.img-enltxt{padding:0 18px}.img-enltxt textarea{width:100%;box-sizing:border-box;font:12.5px/1.45 Consolas,monospace;padding:8px 10px;border:1px solid #cfd8dc;border-radius:10px;resize:vertical}
+.img-ipasos code{font-size:11px;background:#f3f6f9;border-radius:4px;padding:1px 4px;word-break:break-all}
+.img-itabla td small a{color:#1565c0}
+@media (max-width:560px){.img-card.enlace{flex-direction:row}.img-card.enlace .img-mini{width:64px;height:64px}.img-card.enlace .img-mini svg{width:40px;height:40px}}
+@media (max-width:700px){.img-cab{flex-direction:column}.img-cabd{align-items:flex-start;flex-direction:row;flex-wrap:wrap}}
