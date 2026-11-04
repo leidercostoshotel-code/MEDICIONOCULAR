@@ -8,12 +8,14 @@
    · Las fotos se achican antes de subir (lado mayor 2200 px, JPG); PDF hasta 15 MB.
    · «Importar carpeta de Drive»: el ZIP que baja Google Drive (o la carpeta descomprimida, o varios archivos). Reconoce al paciente por
      el nombre de su carpeta o del archivo (o el DNI), la fecha por el nombre del archivo (16-10-26, 24-10-2026, 16 JULIO 2026) y el
-     tipo por las palabras del nombre; se revisa en una lista y se sube todo junto. Lo ya importado no se repite. */
+     tipo por las palabras del nombre; se revisa en una lista y se sube todo junto. Lo ya importado no se repite.
+   · Sin descargar nada: «🔍 Buscar en Google Drive» abre Drive con la búsqueda del paciente, y «🔗 Enlazar con Drive» guarda el enlace
+     de la carpeta (o del archivo) de cada paciente: queda como una tarjeta que se abre en Drive con un clic (el archivo no se copia). */
 (function(){
 "use strict";
 const $=id=>document.getElementById(id);
 const LS="pct_imagenes",PARTE=900000,MAX_PDF=15*1024*1024,MAX_FOTO=40*1024*1024;
-const TIPOS=["Radiografía de tórax","Tomografía de tórax","Ecografía","Informe de imagen","Otro"];
+const TIPOS=["Radiografía de tórax","Tomografía de tórax","Ecografía","Informe de imagen","Otro"],CARPETA="Carpeta de Drive",TIPOS_ENL=[CARPETA].concat(TIPOS);
 const HUERFANOS="__sin_paciente";
 let imagenes={};try{const x=JSON.parse(localStorage.getItem(LS));if(x&&typeof x==="object")imagenes=x;}catch(e){}
 let sel=null,editar=null,form={tipo:TIPOS[0],fecha:"",nota:""},urls=[],verUrl=null,subiendo=false;
@@ -25,8 +27,13 @@ const aIso=f=>{const d=parseFecha(f);return d?iso(d):"";};
 const mb=n=>n>=1048576?(n/1048576).toFixed(1).replace(".0","")+" MB":Math.max(1,Math.round(n/1024))+" KB";
 const nube=()=>window.Sync&&Sync.nube?Sync.nube():null;
 const esPdf=r=>r.mime==="application/pdf";
+const esEnlace=r=>!!r.url; // estudio que vive en Google Drive: solo se guarda su enlace
+const URL_DRIVE=/https?:\/\/(?:drive|docs)\.google\.com\/[^\s"'<>]+/i;
+const hrefDrive=u=>/^https?:\/\/(?:drive|docs)\.google\.com\//i.test(u||"")?u:"#"; // solo enlaces de Google Drive (aunque lleguen de otro equipo)
+const buscarDrive=r=>"https://drive.google.com/drive/search?q="+encodeURIComponent(String(r.nom||"").trim().split(/\s+/).slice(0,2).join(" ")); // los dos apellidos
 const slug=t=>normTxt(t).replace(/[^a-z]+/g,"-").replace(/^-|-$/g,"");
 const ICO_PDF=`<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#e53935" d="M30 4H12a4 4 0 0 0-4 4v32a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4V14z"/><path fill="#ffcdd2" d="M30 4v10h10z"/><text x="24" y="33" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" font-family="Arial">PDF</text></svg>`;
+const ICO_DRIVE=`<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#1e88e5" d="M15.5 42h17l7-12H8.5z"/><path fill="#43a047" d="M17 6 8.5 30h0l7 12L24 18z"/><path fill="#fbc02d" d="M31 6H17l7 12 7.5 12h8.5z"/><path fill="#1565c0" d="M8.5 30h31l-7 12h-17z" opacity=".25"/></svg>`;
 const ICO_IMG=`<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="9" width="36" height="30" rx="4" fill="#90a4ae"/><circle cx="17" cy="19" r="4" fill="#eceff1"/><path fill="#eceff1" d="m10 35 10-11 7 7 5-5 7 9z"/></svg>`;
 
 /* ======================= ARCHIVOS EN EL EQUIPO (IndexedDB; si no hay, en memoria) ======================= */
@@ -43,11 +50,13 @@ $('anemia').insertAdjacentHTML('afterend',`
 <div id="imagenes" class="view">
   <div class="toolbar">
     <input type="text" id="imgBuscar" placeholder="Buscar paciente (N°, DNI, HC, nombre…)" autocomplete="off">
-    <label class="lbl">Tipo <select id="imgTipo"><option value="">Todos los estudios</option>${TIPOS.map(t=>`<option>${t}</option>`).join("")}</select></label>
+    <label class="lbl">Tipo <select id="imgTipo"><option value="">Todos los estudios</option>${TIPOS_ENL.map(t=>`<option>${t}</option>`).join("")}</select></label>
     <label class="lbl img-con"><input type="checkbox" id="imgCon"> Solo pacientes con estudios</label>
     <span class="status" id="imgInfo"></span>
     <span class="sep"></span>
-    <button type="button" class="btn primary no-print" id="imgImportar" title="Subir de una vez los estudios de una carpeta de Google Drive (ZIP o carpeta)">📥 Importar carpeta de Drive</button>
+    <a class="btn no-print" id="imgRaiz" target="_blank" rel="noopener" title="Abrir en Google Drive la carpeta principal de los estudios" hidden>📂 Carpeta en Drive</a>
+    <button type="button" class="btn no-print" id="imgEnlazar" title="Guardar los enlaces de Google Drive de las carpetas de los pacientes (sin descargar nada)">🔗 Enlazar con Drive</button>
+    <button type="button" class="btn primary no-print" id="imgImportar" title="Subir de una vez los estudios de una carpeta de Google Drive (ZIP o carpeta)">📥 Importar de Drive</button>
   </div>
   <div class="img-cuerpo">
     <aside class="img-lista" id="imgLista" aria-label="Pacientes"></aside>
@@ -58,7 +67,8 @@ $('anemia').insertAdjacentHTML('afterend',`
 <div class="dlg-fondo img-impmodal no-print" id="imgImpModal"><div class="img-imp" role="dialog" aria-modal="true" aria-label="Importar estudios"><div id="imgImp"></div></div>
   <input type="file" id="imgImpZip" accept=".zip,application/zip,application/x-zip-compressed" multiple hidden>
   <input type="file" id="imgImpCarpeta" webkitdirectory directory multiple hidden>
-  <input type="file" id="imgImpArch" accept="application/pdf,image/*" multiple hidden></div>`);
+  <input type="file" id="imgImpArch" accept="application/pdf,image/*" multiple hidden>
+  <input type="file" id="imgEnlArch" accept=".txt,.csv,text/plain,text/csv" hidden></div>`);
 
 /* ======================= DATOS ======================= */
 function guardar(){try{localStorage.setItem(LS,JSON.stringify(imagenes));}catch(e){msg("No se pudo guardar en el navegador");}if(window.Sync&&Sync.programar)Sync.programar(LS);}
@@ -130,14 +140,23 @@ function pintarLista(){const q=normTxt($('imgBuscar').value).trim(),solo=$('imgC
   const huer=Object.values(imagenes).filter(x=>!ids.has(x.pacId)).length,total=Object.keys(imagenes).length;
   $('imgLista').innerHTML=(huer?`<button type="button" class="img-pac huer${sel===HUERFANOS?" sel":""}" data-pac="${HUERFANOS}"><span class="img-pn">⚠</span><span class="img-pt"><b>Estudios sin paciente en DATOS</b><small>El paciente se eliminó del padrón</small></span><span class="img-cnt">${huer}</span></button>`:"")+
     (l.length?l.map(r=>`<button type="button" class="img-pac${sel===r.id?" sel":""}${cT[r.id]?" con":""}" data-pac="${esc(r.id)}"><span class="img-pn">${esc(r.n)}</span><span class="img-pt"><b>${esc(r.nom||"(sin nombre)")}</b><small>DNI ${esc(r.dni||"—")}${r.hc?" · HC "+esc(r.hc):""}</small></span>${cT[r.id]?`<span class="img-cnt">${cT[r.id]}</span>`:""}</button>`).join(""):`<div class="img-vacio">No hay pacientes para esta búsqueda.</div>`);
-  $('imgInfo').textContent=`${total} estudio${total===1?"":"s"} · ${Object.keys(c).filter(k=>ids.has(k)).length} paciente(s) con estudios · ${l.length} en la lista`;}
+  const conE=Object.keys(c).filter(k=>ids.has(k)).length;$('imgInfo').textContent=`${total} estudio${total===1?"":"s"} · ${conE} paciente${conE===1?"":"s"} con estudios`+(l.length<pacientes.length?` · ${l.length} en la lista`:"");}
 const meta=r=>[r.n&&"N° "+esc(r.n),r.dni&&"DNI "+esc(r.dni),r.hc&&"HC "+esc(r.hc),/\d/.test(edadDe(r))&&esc(edadDe(r))+" años",r.sexo&&esc(r.sexo),r.dx&&esc(r.dx),r.tto&&"Tto. "+esc(r.tto)].filter(Boolean).join(" · ");
 function tarjeta(x,conPac){const r=conPac&&pacientes.find(p=>p.id===x.pacId);
   if(editar===x.id)return `<article class="img-card editando" data-id="${esc(x.id)}"><div class="img-edit">
-    <label>Tipo<select data-e="tipo">${TIPOS.concat(TIPOS.includes(x.tipo)?[]:[x.tipo]).map(t=>`<option ${t===x.tipo?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
+    <label>Tipo<select data-e="tipo">${(esEnlace(x)?TIPOS_ENL:TIPOS).concat(TIPOS_ENL.includes(x.tipo)?[]:[x.tipo]).map(t=>`<option ${t===x.tipo?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
     <label>Fecha<input type="date" data-e="fecha" value="${aIso(x.fecha)}"></label>
     <label class="ancho">Resultado / nota<input type="text" data-e="nota" value="${esc(x.nota)}" maxlength="300"></label>
     <div class="img-acc"><button type="button" class="btn primary" data-acc="guardar">✔ Guardar</button><button type="button" class="btn" data-acc="cancelar">Cancelar</button></div></div></article>`;
+  if(esEnlace(x))return `<article class="img-card enlace" data-id="${esc(x.id)}">
+    <a class="img-mini drive" href="${esc(hrefDrive(x.url))}" target="_blank" rel="noopener" title="Abrir en Google Drive">${ICO_DRIVE}</a>
+    <div class="img-dat">
+      <div class="img-l1"><span class="img-tipo t-${slug(x.tipo)}">${esc(x.tipo)}</span>${x.fecha?`<b>${esc(x.fecha)}</b>`:""}</div>
+      ${r?`<button type="button" class="img-dpac" data-abrir="${esc(r.id)}" title="Abrir los estudios de este paciente">${esc(r.nom)} · N° ${esc(r.n)} ›</button>`:""}
+      ${x.nota?`<p>${esc(x.nota)}</p>`:""}
+      <small>Enlace de Google Drive · ${esc(x.nombre||"")}${x.por?" · guardado por "+esc(x.por):""}</small>
+      <div class="img-acc"><a class="btn primary" href="${esc(hrefDrive(x.url))}" target="_blank" rel="noopener">↗ Abrir en Google Drive</a>${conPac?"":`<button type="button" class="btn" data-acc="editar" title="Cambiar tipo, fecha o nota">✏️ Editar</button><button type="button" class="btn danger" data-acc="borrar" title="Quitar el enlace (en Drive no se borra nada)">🗑</button>`}</div>
+    </div></article>`;
   return `<article class="img-card" data-id="${esc(x.id)}">
     <button type="button" class="img-mini${esPdf(x)?" pdf":""}" data-acc="ver" title="Ver ${esc(x.nombre)}">${esPdf(x)?ICO_PDF:`<img alt="" data-mini="${esc(x.id)}">${ICO_IMG}`}</button>
     <div class="img-dat">
@@ -155,7 +174,9 @@ function pintarPanel(){urls.forEach(u=>URL.revokeObjectURL(u));urls=[];const r=p
     P.innerHTML=`<div class="img-cab"><div><h2>Diagnóstico por imagen</h2><p>Elija un paciente de la lista para ver sus estudios o subir un PDF o una foto. Los pacientes son los de DATOS: los nuevos aparecen aquí solos.</p></div></div>
       ${l.length?`<h3 class="img-sub">Últimos estudios subidos</h3><div class="img-grid">${l.map(x=>tarjeta(x,true)).join("")}</div>`:`<div class="img-vacio grande">📂 Todavía no hay estudios.<br><small>Elija un paciente y suba su radiografía, tomografía, ecografía o informe.</small></div>`}`;}
   else{const l=estudiosDe(r.id),t=$('imgTipo').value;if(!form.fecha)form.fecha=iso(new Date());
-    P.innerHTML=`<div class="img-cab"><div><h2>${esc(r.nom||"(sin nombre)")}</h2><p>${meta(r)}</p></div><span class="img-ncab">${l.length} estudio${l.length===1?"":"s"}${t?" · "+esc(t):""}</span></div>
+    const carp=estudiosDe(r.id).find(x=>esEnlace(x)&&x.tipo===CARPETA);
+    P.innerHTML=`<div class="img-cab"><div><h2>${esc(r.nom||"(sin nombre)")}</h2><p>${meta(r)}</p></div><div class="img-cabd"><span class="img-ncab">${l.length} estudio${l.length===1?"":"s"}${t?" · "+esc(t):""}</span>
+        ${carp?`<a class="btn img-bdrive" href="${esc(hrefDrive(carp.url))}" target="_blank" rel="noopener" title="Abrir su carpeta en Google Drive">📂 Abrir su carpeta en Drive</a>`:`<a class="btn img-bdrive" href="${buscarDrive(r)}" target="_blank" rel="noopener" title="Buscar sus estudios en Google Drive por sus apellidos (sin descargar nada)">🔍 Buscar en Google Drive</a>`}</div></div>
       <div class="img-subir no-print">
         <div class="img-campos">
           <label>Tipo de estudio<select id="imgNTipo">${TIPOS.map(x=>`<option ${x===form.tipo?"selected":""}>${x}</option>`).join("")}</select></label>
@@ -167,46 +188,59 @@ function pintarPanel(){urls.forEach(u=>URL.revokeObjectURL(u));urls=[];const r=p
           <div class="img-zona-btns"><label class="btn primary">📎 Elegir PDF o fotos<input type="file" id="imgArch" accept="application/pdf,image/*" multiple hidden></label><label class="btn img-cam">📷 Tomar foto<input type="file" id="imgCam" accept="image/*" capture="environment" hidden></label></div>
           <small>PDF hasta 15 MB · las fotos se achican solas para ocupar poco espacio</small>
         </div>
+        <div class="img-enl"><span>🔗 o, sin subir nada, pegue el enlace de Google Drive de su carpeta o de un estudio:</span><input type="url" id="imgNUrl" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off"><button type="button" class="btn" data-acc2="url">Guardar enlace</button></div>
         <div class="img-prog" id="imgProg" hidden><div class="img-pbar"><i></i></div><span></span></div>
       </div>
       <div class="img-grid">${l.map(x=>tarjeta(x,false)).join("")||`<div class="img-vacio">${t?"No hay estudios de este tipo.":"Este paciente aún no tiene estudios. Súbalos arriba."}</div>`}</div>`;}
   P.querySelectorAll('img[data-mini]').forEach(async im=>{const x=imagenes[im.dataset.mini];if(!x)return;const b=await miniatura(x);if(!b||!im.isConnected)return;const u=URL.createObjectURL(b);urls.push(u);im.src=u;im.parentNode.classList.add('lista');});}
 function render(forzar){if(!$('imagenes').classList.contains('active'))return;pintarLista();
+  const rz=$('imgRaiz');if(config.driveRaiz){rz.hidden=false;rz.href=hrefDrive(config.driveRaiz);}else rz.hidden=true;
   const a=document.activeElement;if(!forzar&&a&&a.closest&&a.closest('#imgPanel')&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return; // no borrar lo que se escribe
   pintarPanel();}
 
 /* ======================= VER Y DESCARGAR ======================= */
 function cerrarVer(){$('imgModal').classList.remove('abierto');$('imgVer').innerHTML="";if(verUrl){URL.revokeObjectURL(verUrl);verUrl=null;}}
-async function ver(x){const r=pacientes.find(p=>p.id===x.pacId),cab=`<div class="img-vcab"><div><b>${esc(x.tipo)} · ${esc(x.fecha||"")}</b><small>${r?esc(r.nom)+" · N° "+esc(r.n)+" · ":""}${esc(x.nombre)}${x.nota?" · "+esc(x.nota):""}</small></div><div class="img-vbtn" id="imgVBtn"></div><button type="button" class="btn" data-v="cerrar">✕ Cerrar</button></div>`;
+async function ver(x){if(esEnlace(x)){window.open(hrefDrive(x.url),"_blank","noopener");return;}const r=pacientes.find(p=>p.id===x.pacId),cab=`<div class="img-vcab"><div><b>${esc(x.tipo)} · ${esc(x.fecha||"")}</b><small>${r?esc(r.nom)+" · N° "+esc(r.n)+" · ":""}${esc(x.nombre)}${x.nota?" · "+esc(x.nota):""}</small></div><div class="img-vbtn" id="imgVBtn"></div><button type="button" class="btn" data-v="cerrar">✕ Cerrar</button></div>`;
   $('imgVer').innerHTML=cab+`<div class="img-vcuerpo"><div class="img-cargando">Abriendo…</div></div>`;$('imgModal').classList.add('abierto');
   try{const b=await archivo(x);if(!$('imgModal').classList.contains('abierto'))return;if(verUrl)URL.revokeObjectURL(verUrl);verUrl=URL.createObjectURL(b);
     $('imgVBtn').innerHTML=`<a class="btn" href="${verUrl}" target="_blank" rel="noopener">↗ Abrir en otra pestaña</a><a class="btn" href="${verUrl}" download="${esc(x.nombre)}">⬇ Descargar</a>`;
     $('imgVer').querySelector('.img-vcuerpo').innerHTML=esPdf(x)?`<iframe src="${verUrl}" title="${esc(x.nombre)}"></iframe>`:`<img src="${verUrl}" alt="${esc(x.tipo)}" class="img-foto" title="Clic para ver en tamaño real">`;}
   catch(e){$('imgVer').querySelector('.img-vcuerpo').innerHTML=`<div class="img-cargando err">${e.message==="incompleto"?"El archivo aún no termina de subir a la nube desde el equipo donde se cargó. Intente en unos minutos.":e.message==="sin-nube"?"Este archivo se cargó en otro equipo y aquí no hay conexión con la nube.":"No se pudo abrir el archivo (¿sin conexión?)."}</div>`;}}
-async function bajar(x){try{const b=await archivo(x),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=x.nombre||"estudio";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);}
+async function bajar(x){if(esEnlace(x)){window.open(hrefDrive(x.url),"_blank","noopener");return;}try{const b=await archivo(x),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=x.nombre||"estudio";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);}
   catch(e){msg(e.message==="incompleto"?"El archivo aún no termina de subir a la nube":"No se pudo descargar (¿sin conexión?)");}}
-async function borrar(x){if(!await confirmar("Eliminar estudio",`Se eliminará «${x.tipo}» del ${x.fecha||"(sin fecha)"} (${x.nombre}) en este equipo y en la nube.`,{ok:"Eliminar",peligro:true}))return;
+async function borrar(x){if(!await confirmar(esEnlace(x)?"Quitar enlace":"Eliminar estudio",esEnlace(x)?`Se quitará el enlace «${x.nombre||x.tipo}» de la app. En Google Drive no se borra nada.`:`Se eliminará «${x.tipo}» del ${x.fecha||"(sin fecha)"} (${x.nombre}) en este equipo y en la nube.`,{ok:esEnlace(x)?"Quitar":"Eliminar",peligro:true}))return;
   delete imagenes[x.id];guardar();IDB.del(x.id);IDB.del(x.id+"_t");
-  const n=nube();if(n){const b=n.db.batch(),col=n.db.collection("pct_archivos");for(let k=0;k<x.partes;k++)b.delete(col.doc(x.id+"_"+k));b.delete(col.doc(x.id+"_t"));b.commit().catch(e=>console.error(e));}
-  render(true);msg("Estudio eliminado");}
+  const n=!esEnlace(x)&&nube();if(n){const b=n.db.batch(),col=n.db.collection("pct_archivos");for(let k=0;k<x.partes;k++)b.delete(col.doc(x.id+"_"+k));b.delete(col.doc(x.id+"_t"));b.commit().catch(e=>console.error(e));}
+  render(true);msg(esEnlace(x)?"Enlace quitado":"Estudio eliminado");}
+function nuevoEnlace(pac,url,o){const id=uid(),carpeta=/\/folders\//.test(url);
+  imagenes[id]={id,pacId:pac.id,tipo:o.tipo||(carpeta?CARPETA:TIPOS[0]),fecha:o.fecha||"",nota:o.nota||"",nombre:(o.nombre||(carpeta?"Carpeta en Google Drive":"Archivo en Google Drive")).slice(0,160),
+    url:url.slice(0,500),mime:"enlace",tam:0,partes:0,mini:0,creado:new Date().toISOString(),por:(window.Sync&&Sync.usuario&&Sync.usuario())||""};return id;}
 
 /* ======================= IMPORTAR VARIOS (carpeta o ZIP de Google Drive) ======================= */
 const MESES_TXT={ene:1,enero:1,feb:2,febrero:2,mar:3,marzo:3,abr:4,abril:4,may:5,mayo:5,jun:6,junio:6,jul:7,julio:7,ago:8,agosto:8,set:9,sep:9,setiembre:9,septiembre:9,oct:10,octubre:10,nov:11,noviembre:11,dic:12,diciembre:12};
 const VACIAS=new Set(["de","del","la","las","los","y","e","pdf","jpg","jpeg","png","webp","heic","img","imagen","foto","scan","rx","tx","torax","placa","radiografia","tomografia","tem","tac","ecografia","eco","informe",
-  "contacto","contactos","evaluacion","control","seguimiento","seguimientos","pat","esquema","sensible","sensibles","mdr","tptb","tpt","altas","alta","truenat","sri","copia","nuevo","nueva"].concat(Object.keys(MESES_TXT)));
+  "contacto","contactos","evaluacion","control","seguimiento","seguimientos","no","mod","ram","blc","bpal","bpalm","pat","esquema","sensible","sensibles","mdr","tptb","tpt","altas","alta","truenat","sri","copia","nuevo","nueva"]);
+// fechas escritas con el mes («16 JULIO 2026», «OCTUBRE 2026»): se quitan enteras; el mes suelto queda, porque puede ser un nombre (Julio, Abril)
+const FECHA_TXT=new RegExp("(^|[^a-z])(?:\\d{1,2}\\s*(?:de\\s*)?)?(?:"+Object.keys(MESES_TXT).sort((a,b)=>b.length-a.length).join("|")+")\\.?\\s*(?:del?\\s*)?\\d{2,4}","g");
 const EXT_MIME={pdf:"application/pdf",jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",gif:"image/gif",bmp:"image/bmp",heic:"image/heic",heif:"image/heif"};
 const extDe=n=>(/\.([a-z0-9]+)$/i.exec(n||"")||[])[1]?.toLowerCase()||"";
-const palabras=t=>normTxt(t).replace(/\.[a-z0-9]{2,4}$/,"").replace(/[^a-z0-9ñ]+/g," ").split(" ").filter(w=>w.length>1&&!/\d/.test(w)&&!VACIAS.has(w));
-function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;let v=Array.from({length:n+1},(_,j)=>j);
-  for(let i=1;i<=m;i++){let ant=v[0];v[0]=i;for(let j=1;j<=n;j++){const t=v[j];v[j]=Math.min(v[j]+1,v[j-1]+1,ant+(a[i-1]===b[j-1]?0:1));ant=t;}}return v[n];}
+const palabras=t=>normTxt(t).replace(/\.[a-z0-9]{2,4}$/,"").replace(FECHA_TXT,"$1 ").replace(/[^a-z0-9ñ]+/g," ").split(" ").filter(w=>w.length>1&&!/\d/.test(w)&&!VACIAS.has(w));
+function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n; // letras de más, de menos, cambiadas o al revés (ALRACON / ALARCON)
+  const d=Array.from({length:m+1},(_,i)=>[i]);for(let j=1;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){let v=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])v=Math.min(v,d[i-2][j-2]+1);d[i][j]=v;}
+  return d[m][n];}
 const igual=(a,b)=>a===b||(Math.min(a.length,b.length)>=4&&lev(a,b)<=(Math.max(a.length,b.length)>=8?2:1)); // tolera errores de tipeo (MARCANTINCO / MARCATINCO)
 let PALP=null; // palabras de cada paciente (se arma al abrir el importador)
+// {r, dud}: dud = parecido pero no seguro (solo coinciden dos palabras y a cada lado sobra otra, como dos hermanos con los mismos
+// apellidos, u otro paciente coincide en tantas palabras como él): se sugiere sin marcar, para que el usuario lo confirme
 function quienEs(texto){const tt=[...new Set(palabras(texto))];if(tt.length<2)return null;let mej=null,seg=null;
-  for(const {r,w} of PALP){const usados=new Set();let hits=0;for(const t of tt){const j=w.findIndex((p,i)=>!usados.has(i)&&igual(t,p));if(j>=0){hits++;usados.add(j);}}
-    if(hits<2||hits/tt.length<.6||hits/w.length<.5)continue;const sc=hits*10+hits/tt.length+hits/w.length;
-    if(!mej||sc>mej.sc){seg=mej;mej={r,sc};}else if(!seg||sc>seg.sc)seg={r,sc};}
+  for(const {r,w} of PALP){const usados=new Set();let hits=0,exac=0;
+    for(const t of tt){let j=w.findIndex((p,i)=>!usados.has(i)&&p===t);if(j>=0)exac++;else j=w.findIndex((p,i)=>!usados.has(i)&&igual(t,p));if(j>=0){hits++;usados.add(j);}}
+    if(hits<2||hits/tt.length<.6||hits/w.length<.5)continue;const sc=hits*10+exac*.5+hits/tt.length+hits/w.length,o={r,sc,hits,dud:hits<3&&hits<tt.length&&hits<w.length};
+    if(!mej||sc>mej.sc){seg=mej;mej=o;}else if(!seg||sc>seg.sc)seg=o;}
   if(!mej||(seg&&Math.abs(seg.sc-mej.sc)<.01))return null; // dos pacientes igual de parecidos: que elija el usuario
-  return mej.r;}
+  return {r:mej.r,dud:mej.dud||!!(seg&&seg.hits===mej.hits)};}
 function porDni(texto){const ds=String(texto).match(/\b\d{8}\b/g);if(!ds)return null;for(const d of ds){const r=pacientes.find(x=>x.dni===d);if(r)return r;}return null;}
 function fechaDe(t){const s=normTxt(t);let m,d,mo,y;
   if((m=/(\d{4})[-_.](\d{1,2})[-_.](\d{1,2})/.exec(s))){y=+m[1];mo=+m[2];d=+m[3];}
@@ -218,9 +252,10 @@ function tipoDe(ruta){const s=normTxt(ruta);if(/tomograf|\btem\b|\btac\b/.test(s
 // a quién pertenece cada archivo: DNI en la ruta, luego el nombre del archivo, luego las carpetas de adentro hacia afuera
 // (sin pasar de una carpeta CONTACTOS: lo que está ahí es de los contactos, no del caso índice)
 function detectar(ruta){const seg=ruta.split("/"),arch=seg.pop();let r=porDni(ruta);if(r)return {r,por:"DNI"};
-  r=quienEs(arch);if(r)return {r,por:"archivo"};
-  for(let i=seg.length-1;i>=0;i--){if(/contacto/i.test(seg[i]))return {r:null,por:"contactos"};r=quienEs(seg[i]);if(r)return {r,por:"carpeta"};}
-  return {r:null,por:""};}
+  let q=quienEs(arch),dud=null;if(q){if(!q.dud)return {r:q.r,por:"archivo"};dud={r:q.r,por:"archivo",dud:true};}
+  for(let i=seg.length-1;i>=0;i--){if(/contacto/i.test(seg[i]))return dud||{r:null,por:"contactos"};q=quienEs(seg[i]);
+    if(q){if(!q.dud)return {r:q.r,por:"carpeta"};if(!dud)dud={r:q.r,por:"carpeta",dud:true};}}
+  return dud||{r:null,por:""};} // uno dudoso solo si no hay otro seguro
 const mismaRuta=(a,b)=>!!a&&!!b&&(a===b||a.endsWith("/"+b)||b.endsWith("/"+a)); // el ZIP empieza en «RX TORAX 2026/…»; una carpeta elegida puede traer una carpeta más arriba
 const yaEsta=(pacId,nombre,tam,origen)=>Object.values(imagenes).some(x=>(mismaRuta(x.origen,origen)&&(!x.otam||x.otam===tam))||(x.pacId===pacId&&x.nombre===nombre&&(!x.otam||x.otam===tam)));
 function cargarZip(){return window.JSZip?Promise.resolve(window.JSZip):new Promise((ok,mal)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
@@ -231,7 +266,9 @@ async function leerZips(files){const Z=await cargarZip(),l=[];
       if(!EXT_MIME[ext]){l.push({ruta,f:null,ext});continue;}l.push({ruta,f:new File([await e.async("blob")],base,{type:EXT_MIME[ext],lastModified:e.date?+e.date:Date.now()})});}}
   return l;}
 let IMP=[],impEstado="elegir";
-function pintarImp(){const B=$('imgImp');
+const seguro=x=>x.pac&&!x.dud?1:0;
+const DUD="⚠ Parecido, no seguro: confirme que es este paciente (márquelo) o elija otro";
+function pintarImp(){const B=$('imgImp');if(impEstado.startsWith("enl")){pintarEnl();return;}
   if(impEstado==="elegir"){B.innerHTML=`<div class="img-icab"><div><h3>📥 Importar estudios de una carpeta de Google Drive</h3><p>Sube de una vez los estudios de muchos pacientes, sin hacerlo uno por uno.</p></div><button type="button" class="btn" data-i="cerrar">✕</button></div>
     <ol class="img-ipasos"><li>En <b>Google Drive</b>, clic derecho en la carpeta (por ejemplo <b>RX TORAX 2026</b>) → <b>Descargar</b>. Drive la baja en un archivo <b>.zip</b>.</li>
       <li>Elija aquí ese ZIP (o, si lo descomprimió, la carpeta).</li>
@@ -240,14 +277,14 @@ function pintarImp(){const B=$('imgImp');
     <small class="img-inota">Los archivos de una carpeta <b>CONTACTOS</b> no se asignan al caso índice: elija a quién pertenecen. Lo que ya se importó antes no se repite. Si el ZIP es muy grande para este equipo, descomprímalo y elija la carpeta.</small>`;return;}
   if(impEstado==="leyendo"){B.innerHTML=`<div class="img-icab"><div><h3>Leyendo los archivos…</h3><p>Un momento, se reconocen pacientes y fechas.</p></div></div><div class="img-cargando oscuro">⏳</div>`;return;}
   if(impEstado==="subiendo"||impEstado==="listo"){return;}
-  const ok=IMP.filter(x=>x.f),sel=ok.filter(x=>x.si&&x.pac),rec=ok.filter(x=>x.por&&x.pac&&x.por!=="contactos").length,sin=ok.filter(x=>!x.pac).length,ya=ok.filter(x=>x.ya).length,otros=IMP.length-ok.length;
+  const ok=IMP.filter(x=>x.f),sel=ok.filter(x=>x.si&&x.pac),rec=ok.filter(x=>x.por&&x.pac&&x.por!=="contactos"&&!x.dud).length,dud=ok.filter(x=>x.pac&&x.dud).length,sin=ok.filter(x=>!x.pac).length,ya=ok.filter(x=>x.ya).length,otros=IMP.length-ok.length;
   const opc=`<option value="">— Elija el paciente —</option>`+ordenarPacientes(pacientes).slice().sort((a,b)=>normTxt(a.nom).localeCompare(normTxt(b.nom))).map(r=>`<option value="${esc(r.id)}">${esc(r.nom||"(sin nombre)")} · N° ${esc(r.n)}${r.dni?" · "+esc(r.dni):""}</option>`).join("");
-  B.innerHTML=`<div class="img-icab"><div><h3>Revise antes de subir</h3><p>${ok.length} archivo${ok.length===1?"":"s"} · <b class="v">${rec} reconocido${rec===1?"":"s"}</b> · <b class="a">${sin} sin paciente</b>${ya?` · ${ya} ya importado${ya===1?"":"s"}`:""}${otros?` · ${otros} no son PDF ni foto (se omiten)`:""}</p></div><button type="button" class="btn" data-i="cerrar">✕</button></div>
+  B.innerHTML=`<div class="img-icab"><div><h3>Revise antes de subir</h3><p>${ok.length} archivo${ok.length===1?"":"s"} · <b class="v">${rec} reconocido${rec===1?"":"s"}</b>${dud?` · <b class="a">${dud} por confirmar</b>`:""} · <b class="a">${sin} sin paciente</b>${ya?` · ${ya} ya importado${ya===1?"":"s"}`:""}${otros?` · ${otros} no son PDF ni foto (se omiten)`:""}</p></div><button type="button" class="btn" data-i="cerrar">✕</button></div>
     <div class="img-ibar"><label>Tipo para todos <select data-i="tipoTodos"><option value="">— no cambiar —</option>${TIPOS.map(t=>`<option>${t}</option>`).join("")}</select></label><label><input type="checkbox" data-i="soloSin"> Ver solo los que faltan revisar</label></div>
-    <div class="img-itabla"><table><thead><tr><th><input type="checkbox" data-i="todos" ${sel.length&&sel.length===ok.filter(x=>x.pac&&!x.ya).length?"checked":""} title="Marcar todos"></th><th>Archivo</th><th>Paciente</th><th>Fecha</th><th>Tipo</th></tr></thead><tbody>
-    ${ok.map((x,i)=>`<tr data-k="${IMP.indexOf(x)}" class="${x.ya?"ya":!x.pac?"falta":""}"><td><input type="checkbox" data-c="si" ${x.si?"checked":""} ${x.pac?"":"disabled"}></td>
+    <div class="img-itabla"><table><thead><tr><th><input type="checkbox" data-i="todos" ${sel.length&&sel.length===ok.filter(x=>x.pac&&!x.ya&&!x.dud).length?"checked":""} title="Marcar todos"></th><th>Archivo</th><th>Paciente</th><th>Fecha</th><th>Tipo</th></tr></thead><tbody>
+    ${ok.map((x,i)=>`<tr data-k="${IMP.indexOf(x)}" class="${x.ya?"ya":!x.pac||x.dud?"falta":""}"><td><input type="checkbox" data-c="si" ${x.si?"checked":""} ${x.pac?"":"disabled"}></td>
       <td><b>${esc(x.f.name)}</b><small>${esc(x.ruta.split("/").slice(0,-1).join(" › "))}</small></td>
-      <td><select data-c="pac">${opc.replace(`value="${esc(x.pac||"")}"`,`value="${esc(x.pac||"")}" selected`)}</select><small class="img-ipor">${x.ya?"Ya importado antes":x.pac?(x.por==="DNI"?"✔ por el DNI":x.por==="archivo"?"✔ por el nombre del archivo":x.por==="carpeta"?"✔ por el nombre de la carpeta":"elegido a mano"):x.por==="contactos"?"⚠ Carpeta de contactos: elija a quién pertenece":"⚠ No se reconoció: elija el paciente"}</small></td>
+      <td><select data-c="pac">${opc.replace(`value="${esc(x.pac||"")}"`,`value="${esc(x.pac||"")}" selected`)}</select><small class="img-ipor">${x.ya?"Ya importado antes":x.pac&&x.dud?DUD:x.pac?(x.por==="DNI"?"✔ por el DNI":x.por==="archivo"?"✔ por el nombre del archivo":x.por==="carpeta"?"✔ por el nombre de la carpeta":"elegido a mano"):x.por==="contactos"?"⚠ Carpeta de contactos: elija a quién pertenece":"⚠ No se reconoció: elija el paciente"}</small></td>
       <td><input type="date" data-c="fecha" value="${aIso(x.fecha)}">${x.fecha?"":`<small class="img-ipor">sin fecha en el nombre</small>`}</td>
       <td><select data-c="tipo">${TIPOS.map(t=>`<option ${t===x.tipo?"selected":""}>${t}</option>`).join("")}</select></td></tr>`).join("")||`<tr><td colspan="5" class="img-vacio">No se encontraron PDF ni fotos.</td></tr>`}
     </tbody></table></div>
@@ -261,8 +298,8 @@ async function preparar(lista){impEstado="leyendo";pintarImp();
       const prev=Object.values(imagenes).find(x=>mismaRuta(x.origen,ruta)&&(!x.otam||x.otam===f.size)); // ya se importó (aunque se haya asignado a mano)
       if(prev)return {ruta,f,pac:prev.pacId,por:"ya",ya:true,si:false,fecha:prev.fecha||fecha,tipo:prev.tipo||tipo};
       const d=detectar(ruta),pac=d.r?d.r.id:"",ya=!!pac&&yaEsta(pac,f.name,f.size,ruta);
-      return {ruta,f,pac,por:d.por,ya,si:!!pac&&!ya,fecha,tipo};});
-    IMP.sort((a,b)=>(!!b.f-!!a.f)||(!!a.pac-!!b.pac)||a.ruta.localeCompare(b.ruta)); // primero los que faltan revisar
+      return {ruta,f,pac,por:d.por,dud:!!d.dud,ya,si:!!pac&&!ya&&!d.dud,fecha,tipo};});
+    IMP.sort((a,b)=>(!!b.f-!!a.f)||(seguro(a)-seguro(b))||a.ruta.localeCompare(b.ruta)); // primero los que faltan revisar
     impEstado="revisar";}
   catch(e){console.error(e);impEstado="elegir";pintarImp();avisar("No se pudo leer",String(e&&e.message||e),"peligro");return;}
   pintarImp();}
@@ -278,21 +315,67 @@ async function subirTodo(){const l=IMP.filter(x=>x.f&&x.si&&x.pac);if(!l.length)
     ${err.length?`<div class="img-ierr"><b>No se pudieron subir ${err.length}:</b><ul>${err.map(e=>`<li>${esc(e)}</li>`).join("")}</ul></div>`:""}
     <div class="img-ipie"><span></span><button type="button" class="btn primary" data-i="fin">Listo</button></div>`;
   render(true);}
+/* ======================= ENLAZAR CON DRIVE (sin descargar ni copiar nada) ======================= */
+// Lista de enlaces, una línea por paciente: «GRUPO / APELLIDOS NOMBRES   https://drive.google.com/drive/folders/…» (o el enlace primero).
+// «CARPETA PRINCIPAL … enlace» guarda la carpeta raíz para abrirla desde la barra.
+let ENL=[],enlRaiz="",enlConRaiz=true;
+function leerEnlaces(txt){const l=[];let raiz="";
+  String(txt||"").split(/\r?\n/).forEach(lin=>{const m=URL_DRIVE.exec(lin);if(!m)return;const url=m[0].replace(/[),.;]+$/,""),resto=lin.replace(m[0]," ").replace(/[\t|;"]+/g," ").trim();
+    if(/carpeta\s+principal/i.test(resto)){raiz=url;return;}
+    const seg=resto.split(/\s*[›\/>]\s*/).map(x=>x.trim()).filter(Boolean),ruta=seg.join("/"),nombre=seg[seg.length-1]||"",carpeta=/\/folders\//.test(url);
+    const d=ruta?detectar(ruta):{r:null,por:""},pac=d.r?d.r.id:"";
+    const ya=Object.values(imagenes).some(x=>x.url===url&&(!pac||x.pacId===pac));
+    l.push({url,ruta,nombre,carpeta,pac,por:d.por,dud:!!d.dud,ya,si:!!pac&&!ya&&!d.dud,tipo:carpeta?CARPETA:tipoDe(ruta),fecha:carpeta?"":fechaDe(nombre),nota:seg.slice(0,-1).join(" › ")});});
+  l.sort((a,b)=>(seguro(a)-seguro(b))||a.ruta.localeCompare(b.ruta)); // primero los que faltan revisar
+  return {l,raiz};}
+function pintarEnl(){const B=$('imgImp');
+  if(impEstado==="enl"){B.innerHTML=`<div class="img-icab"><div><h3>🔗 Enlazar las carpetas de Google Drive</h3><p>Sin descargar nada: cada paciente queda con el enlace de su carpeta y se abre en Drive con un clic.</p></div><button type="button" class="btn" data-i="cerrar">✕</button></div>
+    <ol class="img-ipasos"><li>Pegue la lista de enlaces: una línea por paciente, con su nombre y el enlace de su carpeta (en Drive: clic derecho en la carpeta → <b>Compartir → Copiar enlace</b>).<br><small>Ejemplo: <code>PAT ESQUEMA SENSIBLES 2026 / MARCATINCO POMA CHEYLA   https://drive.google.com/drive/folders/…</code></small></li>
+      <li>O elija el archivo <b>.txt</b> con la lista.</li><li>La app reconoce a cada paciente por el nombre; revise y guarde. En Drive no se mueve ni se borra nada.</li></ol>
+    <div class="img-enltxt"><textarea id="imgEnlTxt" rows="7" placeholder="GRUPO / APELLIDOS NOMBRES   https://drive.google.com/drive/folders/…"></textarea></div>
+    <div class="img-ibtns"><button type="button" class="btn primary" data-i="enlRevisar">Revisar la lista</button><button type="button" class="btn" data-i="enlArch">📄 Elegir la lista (.txt)</button></div>
+    <small class="img-inota">Para ver el estudio, la persona debe tener acceso a esa carpeta en su cuenta de Google (la carpeta compartida con ella).</small>`;return;}
+  if(impEstado==="enl-fin")return;
+  const sel=ENL.filter(x=>x.si&&x.pac),rec=ENL.filter(x=>x.pac&&x.por&&x.por!=="mano"&&!x.dud).length,dud=ENL.filter(x=>x.pac&&x.dud).length,sin=ENL.filter(x=>!x.pac).length,ya=ENL.filter(x=>x.ya).length;
+  const opc=`<option value="">— Elija el paciente —</option>`+pacientes.slice().sort((a,b)=>normTxt(a.nom).localeCompare(normTxt(b.nom))).map(r=>`<option value="${esc(r.id)}">${esc(r.nom||"(sin nombre)")} · N° ${esc(r.n)}${r.dni?" · "+esc(r.dni):""}</option>`).join("");
+  B.innerHTML=`<div class="img-icab"><div><h3>Revise los enlaces</h3><p>${ENL.length} enlace${ENL.length===1?"":"s"} · <b class="v">${rec} reconocido${rec===1?"":"s"}</b>${dud?` · <b class="a">${dud} por confirmar</b>`:""} · <b class="a">${sin} sin paciente</b>${ya?` · ${ya} ya guardado${ya===1?"":"s"}`:""}</p></div><button type="button" class="btn" data-i="cerrar">✕</button></div>
+    ${enlRaiz?`<div class="img-ibar"><label><input type="checkbox" data-i="conRaiz" ${enlConRaiz?"checked":""}> Guardar también la <b>carpeta principal</b> para abrirla desde la barra («📂 Carpeta en Drive»)</label></div>`:""}
+    <div class="img-itabla"><table><thead><tr><th></th><th>En Google Drive</th><th>Paciente</th><th>Tipo</th></tr></thead><tbody>
+    ${ENL.map((x,i)=>`<tr data-k="${i}" class="${x.ya?"ya":!x.pac||x.dud?"falta":""}"><td><input type="checkbox" data-c="si" ${x.si?"checked":""} ${x.pac&&!x.ya?"":"disabled"}></td>
+      <td><b>${esc(x.nombre||"(sin nombre)")}</b><small>${esc(x.nota)}${x.nota?" · ":""}<a href="${esc(hrefDrive(x.url))}" target="_blank" rel="noopener">abrir</a></small></td>
+      <td><select data-c="pac">${opc.replace(`value="${esc(x.pac||"")}"`,`value="${esc(x.pac||"")}" selected`)}</select><small class="img-ipor">${x.ya?"Ya guardado antes":x.pac&&x.dud?DUD:x.pac?(x.por==="DNI"?"✔ por el DNI":x.por==="mano"?"elegido a mano":"✔ por el nombre"):x.por==="contactos"?"⚠ Carpeta de contactos: elija a quién pertenece":"⚠ No está en DATOS o no se reconoció: elija el paciente o déjelo"}</small></td>
+      <td><select data-c="tipo">${TIPOS_ENL.map(t=>`<option ${t===x.tipo?"selected":""}>${t}</option>`).join("")}</select></td></tr>`).join("")||`<tr><td colspan="4" class="img-vacio">No se encontraron enlaces de Google Drive en la lista.</td></tr>`}
+    </tbody></table></div>
+    <div class="img-ipie"><span>${sel.length} para guardar</span><button type="button" class="btn" data-i="enlOtra">↺ Pegar otra lista</button><button type="button" class="btn primary" data-i="enlGuardar" ${sel.length||(enlRaiz&&enlConRaiz)?"":"disabled"}>🔗 Guardar ${sel.length} enlace${sel.length===1?"":"s"}</button></div>`;}
+function revisarEnl(txt){PALP=pacientes.map(r=>({r,w:[...new Set(palabras(r.nom))]})).filter(x=>x.w.length);const {l,raiz}=leerEnlaces(txt);ENL=l;enlRaiz=raiz;enlConRaiz=true;impEstado="enl-rev";pintarEnl();}
+function guardarEnl(){const l=ENL.filter(x=>x.si&&x.pac&&!x.ya);let n=0;
+  l.forEach(x=>{const pac=pacientes.find(r=>r.id===x.pac);if(!pac)return;nuevoEnlace(pac,x.url,{tipo:x.tipo,fecha:x.fecha,nota:x.nota,nombre:x.nombre});n++;});
+  if(n)guardar();if(enlRaiz&&enlConRaiz&&config.driveRaiz!==enlRaiz){config.driveRaiz=enlRaiz;guardarConfig();}
+  impEstado="enl-fin";$('imgImp').innerHTML=`<div class="img-icab"><div><h3>✔ ${n} enlace${n===1?"":"s"} guardado${n===1?"":"s"}</h3><p>Cada paciente tiene su tarjeta «Carpeta de Drive»: se abre en Google Drive con un clic, también en los otros equipos.</p></div></div><div class="img-ipie"><span></span><button type="button" class="btn primary" data-i="fin">Listo</button></div>`;
+  render(true);}
+$('imgEnlazar').addEventListener('click',()=>{impEstado="enl";ENL=[];pintarEnl();$('imgImpModal').classList.add('abierto');setTimeout(()=>{const t=$('imgEnlTxt');if(t)t.focus();},50);});
 $('imgImportar').addEventListener('click',abrirImp);
 $('imgImpModal').addEventListener('click',e=>{if(e.target===$('imgImpModal')){cerrarImp();return;}const b=e.target.closest('[data-i]');if(!b)return;const a=b.dataset.i;
   if(a==="cerrar"||a==="fin"){impEstado="elegir";cerrarImp();}else if(a==="zip")$('imgImpZip').click();else if(a==="carpeta")$('imgImpCarpeta').click();else if(a==="arch")$('imgImpArch').click();
   else if(a==="otra"){impEstado="elegir";IMP=[];pintarImp();}else if(a==="subir")subirTodo();
-  else if(a==="todos"){IMP.forEach(x=>{if(x.f&&x.pac&&!x.ya)x.si=b.checked;});pintarImp();}});
+  else if(a==="enlRevisar")revisarEnl(($('imgEnlTxt')||{}).value);else if(a==="enlArch")$('imgEnlArch').click();else if(a==="enlOtra"){impEstado="enl";ENL=[];pintarEnl();}else if(a==="enlGuardar")guardarEnl();
+  else if(a==="todos"){IMP.forEach(x=>{if(x.f&&x.pac&&!x.ya&&!x.dud)x.si=b.checked;});pintarImp();}});
 $('imgImpModal').addEventListener('change',async e=>{const t=e.target;
+  if(t.id==="imgEnlArch"){const f=t.files[0];t.value="";if(f)revisarEnl(await f.text());return;}
+  if(t.dataset.i==="conRaiz"){enlConRaiz=t.checked;pintarEnl();return;}
+  if(impEstado==="enl-rev"){const tr=t.closest('tr[data-k]');if(!tr)return;const x=ENL[+tr.dataset.k];if(!x)return;const c=t.dataset.c;
+    if(c==="si"){x.si=t.checked;if(t.checked)x.dud=false;}else if(c==="tipo")x.tipo=t.value;
+    else if(c==="pac"){x.pac=t.value;x.por=t.value?"mano":"";x.dud=false;x.ya=!!x.pac&&Object.values(imagenes).some(i=>i.url===x.url&&i.pacId===x.pac);x.si=!!x.pac&&!x.ya;}
+    pintarEnl();return;}
   if(t.id==="imgImpZip"){const fs=[...t.files];t.value="";if(!fs.length)return;impEstado="leyendo";pintarImp();try{await preparar(await leerZips(fs));}catch(x){impEstado="elegir";pintarImp();avisar("No se pudo abrir el ZIP",String(x&&x.message||x),"peligro");}return;}
   if(t.id==="imgImpCarpeta"||t.id==="imgImpArch"){const fs=[...t.files];t.value="";if(!fs.length)return;
     await preparar(fs.map(f=>({ruta:(f.webkitRelativePath||f.name).replace(/\\/g,"/"),f:EXT_MIME[extDe(f.name)]||/^image\/|application\/pdf/.test(f.type)?f:null})));return;}
   if(t.dataset.i==="tipoTodos"&&t.value){IMP.forEach(x=>{if(x.f)x.tipo=t.value;});pintarImp();return;}
   if(t.dataset.i==="soloSin"){$('imgImp').dataset.soloSin=t.checked?"1":"";pintarImp();return;}
   const tr=t.closest('tr[data-k]');if(!tr)return;const x=IMP[+tr.dataset.k];if(!x)return;const c=t.dataset.c;
-  if(c==="si")x.si=t.checked;else if(c==="tipo")x.tipo=t.value;
+  if(c==="si"){x.si=t.checked;if(t.checked)x.dud=false;}else if(c==="tipo")x.tipo=t.value;
   else if(c==="fecha"){if(fechaIsoValida(t.value))x.fecha=deIso(t.value);return;}
-  else if(c==="pac"){x.pac=t.value;x.por=t.value?"mano":"";x.ya=!!x.pac&&yaEsta(x.pac,x.f.name,x.f.size,x.ruta);x.si=!!x.pac&&!x.ya;}
+  else if(c==="pac"){x.pac=t.value;x.por=t.value?"mano":"";x.dud=false;x.ya=!!x.pac&&yaEsta(x.pac,x.f.name,x.f.size,x.ruta);x.si=!!x.pac&&!x.ya;}
   pintarImp();});
 document.addEventListener('keydown',e=>{if(e.key==="Escape"&&$('imgImpModal').classList.contains('abierto'))cerrarImp();});
 
@@ -303,7 +386,12 @@ $('imgLista').addEventListener('click',e=>{const b=e.target.closest('[data-pac]'
 $('imgPanel').addEventListener('input',e=>{const t=e.target;if(t.id==='imgNNota')form.nota=t.value;});
 $('imgPanel').addEventListener('change',e=>{const t=e.target;if(t.id==='imgNTipo')form.tipo=t.value;else if(t.id==='imgNFecha'){if(fechaIsoValida(t.value))form.fecha=t.value;}
   else if(t.id==='imgArch'||t.id==='imgCam'){subir(t.files);t.value="";}});
-$('imgPanel').addEventListener('click',e=>{const ab=e.target.closest('[data-abrir]');if(ab){sel=ab.dataset.abrir;try{localStorage.setItem('pct_img_sel',sel);}catch(x){}render(true);return;}
+$('imgPanel').addEventListener('click',e=>{const a2=e.target.closest('[data-acc2="url"]');
+  if(a2){const pac=pacientes.find(x=>x.id===sel),inp=$('imgNUrl'),m=URL_DRIVE.exec(inp&&inp.value||"");if(!pac)return;
+    if(!m){msg("Pegue un enlace de Google Drive (https://drive.google.com/…)");return;}const url=m[0].replace(/[),.;]+$/,"");
+    if(Object.values(imagenes).some(x=>x.pacId===pac.id&&x.url===url)){msg("Ese enlace ya está guardado");return;}
+    nuevoEnlace(pac,url,/\/folders\//.test(url)?{nota:form.nota.trim()}:{tipo:form.tipo,fecha:deIso(form.fecha),nota:form.nota.trim()});form.nota="";guardar();render(true);msg("Enlace guardado");return;}
+  const ab=e.target.closest('[data-abrir]');if(ab){sel=ab.dataset.abrir;try{localStorage.setItem('pct_img_sel',sel);}catch(x){}render(true);return;}
   const b=e.target.closest('[data-acc]');if(!b)return;const card=b.closest('[data-id]'),x=card&&imagenes[card.dataset.id];if(!x)return;const a=b.dataset.acc;
   if(a==="ver")ver(x);else if(a==="bajar")bajar(x);else if(a==="borrar")borrar(x);else if(a==="editar"){editar=x.id;render(true);}else if(a==="cancelar"){editar=null;render(true);}
   else if(a==="guardar"){const v=k=>card.querySelector(`[data-e="${k}"]`).value,f=v("fecha");if(!fechaIsoValida(f)){msg("Fecha no válida");return;}
@@ -319,5 +407,6 @@ const showBase=window.showView;
 window.showView=function(v){showBase(v);$('tabImg').classList.toggle('active',v==='imagenes');document.body.classList.toggle('ver-img',v==='imagenes');if(v==='imagenes')render(true);};
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();render();}; // nombre nuevo o cambiado en DATOS: aparece aquí solo
+const alCfgBase=window.alCambiarConfig;window.alCambiarConfig=function(){if(alCfgBase)alCfgBase();render();}; // carpeta principal de Drive guardada en otro equipo
 window.IMG={render,estudiosDe,_detectar:r=>{PALP=pacientes.map(x=>({r:x,w:[...new Set(palabras(x.nom))]})).filter(x=>x.w.length);return detectar(r);},_fecha:fechaDe};
 })();
