@@ -3,7 +3,7 @@
    mes con los exámenes y evaluaciones que tocan, según la NTS N° 221-MINSA/DGIESP-2024:
    · Tabla N° 13 (pág. 37): esquema sensible TB-DS.        · Tabla N° 15 (págs. 39–40): esquema TB-Hr.
    · Tabla N° 16 (pág. 43): BPaLM / BPaL / BLC / modificado. · Tabla N° 17 (págs. 44–45): BLCC / TB-XDR / modificado.
-   · Contactos con TPT (págs. 24–27 y Anexo N° 6, págs. 104–106): 3HP = una cita por dosis semanal; esquemas diarios = inicio y control mensual.
+   · Contactos con TPT (pág. 24, control de contactos): solo los chequeos del contacto después de iniciar la TPT (las tomas van en su tarjeta).
    Las citas que caen domingo o feriado nacional pasan al siguiente día hábil; se pueden reprogramar y marcar como realizadas. */
 (function(){
 "use strict";
@@ -24,12 +24,11 @@ const EX={
   pf:["Control por planificación familiar","eva"],peso:["Control de peso","eva"],esp:["Evaluación por especialidad según comorbilidad o localización de TB","eva"],
   card:["Evaluación por cardiología (si el ECG es anormal)","eva"],av:["Evaluación de agudeza visual y visión de colores","eva"],psiq:["Evaluación por psiquiatría (según criterio del médico consultor)","eva"],
   an_hb:["Dosaje de hemoglobina","lab"],an_fe:["Entrega del hierro del mes y revisión de la toma diaria","eva"],an_adh:["Adherencia y efectos adversos del hierro","eva"],an_nut:["Consejería nutricional (alimentos ricos en hierro)","eva"], // an_* = tratamiento de anemia (pestaña ANEMIA)
-  // tp_* = terapia preventiva (TPT) de contactos: NTS 221-2024, págs. 24–25 y tarjeta de control (Anexo N° 6)
-  tp_ini:["Descarte de TB activa e indicación de la TPT por el médico del E.S.","eva"],tp_cons:["Consentimiento informado firmado (Anexo N° 9)","eva"],
-  tp_edu:["Educación al contacto y su familia: cumplir la TPT y reconocer reacciones adversas","eva"],tp_pt:["Peso y talla iniciales","eva"],tp_ram:["Vigilancia de reacciones adversas (RAM)","eva"],
-  tp_d1:["Primera dosis de TPT por DOT","tpt"],tp_dosis:["Dosis semanal de TPT por DOT (anotar en la tarjeta, Anexo N° 6)","tpt"],
-  tp_mes:["Dosis del mes por DOT: dosis completas y acumulado en la tarjeta (Anexo N° 6)","tpt"],tp_fin:["Término de TPT: resultado en la tarjeta (Anexo N° 6) y en el SIGTB","tpt"]};
-const GRUPO={lab:"Laboratorio",bac:"Bacteriología",img:"Imágenes y ECG",eva:"Evaluaciones y controles",tpt:"Terapia preventiva (DOT)"};
+  // chequeo de contactos con TPT (NTS 221-2024, pág. 24): las tomas de la TPT no van al calendario, se registran en su tarjeta (Anexo N° 6)
+  ch_int:["Examen integral del contacto (evaluación médica)","eva"],ch_tb:["Descarte de TB activa: tos, fiebre, baja de peso, sudoración nocturna","eva"],
+  ch_tpt:["¿Cómo va la TPT? Dosis recibidas según la tarjeta (Anexo N° 6) y reacciones adversas","tpt"],
+  tp_fin:["Resultado de la TPT en la tarjeta (Anexo N° 6) y en el SIGTB: terapia completa, suspensión…","tpt"]};
+const GRUPO={lab:"Laboratorio",bac:"Bacteriología",img:"Imágenes y ECG",eva:"Evaluaciones y controles",tpt:"Terapia preventiva"};
 const M="M"; // basal + mensual hasta el final del tratamiento
 
 /* ======================= TABLAS DE MONITOREO (NTS 221-2024) ======================= */
@@ -105,36 +104,28 @@ function estado(c){const h=hoy0();if(c.completo)return ["ok","Realizado"];const 
 function hitos(r){ // fechas clave sin exámenes: cambio de fase o término del tratamiento (el término de la TPT ya es una cita de su plan)
   const c=TPT.calcular(r);if(c.modo==="tpt")return [];return TPT.fechas(r,c).filter(([k])=>!/^Dosis/.test(k)).map(([k,v])=>({txt:k,f:parseFecha(v),r}));}
 
-/* ======================= TPT DE CONTACTOS (págs. 24–27 y tarjeta de control, Anexo N° 6) ======================= */
-// 3HP: una cita por cada dosis semanal (12), el mismo día de la semana del inicio. Esquemas diarios (3HR, 4R, 6H, 6Lfx): inicio y un control por mes.
-// La TPT se da de lunes a domingo, incluidos feriados (pág. 25): el inicio y las dosis semanales no se mueven; los controles mensuales pasan al siguiente día hábil.
-const TPT_MESES={"3HR-DFC":3,"3HR":3,"6H":6,"4R":4,"6Lfx":6}; // 3HP y 3HP-DFC: semanal, 12 dosis
+/* ======================= CHEQUEO DE CONTACTOS CON TPT (NTS 221-2024, pág. 24: control de contactos) ======================= */
+// En el calendario no van las tomas de la TPT (se registran en la tarjeta de control de TPT, Anexo N° 6): solo los chequeos del contacto
+// después de iniciarla, para saber cómo va. La norma: el control incluye un examen integral; contactos de TB-DS, como mínimo al inicio,
+// al cambio de fase y al término del tratamiento del caso índice; de TB-DR, al inicio y cada 3 meses hasta el término. El control del
+// inicio es el de la indicación de la TPT; los demás se cuentan desde el inicio de la TPT y pasan al siguiente día hábil.
+const TPT_MESES={"3HP":3,"3HP-DFC":3,"3HR-DFC":3,"3HR":3,"6H":6,"4R":4,"6Lfx":6}; // duración de cada esquema
+const CHEQUEOS={ds:[2,6],hr:[3,6],mdr:[3,6,9]}; // meses desde el inicio de la TPT, según el caso índice
 function planTPT(r){
   if(TPT.modoDe(r)!=="tpt")return null;const ini=parseFecha(r.f_ini);if(!ini)return null;
-  const c=TPT.calcular(r),esq=c.esq,sem=/^3HP/.test(esq||""),meses=sem?3:TPT_MESES[esq];if(!esq||!meses)return null;
-  const est=(r.mon&&typeof r.mon==="object")?r.mon:{},lfx=esq==="6Lfx",controles=[];
-  const inicio=["tp_ini"].concat(lfx?["cons"]:[],["tp_cons","tp_edu","tp_pt","enf"]);
-  const nuevo=(m,cid,nombre,corto,base,items,notas,mover)=>{const aj=mover?habil(base):{f:base,motivo:""},st=est[cid]||{},rep=parseFecha(st.f),hechos=items.filter(k=>st.ok&&st.ok[k]);
-    controles.push({m,cid,nombre,corto,fecha:rep||aj.f,base,orig:aj.f,movido:rep?"reprogramada":aj.motivo,hist:Array.isArray(st.hist)?st.hist:[],items,hechos,notas,completo:items.length>0&&hechos.length===items.length});};
-  let fin;
-  if(sem){
-    for(let k=1;k<=12;k++){const f=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+7*(k-1)),dia=f.getDay()===0?"domingo":feriado(f),notas=[];
-      const items=k===1?inicio.concat(["tp_dosis"]):["tp_dosis","tp_ram"];if(k===5||k===9)items.push("peso");if(k===12)items.push("peso","tp_fin");
-      if(dia)notas.push(`Cae ${dia==="domingo"?"domingo":"feriado ("+dia+")"}: la TPT se da también domingos y feriados (pág. 25).`);
-      nuevo(k-1,"tw"+k,k===1?"Inicio de TPT · dosis 1 de 12":k===12?"Dosis 12 de 12 · término de TPT":`Dosis ${k} de 12`,`Dosis ${k}/12`,f,items,notas,false);}
-    fin=controles[11].base;}
-  else{
-    fin=new Date(ini.getFullYear(),ini.getMonth()+meses,ini.getDate());fin.setDate(fin.getDate()-1); // igual que la fecha de término de la pestaña TPT
-    nuevo(0,"t0","Inicio de TPT","Inicio TPT",new Date(ini),inicio.concat(["tp_d1"]),[],false);
-    for(let m=1;m<=meses;m++){const ult=m===meses,items=["tp_mes","peso","tp_ram"].concat(lfx?["med"]:[],ult?["tp_fin"]:[]);
-      nuevo(m,"t"+m,ult?`Término de TPT · mes ${m} de ${meses}`:`Control del mes ${m} de ${meses}`,ult?"Término TPT":"Mes "+m,ult?new Date(fin):masMeses(ini,m),items,[],true);}}
-  const notas=[sem?"3HP: una cita por cada dosis semanal, el mismo día de la semana del inicio. La TPT se da de lunes a domingo, incluidos feriados (pág. 25): estas citas no se pasan a otro día."
-      :"Dosis diaria por DOT, de lunes a domingo, incluidos feriados (pág. 25). Cada mes: dosis completas y acumulado en la tarjeta, peso y vigilancia de RAM; si el control cae domingo o feriado pasa al siguiente día hábil.",
-    "Cada dosis se anota en la tarjeta de control de TPT (Anexo N° 6) y en el SIGTB en un plazo no mayor de 24 horas (pág. 25)."];
-  if(/H/.test(esq))notas.push("Todo esquema con isoniacida (H) lleva piridoxina 50 mg por cada dosis de H (pág. 25).");
-  if(lfx)notas.push("Contacto de TB-RR/MDR: Lfx indicado por el médico consultor y controlado por el médico del E.S. (pág. 27). Dar 2 h antes o después de lácteos, antiácidos, hierro, calcio, zinc o vitaminas.");
-  notas.push("Resultado al terminar (Anexo N° 6): terapia completa, suspensión, fallecido, pérdida en el seguimiento, cambio de TPT o diagnóstico de TB.");
-  return {r,tipo:"tpt",id:esq,c,E:{txt:"💊 TPT · "+((TPT.ESQ&&TPT.ESQ[esq])||esq)},T:{nombre:"NTS N° 221-2024 · TPT de contactos y tarjeta de control (Anexo N° 6)",pag:"págs. 24–27 y 104–106",notas},meses,ini,fin,controles};
+  const c=TPT.calcular(r),esq=c.esq,dur=TPT_MESES[esq],ind=r.tpt_ind||"ds",meses=CHEQUEOS[ind];if(!esq||!dur||!meses)return null;
+  const est=(r.mon&&typeof r.mon==="object")?r.mon:{},controles=[];let resultado=false;
+  const fin=/^3HP/.test(esq)?new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+77):new Date(ini.getFullYear(),ini.getMonth()+dur,ini.getDate()-1); // igual que la pestaña TPT (3HP: 12.ª dosis semanal)
+  meses.forEach((m,i)=>{const cid="tc"+(i+1),base=masMeses(ini,m),aj=habil(base),st=est[cid]||{},rep=parseFecha(st.f),items=["ch_int","ch_tb","peso"];
+    if(m<dur)items.push("ch_tpt");else if(!resultado){items.push("tp_fin");resultado=true;} // en la TPT: cómo va · al terminarla: su resultado
+    const por=ind==="ds"?(m===2?"al cambio de fase del tratamiento del caso índice":"al término del tratamiento del caso índice"):`cada 3 meses (contacto de TB ${ind==="hr"?"Hr":"RR/MDR"})`;
+    const hechos=items.filter(k=>st.ok&&st.ok[k]);
+    controles.push({m,cid,nombre:`Chequeo ${i+1} del contacto · ${m} meses de iniciada la TPT`,corto:`Chequeo ${i+1}`,fecha:rep||aj.f,base,orig:aj.f,movido:rep?"reprogramada":aj.motivo,
+      hist:Array.isArray(st.hist)?st.hist:[],items,hechos,notas:[`Control del contacto ${por} (NTS pág. 24).`],completo:hechos.length===items.length});});
+  const notas=["Control de contactos (pág. 24): incluye un examen integral. Contactos de TB-DS, como mínimo al inicio, al cambio de fase y al término del tratamiento del caso índice; de TB-DR, al inicio y cada 3 meses hasta el término. El control del inicio es el de la indicación de la TPT; los chequeos se cuentan desde el inicio de la TPT."+(ind==="mdr"?" Para TB-RR/MDR se programan 3, 6 y 9 meses (esquema BLC); si el caso índice sigue en tratamiento, continúe cada 3 meses.":""),
+    "Las tomas de la TPT no van en este calendario: se registran en la tarjeta de control de TPT (Anexo N° 6).",
+    "Con 2 o más signos o síntomas de TB (tos, fiebre, baja de peso, sudoración nocturna) el contacto es caso presuntivo de TB: pedir la prueba bacteriológica (pág. 27)."];
+  return {r,tipo:"tpt",id:esq,c,E:{txt:"🩺 Contacto con TPT · "+esq},T:{nombre:"NTS N° 221-2024 · Control de contactos",pag:"pág. 24",notas},meses:meses.length,ini,fin,controles};
 }
 
 /* ======================= VISTA ======================= */
@@ -176,12 +167,12 @@ function eventos(){ // {clave: [{tipo:'c', p, c} | {tipo:'h', h}]}
   return ev;}
 
 // planes de un paciente: el de TB (plan) y el de anemia (pestaña ANEMIA, cid «a1»…«a6»); comparten las marcas en r.mon
-// y el de TPT de los contactos (cid «t0»…«tN» mensual o «tw1»…«tw12» semanal)
+// y el de los contactos con TPT: sus chequeos (cid «tc1», «tc2»…)
 function principal(r){return plan(r)||planTPT(r);} // plan de TB o de TPT (un paciente tiene uno u otro según su tratamiento)
 function planes(r){const l=[],p=principal(r);if(p)l.push(p);const a=window.ANE&&ANE.plan(r);if(a)l.push(a);return l;}
 function planDeCid(r,cid){return /^a/.test(cid||"")?(window.ANE&&ANE.plan(r)):/^t/.test(cid||"")?planTPT(r):plan(r);}
 function controlDe(r,cid){const p=planDeCid(r,cid);return p&&p.controles.find(x=>x.cid===cid)||null;}
-const tipoCls=p=>p.tipo?" "+p.tipo:"",ico=p=>p.tipo==="ane"?"🩸 ":p.tipo==="tpt"?"💊 ":"",corto=c=>c.corto||(c.m===0?"Basal":"Mes "+c.m);
+const tipoCls=p=>p.tipo?" "+p.tipo:"",ico=p=>p.tipo==="ane"?"🩸 ":p.tipo==="tpt"?"🩺 ":"",corto=c=>c.corto||(c.m===0?"Basal":"Mes "+c.m);
 const fechaNorma=c=>c.orig||habil(c.base).f; // fecha que le toca sin reprogramar
 
 /* ======================= DIBUJO ======================= */
@@ -205,7 +196,7 @@ function cuentaEv(lst){const pac=new Set();let c=0,ok=0,v=0,hi=0;lst.forEach(e=>
 function pintarCal(ev){
   const y=mesVista.getFullYear(),mo=mesVista.getMonth(),prim=new Date(y,mo,1),offset=(prim.getDay()+6)%7,dias=new Date(y,mo+1,0).getDate(),h=hoy0(),antes=new Date(y,mo,0).getDate();
   const n=cuentaEv([].concat(...Array.from({length:dias},(_,i)=>ev[clave(new Date(y,mo,i+1))]||[])));
-  let html=`<div class="mon-calcard">`+cabCal(MESES_LARGO[mo]+" "+y,"Calendario de monitoreo y seguimiento · NTS N° 221-MINSA/DGIESP-2024 · 💊 contactos con TPT · 🩸 anemia",
+  let html=`<div class="mon-calcard">`+cabCal(MESES_LARGO[mo]+" "+y,"Calendario de monitoreo y seguimiento · NTS N° 221-MINSA/DGIESP-2024 · 🩺 chequeo de contactos con TPT · 🩸 anemia",
       [[n.c,n.c===1?"cita":"citas"],[n.pac,n.pac===1?"paciente":"pacientes"],[n.ok,"realizadas","ok"],[n.v,"vencidas","venc"],[n.hi,"fechas clave","hito"]])+
     `<div class="mon-semana">${DIAS_C.map((d,i)=>`<div class="${i===6?"dom":""}">${d}</div>`).join("")}</div><div class="mon-grid">`;
   for(let i=0;i<offset;i++)html+=`<div class="mon-d vacio"><div class="mon-dnum"><span class="mon-n">${antes-offset+1+i}</span></div></div>`;
@@ -294,7 +285,7 @@ function itemCtrl(e){const c=e.c,p=e.p,r=p.r,[cls,txt]=estado(c),falta=c.items.f
   </div>`);}
 function itemPac(o){const r=o.r,p=o.p;
   return fila(r,lista+"|"+r.id,lista==="pac"?"pac":"falta",()=>{let est,cuerpo="",acc;
-  if(lista==="sin"){est=`<span class="mon-st st-falta">Sin fecha de inicio</span>`;cuerpo=`<div class="mon-li-ctrl">💊 Tratamiento: <b>${esc(r.tto||"—")}</b> · ${TPT.modoDe(r)==="sens"?"se monitoreará con la Tabla N° 13 (TB-DS)":TPT.modoDe(r)==="tpt"?"contacto con TPT: se programarán sus dosis y controles":"TB resistente: luego elija el esquema en el plan completo"}</div>`;
+  if(lista==="sin"){est=`<span class="mon-st st-falta">Sin fecha de inicio</span>`;cuerpo=`<div class="mon-li-ctrl">💊 Tratamiento: <b>${esc(r.tto||"—")}</b> · ${TPT.modoDe(r)==="sens"?"se monitoreará con la Tabla N° 13 (TB-DS)":TPT.modoDe(r)==="tpt"?"contacto con TPT: se programarán sus chequeos":"TB resistente: luego elija el esquema en el plan completo"}</div>`;
     acc=`<label class="lbl mon-li-ini">Fecha de inicio <input type="date" data-acc="ini"></label><button class="btn" data-acc="tpt">Ir a TPT</button>`;}
   else{const C=p?p.controles:[],venc=C.filter(c=>estado(c)[0]==="vencido").length,hech=C.filter(c=>c.completo).length,sig=C.find(c=>!c.completo),sv=sig&&estado(sig)[0]==="vencido";
     est=lista==="noconf"?`<span class="mon-st st-falta">Falta conformidad</span><small>Inicio ${relTxt(parseFecha(r.f_ini)).toLowerCase()}</small>`:venc?`<span class="mon-st st-vencido">${venc} control${venc>1?"es":""} vencido${venc>1?"s":""}</span>`:`<span class="mon-st st-ok">${C.length&&hech===C.length?"✔ Completo":"Al día"}</span>`;
@@ -335,7 +326,7 @@ function abrirPlan(id,refrescar){const r=pacientes.find(x=>x.id===id);if(!r)retu
       ${pt?`<div><span>Esquema de TPT</span><b>${esc(((TPT.ESQ&&TPT.ESQ[p.id])||p.id))}</b><small>Se cambia en la pestaña TPT</small></div><div><span>Caso índice</span><b>${esc((TPT.IND&&TPT.IND[r.tpt_ind||"ds"])||"—")}</b></div>`
         :`<div><span>Esquema</span><b>${TPT.modoDe(r)==="sens"?esc(p.E.txt):`<select id="monEsq" class="no-print-sel">${opc}</select><b class="solo-print">${esc(p.E.txt)}</b>`}</b></div>`}
       <div class="${r.f_ini_ok?'conf-ok':'conf-pend'}"><span>Inicio</span><b>${fmtFecha(p.ini)}</b><small>${r.f_ini_ok?"✔ Inicio conforme ("+esc(r.f_ini_ok)+")":"⚠ Inicio sin conformidad"}</small><label class="no-print"><input type="checkbox" id="monConf" ${r.f_ini_ok?'checked':''}> Conforme</label></div>${h.map(x=>`<div><span>${esc(x.txt)}</span><b>${x.f?fmtFecha(x.f):"—"}</b></div>`).join("")}
-      ${pt?`<div><span>Término de TPT</span><b>${fmtFecha(p.fin)}</b></div><div><span>Dosis según peso y edad</span><b>${p.c.lin.length?p.c.lin.map(esc).join("<br>"):"Falta el peso o la edad en DATOS"}</b>${p.c.frec?`<small>${esc(p.c.frec)}</small>`:""}</div>`:""}
+      ${pt?`<div><span>Término de TPT</span><b>${fmtFecha(p.fin)}</b><small>Las tomas se registran en la tarjeta de TPT</small></div>`:""}
       ${r.tto_med?`<div><span>Medicamentos (médico consultor)</span><b>${esc(r.tto_med)}</b></div>`:""}<div><span>Monitoreo</span><b>${esc(p.T.nombre)} (${p.T.pag})</b></div></div>
       <table class="mon-ptab"><thead><tr><th>Control</th><th>Fecha</th><th>Exámenes y evaluaciones</th><th>Estado</th></tr></thead><tbody>${p.controles.map(c=>{const [cls,txt]=estado(c);
         return `<tr class="st-${cls}" data-id="${esc(r.id)}" data-cid="${c.cid}"><td><b>${esc(c.nombre)}</b></td><td class="mon-pf"><b>${fmtFecha(c.fecha)}</b><br>${DIAS[c.fecha.getDay()]}${c.movido?`<br><i class="mon-mov">${movTxt(c)}</i>`:""}${c.completo?"":`<br><button class="btn no-print mon-btn-rep" data-acc="repro">↪ Reprogramar</button>`}</td>
