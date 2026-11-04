@@ -6,7 +6,9 @@
    · pct_archivos: el archivo en partes de 900 KB ({id}_0, {id}_1…) y su miniatura ({id}_t). Se bajan solo al abrir el paciente
      o el archivo y quedan guardados en el equipo (IndexedDB): la segunda vez no se vuelven a leer de la nube.
    · Las fotos se achican antes de subir (lado mayor 2200 px, JPG); PDF hasta 15 MB.
-   · «Importar carpeta de Drive»: el ZIP que baja Google Drive (o la carpeta descomprimida, o varios archivos). Reconoce al paciente por
+   · «Traer de Drive»: con solo el enlace de la carpeta (compartida con «Cualquier persona con el enlace»), la app la lee con la API de
+     Drive (solo lectura, con la clave de API del proyecto) y guarda cada PDF o foto como un estudio más: se ve aquí sin entrar a Drive.
+     También acepta el ZIP que baja Google Drive (o la carpeta descomprimida, o varios archivos). Reconoce al paciente por
      el nombre de su carpeta o del archivo (o el DNI), la fecha por el nombre del archivo (16-10-26, 24-10-2026, 16 JULIO 2026) y el
      tipo por las palabras del nombre; se revisa en una lista y se sube todo junto. Lo ya importado no se repite.
    · Sin descargar nada: «🔗 Enlazar con Drive» guarda el enlace de cada PDF o foto (o de la carpeta) del paciente. Queda como una tarjeta
@@ -65,7 +67,7 @@ $('anemia').insertAdjacentHTML('afterend',`
     <span class="sep"></span>
     <a class="btn no-print" id="imgRaiz" target="_blank" rel="noopener" title="Abrir en Google Drive la carpeta principal de los estudios" hidden>📂 Carpeta en Drive</a>
     <button type="button" class="btn no-print" id="imgEnlazar" title="Guardar los enlaces de Google Drive de las carpetas de los pacientes (sin descargar nada)">🔗 Enlazar con Drive</button>
-    <button type="button" class="btn primary no-print" id="imgImportar" title="Subir de una vez los estudios de una carpeta de Google Drive (ZIP o carpeta)">📥 Importar de Drive</button>
+    <button type="button" class="btn primary no-print" id="imgImportar" title="Guardar en la app, de una vez, los PDF y fotos de una carpeta de Google Drive (con su enlace, sin descargar nada)">📥 Traer de Drive</button>
   </div>
   <div class="img-cuerpo">
     <aside class="img-lista" id="imgLista" aria-label="Pacientes"></aside>
@@ -129,6 +131,7 @@ async function subirUno(f,pac,meta,avance){
   const id=uid(),rec={id,pacId:pac.id,tipo:meta.tipo,fecha:meta.fecha,nota:meta.nota,nombre:f.name.slice(0,120),mime,tam:blob.size,partes:Math.max(1,Math.ceil(blob.size/PARTE)),
     mini:thumb?1:0,creado:new Date().toISOString(),por:(window.Sync&&Sync.usuario&&Sync.usuario())||"",otam:f.size};
   if(meta.origen)rec.origen=meta.origen.slice(0,300); // carpeta de donde se importó
+  if(meta.gid)rec.gid=meta.gid; // id del archivo en Google Drive (para no traerlo dos veces)
   await IDB.put(id,blob);if(thumb)await IDB.put(id+"_t",thumb);
   const r=await subirNube(rec,blob,thumb,avance); // primero el archivo y luego sus datos: los otros equipos no ven un estudio sin archivo
   imagenes[id]=rec;guardar();return r;}
@@ -166,7 +169,7 @@ function tarjeta(x,conPac){const r=conPac&&pacientes.find(p=>p.id===x.pacId);
       ${x.nota?`<p>${esc(x.nota)}</p>`:""}
       <small>${dir?"Carpeta":cl==="pdf"?"PDF":cl==="img"?"Foto":"Archivo"} en Google Drive · ${esc(x.nombre||"")}${x.por?" · guardado por "+esc(x.por):""}</small>
       ${x.origen&&x.origen.includes("/")?`<small class="img-origen" title="${esc(x.origen)}">📁 ${esc(x.origen.split("/").slice(0,-1).join(" › "))}</small>`:""}
-      <div class="img-acc"><button type="button" class="btn${dir?"":" primary"}" data-acc="ver">👁 ${dir?"Ver carpeta":"Ver"}</button>${conPac?"":`<button type="button" class="btn" data-acc="editar" title="Cambiar tipo, fecha o nota">✏️ Editar</button><button type="button" class="btn danger" data-acc="borrar" title="Quitar el enlace (en Drive no se borra nada)">🗑</button>`}</div>
+      <div class="img-acc"><button type="button" class="btn" data-acc="ver">👁 ${dir?"Ver carpeta":"Ver"}</button>${conPac?"":`<button type="button" class="btn primary" data-acc="traer" title="${dir?"Traer y guardar en la app los PDF y fotos de esta carpeta":"Guardar este archivo en la app (ya no hará falta Drive para verlo)"}">⬇ ${dir?"Guardar sus estudios":"Guardar en la app"}</button><button type="button" class="btn" data-acc="editar" title="Cambiar tipo, fecha o nota">✏️ Editar</button><button type="button" class="btn danger" data-acc="borrar" title="Quitar el enlace (en Drive no se borra nada)">🗑</button>`}</div>
     </div></article>`;}
   return `<article class="img-card" data-id="${esc(x.id)}">
     <button type="button" class="img-mini${esPdf(x)?" pdf":""}" data-acc="ver" title="Ver ${esc(x.nombre)}">${esPdf(x)?ICO_PDF:`<img alt="" data-mini="${esc(x.id)}">${ICO_IMG}`}</button>
@@ -268,13 +271,16 @@ function fechaDe(t){const s=normTxt(t);let m,d,mo,y;
 function tipoDe(ruta){const s=normTxt(ruta);if(/tomograf|\btem\b|\btac\b/.test(s))return "Tomografía de tórax";if(/ecograf|\beco\b/.test(s))return "Ecografía";if(/informe/.test(s))return "Informe de imagen";return "Radiografía de tórax";}
 // a quién pertenece cada archivo: DNI en la ruta, luego el nombre del archivo, luego las carpetas de adentro hacia afuera
 // (sin pasar de una carpeta CONTACTOS: lo que está ahí es de los contactos, no del caso índice)
-function detectar(ruta){const seg=ruta.split("/"),arch=seg.pop();let r=porDni(ruta);if(r)return {r,por:"DNI"};
+// carpetas de contactos: CONTACTOS, EVALUACION DE CONTACTOS, I / II / III EVALUACION (también con errores de tipeo: EVAUACION, VALUACION)
+const LIMITE=t=>/contact|evaluac|evauac|valuac/.test(normTxt(t));
+function detectar(ruta){const seg=ruta.split("/"),arch=seg.pop(),b=seg.findIndex(LIMITE); // de esa carpeta hacia adentro es de un contacto, no del caso índice
+  const adentro=b<0?seg:seg.slice(b+1);let r=porDni([arch].concat(adentro).join("/"));if(r)return {r,por:"DNI"};
   let q=quienEs(arch),dud=null;if(q){if(!q.dud)return {r:q.r,por:"archivo"};dud={r:q.r,por:"archivo",dud:true};}
-  for(let i=seg.length-1;i>=0;i--){if(/contacto/i.test(seg[i]))return dud||{r:null,por:"contactos"};q=quienEs(seg[i]);
+  for(let i=adentro.length-1;i>=0;i--){if(LIMITE(adentro[i]))continue;q=quienEs(adentro[i]); // la carpeta del contacto sí cuenta (puede estar en DATOS)
     if(q){if(!q.dud)return {r:q.r,por:"carpeta"};if(!dud)dud={r:q.r,por:"carpeta",dud:true};}}
-  return dud||{r:null,por:""};} // uno dudoso solo si no hay otro seguro
+  return dud||{r:null,por:b<0?"":"contactos"};} // uno dudoso solo si no hay otro seguro
 const mismaRuta=(a,b)=>!!a&&!!b&&(a===b||a.endsWith("/"+b)||b.endsWith("/"+a)); // el ZIP empieza en «RX TORAX 2026/…»; una carpeta elegida puede traer una carpeta más arriba
-const yaEsta=(pacId,nombre,tam,origen)=>Object.values(imagenes).some(x=>(mismaRuta(x.origen,origen)&&(!x.otam||x.otam===tam))||(x.pacId===pacId&&x.nombre===nombre&&(!x.otam||x.otam===tam)));
+const yaEsta=(pacId,nombre,tam,origen)=>Object.values(imagenes).some(x=>!x.url&&((mismaRuta(x.origen,origen)&&(!x.otam||x.otam===tam))||(x.pacId===pacId&&x.nombre===nombre&&(!x.otam||x.otam===tam)))); // los enlaces no cuentan
 function cargarZip(){return window.JSZip?Promise.resolve(window.JSZip):new Promise((ok,mal)=>{const sc=document.createElement("script");sc.src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
   sc.onload=()=>ok(window.JSZip);sc.onerror=()=>mal(new Error("No se pudo cargar el lector de ZIP (¿sin conexión?)."));document.head.appendChild(sc);});}
 async function leerZips(files){const Z=await cargarZip(),l=[];
@@ -285,13 +291,67 @@ async function leerZips(files){const Z=await cargarZip(),l=[];
 let IMP=[],impEstado="elegir";
 const seguro=x=>x.pac&&!x.dud?1:0;
 const DUD="⚠ Parecido, no seguro: confirme que es este paciente (márquelo) o elija otro";
+/* ---- Traer directo de Google Drive con el enlace (sin descargar nada): la app lee la carpeta compartida con «Cualquier persona con el
+   enlace» usando la API de Drive (solo lectura, con la clave de API del proyecto) y guarda cada PDF o foto como un estudio más. ---- */
+const GAPI="https://www.googleapis.com/drive/v3/files",CARP_MIME="application/vnd.google-apps.folder";
+const proyecto=()=>(window.FIREBASE_CONFIG&&FIREBASE_CONFIG.projectId)||"";
+const claveDrive=()=>config.driveClave||(window.FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey)||"";
+const esperar=ms=>new Promise(ok=>setTimeout(ok,ms));
+function errDrive(cod,m){const e=new Error(m||cod);e.cod=cod;return e;}
+async function api(ruta,intento){const k=claveDrive();if(!k)throw errDrive("clave","Falta la clave de API");let r;
+  try{r=await fetch(GAPI+ruta+(ruta.includes("?")?"&":"?")+"supportsAllDrives=true&key="+encodeURIComponent(k));}catch(e){throw errDrive("red","Sin conexión con Google Drive");}
+  if(r.ok)return r;let j=null;try{j=await r.json();}catch(e){}const e=(j&&j.error)||{},t=(e.message||"")+" "+JSON.stringify(e.errors||"")+JSON.stringify(e.details||"");
+  if((r.status===429||/rateLimit/i.test(t))&&(intento||0)<3){await esperar(1500*((intento||0)+1));return api(ruta,(intento||0)+1);}
+  throw errDrive(/SERVICE_DISABLED|accessNotConfigured|has not been used/i.test(t)?"api-apagada":/API_KEY|keyInvalid|API key not valid|are blocked/i.test(t)?"clave":r.status===404||r.status===403?"sin-permiso":"red",e.message||("Error "+r.status));}
+const esArch=d=>d.mime==="application/pdf"||/^image\//.test(d.mime||"")||!!EXT_MIME[extDe(d.name)];
+async function listarDrive(raiz,avance){const m=await (await api("/"+raiz+"?fields=id,name,mimeType,size")).json(),limpio=n=>String(n||"").replace(/[\/\\]/g,"-");
+  if(m.mimeType!==CARP_MIME)return [{ruta:limpio(m.name),id:m.id,name:m.name,mime:m.mimeType,size:+m.size||0}];
+  const out=[],pend=[{id:m.id,ruta:limpio(m.name)}];let n=0;
+  while(pend.length&&n<600&&out.length<4000){const c=pend.shift();let tok="";
+    do{const j=await (await api("?q="+encodeURIComponent(`'${c.id}' in parents and trashed=false`)+"&fields=nextPageToken,files(id,name,mimeType,size)&pageSize=1000&includeItemsFromAllDrives=true"+(tok?"&pageToken="+encodeURIComponent(tok):""))).json();
+      for(const f of j.files||[]){const ruta=c.ruta+"/"+limpio(f.name);if(f.mimeType===CARP_MIME)pend.push({id:f.id,ruta});else out.push({ruta,id:f.id,name:f.name,mime:f.mimeType,size:+f.size||0});}
+      tok=j.nextPageToken||"";}while(tok);
+    avance(++n,out.length);}
+  return out;}
+async function bajarDrive(d){d=Object.assign({},d,{id:d.id||d.drive});if(!d.name||!/\.[a-z0-9]{2,4}$/i.test(d.name)||!d.type){const m=await (await api("/"+d.id+"?fields=name,mimeType,size")).json();d=Object.assign({},d,{name:/\.[a-z0-9]{2,4}$/i.test(d.name||"")?d.name:m.name,type:d.type||m.mimeType});}
+  const b=await (await api("/"+d.id+"?alt=media")).blob();return new File([b],d.name,{type:d.type||b.type});}
+let drvErr=null,drvUrl=""; // último enlace pegado (se conserva al volver a dibujar)
+function panelDrvErr(){if(!drvErr)return "";const pj=proyecto(),q=pj&&!config.driveClave?"?project="+encodeURIComponent(pj):"";
+  if(drvErr.cod==="api-apagada"||drvErr.cod==="clave")return `<div class="img-iaviso"><b>Falta activar una sola vez la conexión con Google Drive</b>
+    <ol><li>Entre con la cuenta dueña del proyecto de Firebase a <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com${q}" target="_blank" rel="noopener">Google Drive API</a> y presione <b>Habilitar</b>.</li>
+      <li>Espere uno o dos minutos y presione otra vez <b>«Leer la carpeta»</b>.</li></ol>
+    <small>${drvErr.cod==="clave"?"<b>La clave de API no puede usar Google Drive.</b> ":""}Si después de habilitarla sigue el aviso: en <a href="https://console.cloud.google.com/apis/credentials${q}" target="_blank" rel="noopener">Credenciales</a> → <b>Crear credenciales → Clave de API</b>; restrínjala a <b>Google Drive API</b> y al sitio <b>pct-huascar.web.app/*</b>, y péguela aquí:</small>
+    <div class="img-idfila"><input type="text" id="imgDrvClave" value="${esc(config.driveClave||"")}" placeholder="Clave de API (AIza…)" autocomplete="off"><button type="button" class="btn" data-i="drvClave">Guardar clave</button></div>
+    <small class="img-ierrt">${esc(drvErr.msg||"")}</small></div>`;
+  return `<div class="img-iaviso">${drvErr.cod==="url"?"<b>Pegue el enlace de una carpeta o de un archivo de Google Drive.</b>":drvErr.cod==="sin-permiso"?"<b>No se pudo abrir la carpeta.</b> Revise el enlace y que en Drive esté compartida como <b>«Cualquier persona con el enlace»</b> (Compartir → Acceso general).":"<b>No hay conexión con Google Drive.</b> Intente de nuevo."}<small class="img-ierrt">${esc(drvErr.msg||"")}</small></div>`;}
+async function leerDrive(u){u=drvUrl=String(u||"").trim();const id=idDrive(u)||(/^[\w-]{20,}$/.test(u)?u:"");if(!id){drvErr={cod:"url"};impEstado="elegir";pintarImp();return;}
+  impEstado="leyendo";pintarImp();const B=$('imgImp');B.querySelector('h3').textContent="Leyendo la carpeta de Google Drive…";
+  try{const l=await listarDrive(id,(nc,na)=>{const c=B.querySelector('.img-cargando');if(c)c.textContent=`⏳ ${nc} carpeta${nc===1?"":"s"} · ${na} archivo${na===1?"":"s"}`;});
+    drvErr=null;if(/\/folders\//.test(u)&&!config.driveRaiz){config.driveRaiz=urlLimpia(u);guardarConfig();}
+    await preparar(l.map(d=>({ruta:d.ruta,f:esArch(d)?{name:d.name,size:d.size,type:EXT_MIME[extDe(d.name)]&&!/^image\/|pdf/.test(d.mime||"")?EXT_MIME[extDe(d.name)]:d.mime,drive:d.id}:null})));}
+  catch(e){console.error(e);drvErr={cod:e.cod||"red",msg:e.message};impEstado="elegir";pintarImp();}}
+function quitarEnlaces(gid,pacId){let n=0;for(const k in imagenes){const x=imagenes[k];if(x.url&&x.pacId===pacId&&!esCarpeta(x)&&idDrive(x.url)===gid){delete imagenes[k];n++;}}if(n)guardar();} // ya está guardado en la app
+async function traerEnlace(x){const pac=pacientes.find(p=>p.id===x.pacId),id=idDrive(x.url);if(!pac||!id||subiendo)return;
+  if(esCarpeta(x)){abrirImp();leerDrive(x.url);return;}
+  if(Object.values(imagenes).some(y=>!y.url&&y.gid===id&&y.pacId===pac.id)){delete imagenes[x.id];guardar();render(true);msg("Ya estaba guardado en la app");return;}
+  subiendo=true;progreso("Trayendo de Google Drive: "+(x.nombre||""),.05);
+  try{const f=await bajarDrive({id,name:x.nombre,type:x.dm==="pdf"?"application/pdf":""});
+    const r=await subirUno(f,pac,{tipo:x.tipo,fecha:x.fecha,nota:x.nota||"",origen:x.origen||"",gid:id},p=>progreso("Guardando en la app: "+f.name,.3+.7*p));
+    delete imagenes[x.id];guardar();msg("Guardado en la app"+(r==="cola"?" · se termina de subir al reconectar":r==="local"?" (en este equipo)":""));}
+  catch(e){console.error(e);if(e.cod==="api-apagada"||e.cod==="clave"){subiendo=false;progreso(null);abrirImp();drvErr={cod:e.cod,msg:e.message};drvUrl=x.url;pintarImp();return;}
+    avisar("No se pudo traer de Google Drive",e.cod==="sin-permiso"?"El archivo no está compartido como «Cualquier persona con el enlace» o ya no existe.":String(e&&e.message||e),"peligro");}
+  finally{subiendo=false;progreso(null);render(true);}}
 function pintarImp(){const B=$('imgImp');if(impEstado.startsWith("enl")){pintarEnl();return;}
-  if(impEstado==="elegir"){B.innerHTML=`<div class="img-icab"><div><h3>📥 Importar estudios de una carpeta de Google Drive</h3><p>Sube de una vez los estudios de muchos pacientes, sin hacerlo uno por uno.</p></div><button type="button" class="btn" data-i="cerrar">✕</button></div>
-    <ol class="img-ipasos"><li>En <b>Google Drive</b>, clic derecho en la carpeta (por ejemplo <b>RX TORAX 2026</b>) → <b>Descargar</b>. Drive la baja en un archivo <b>.zip</b>.</li>
-      <li>Elija aquí ese ZIP (o, si lo descomprimió, la carpeta).</li>
-      <li>La app reconoce al <b>paciente</b> por el nombre de su carpeta o del archivo (o por el DNI), la <b>fecha</b> por el nombre del archivo (16-10-26, 24-10-2026, 16 JULIO 2026) y el <b>tipo</b> por sus palabras. Usted revisa la lista y sube todo junto.</li></ol>
-    <div class="img-ibtns"><button type="button" class="btn primary" data-i="zip">🗜 Elegir el ZIP de Drive</button><button type="button" class="btn" data-i="carpeta">📁 Elegir la carpeta</button><button type="button" class="btn" data-i="arch">📄 Elegir varios archivos</button></div>
-    <small class="img-inota">Los archivos de una carpeta <b>CONTACTOS</b> no se asignan al caso índice: elija a quién pertenecen. Lo que ya se importó antes no se repite. Si el ZIP es muy grande para este equipo, descomprímalo y elija la carpeta.</small>`;return;}
+  if(impEstado==="elegir"){const u=drvUrl||config.driveRaiz||"";
+    B.innerHTML=`<div class="img-icab"><div><h3>📥 Traer estudios de Google Drive</h3><p>Los PDF y fotos quedan guardados en la app, como los que se suben a mano: se ven aquí sin entrar a Drive.</p></div><button type="button" class="btn" data-i="cerrar">✕</button></div>
+    <div class="img-idrive"><b>🔗 Directo de Drive, sin descargar nada</b>
+      <div class="img-idfila"><input type="url" id="imgDrvUrl" value="${esc(u)}" placeholder="Pegue el enlace de la carpeta (o de un archivo) de Google Drive" autocomplete="off"><button type="button" class="btn primary" data-i="drvLeer">Leer la carpeta</button></div>
+      <small>Se leen todas sus subcarpetas. La app reconoce al <b>paciente</b> por el nombre de su carpeta o del archivo (o por el DNI), la <b>fecha</b> por el nombre del archivo (16-10-26, 24-10-2026, 16 JULIO 2026) y el <b>tipo</b> por sus palabras; usted revisa la lista y se guarda todo junto. La carpeta debe estar compartida como «Cualquier persona con el enlace».</small>
+      ${panelDrvErr()}</div>
+    <details class="img-iotro"><summary>O, si ya lo descargó: el ZIP, la carpeta o varios archivos</summary>
+      <ol class="img-ipasos"><li>En <b>Google Drive</b>, clic derecho en la carpeta → <b>Descargar</b> (Drive la baja en un <b>.zip</b>).</li><li>Elija aquí ese ZIP (o, si lo descomprimió, la carpeta).</li></ol>
+      <div class="img-ibtns"><button type="button" class="btn" data-i="zip">🗜 Elegir el ZIP</button><button type="button" class="btn" data-i="carpeta">📁 Elegir la carpeta</button><button type="button" class="btn" data-i="arch">📄 Elegir varios archivos</button></div></details>
+    <small class="img-inota">Los archivos de una carpeta <b>CONTACTOS</b> no se asignan al caso índice: elija a quién pertenecen. Lo que ya se guardó antes no se repite.</small>`;return;}
   if(impEstado==="leyendo"){B.innerHTML=`<div class="img-icab"><div><h3>Leyendo los archivos…</h3><p>Un momento, se reconocen pacientes y fechas.</p></div></div><div class="img-cargando oscuro">⏳</div>`;return;}
   if(impEstado==="subiendo"||impEstado==="listo"){return;}
   const ok=IMP.filter(x=>x.f),sel=ok.filter(x=>x.si&&x.pac),rec=ok.filter(x=>x.por&&x.pac&&x.por!=="contactos"&&!x.dud).length,dud=ok.filter(x=>x.pac&&x.dud).length,sin=ok.filter(x=>!x.pac).length,ya=ok.filter(x=>x.ya).length,otros=IMP.length-ok.length;
@@ -307,12 +367,12 @@ function pintarImp(){const B=$('imgImp');if(impEstado.startsWith("enl")){pintarE
     </tbody></table></div>
     <div class="img-ipie"><span>${sel.length} para subir</span><button type="button" class="btn" data-i="otra">↺ Elegir otros</button><button type="button" class="btn primary" data-i="subir" ${sel.length?"":"disabled"}>⬆ Subir ${sel.length} estudio${sel.length===1?"":"s"}</button></div>`;
   if($('imgImp').dataset.soloSin==="1"){B.querySelector('[data-i="soloSin"]').checked=true;B.querySelectorAll('tbody tr').forEach(tr=>{if(!tr.classList.contains('falta'))tr.hidden=true;});}}
-function abrirImp(){impEstado="elegir";IMP=[];$('imgImp').dataset.soloSin="";pintarImp();$('imgImpModal').classList.add('abierto');}
+function abrirImp(){impEstado="elegir";IMP=[];drvErr=null;$('imgImp').dataset.soloSin="";pintarImp();$('imgImpModal').classList.add('abierto');}
 function cerrarImp(){if(impEstado==="subiendo")return;$('imgImpModal').classList.remove('abierto');IMP=[];}
 async function preparar(lista){impEstado="leyendo";pintarImp();
   try{PALP=pacientes.map(r=>({r,w:[...new Set(palabras(r.nom))]})).filter(x=>x.w.length);
     IMP=lista.map(({ruta,f})=>{if(!f)return {ruta,f:null};const fecha=fechaDe(f.name)||fechaDe(ruta.split("/").slice(-2,-1)[0]||""),tipo=tipoDe(ruta);
-      const prev=Object.values(imagenes).find(x=>mismaRuta(x.origen,ruta)&&(!x.otam||x.otam===f.size)); // ya se importó (aunque se haya asignado a mano)
+      const prev=Object.values(imagenes).find(x=>!x.url&&((f.drive&&x.gid===f.drive)||(mismaRuta(x.origen,ruta)&&(!x.otam||x.otam===f.size)))); // ya se importó (aunque se haya asignado a mano)
       if(prev)return {ruta,f,pac:prev.pacId,por:"ya",ya:true,si:false,fecha:prev.fecha||fecha,tipo:prev.tipo||tipo};
       const d=detectar(ruta),pac=d.r?d.r.id:"",ya=!!pac&&yaEsta(pac,f.name,f.size,ruta);
       return {ruta,f,pac,por:d.por,dud:!!d.dud,ya,si:!!pac&&!ya&&!d.dud,fecha,tipo};});
@@ -321,11 +381,13 @@ async function preparar(lista){impEstado="leyendo";pintarImp();
   catch(e){console.error(e);impEstado="elegir";pintarImp();avisar("No se pudo leer",String(e&&e.message||e),"peligro");return;}
   pintarImp();}
 async function subirTodo(){const l=IMP.filter(x=>x.f&&x.si&&x.pac);if(!l.length)return;impEstado="subiendo";const B=$('imgImp');let ok=0,cola=0,local=0;const err=[];
-  B.innerHTML=`<div class="img-icab"><div><h3>Subiendo estudios…</h3><p>No cierre la app hasta que termine.</p></div></div><div class="img-prog grande"><div class="img-pbar"><i></i></div><span></span></div>`;
+  B.innerHTML=`<div class="img-icab"><div><h3>Guardando estudios en la app…</h3><p>No cierre la app hasta que termine.</p></div></div><div class="img-prog grande"><div class="img-pbar"><i></i></div><span></span></div>`;
   const pr=(t,f)=>{B.querySelector('.img-prog span').textContent=t;B.querySelector('.img-pbar i').style.width=Math.round(f*100)+"%";};
   for(let i=0;i<l.length;i++){const x=l[i],pac=pacientes.find(r=>r.id===x.pac);pr(`${i+1} de ${l.length}: ${x.f.name}`,i/l.length);
     if(!pac){err.push(x.f.name+": paciente no encontrado");continue;}
-    try{const r=await subirUno(x.f,pac,{tipo:x.tipo,fecha:x.fecha,nota:"",origen:x.ruta},p=>pr(`${i+1} de ${l.length}: ${x.f.name}`,(i+p)/l.length));ok++;if(r==="cola")cola++;if(r==="local")local++;}
+    try{let f=x.f;if(f.drive){pr(`${i+1} de ${l.length}: trayendo de Drive ${f.name}`,i/l.length);f=await bajarDrive(f);}
+      const r=await subirUno(f,pac,{tipo:x.tipo,fecha:x.fecha,nota:"",origen:x.ruta,gid:x.f.drive},p=>pr(`${i+1} de ${l.length}: ${x.f.name}`,(i+p)/l.length));ok++;if(r==="cola")cola++;if(r==="local")local++;
+      if(x.f.drive)quitarEnlaces(x.f.drive,pac.id);}
     catch(e){console.error(e);err.push(x.f.name+": "+(e&&e.message||e));}}
   impEstado="listo";pr("Listo",1);
   B.innerHTML=`<div class="img-icab"><div><h3>✔ ${ok} estudio${ok===1?"":"s"} importado${ok===1?"":"s"}</h3><p>${local?"Guardados en este equipo (sin nube).":cola?"Se terminan de subir a la nube al reconectar.":"Guardados y sincronizados con los demás equipos."}</p></div></div>
@@ -375,6 +437,8 @@ $('imgImportar').addEventListener('click',abrirImp);
 $('imgImpModal').addEventListener('click',e=>{if(e.target===$('imgImpModal')){cerrarImp();return;}const b=e.target.closest('[data-i]');if(!b)return;const a=b.dataset.i;
   if(a==="cerrar"||a==="fin"){impEstado="elegir";cerrarImp();}else if(a==="zip")$('imgImpZip').click();else if(a==="carpeta")$('imgImpCarpeta').click();else if(a==="arch")$('imgImpArch').click();
   else if(a==="otra"){impEstado="elegir";IMP=[];pintarImp();}else if(a==="subir")subirTodo();
+  else if(a==="drvLeer")leerDrive(($('imgDrvUrl')||{}).value);
+  else if(a==="drvClave"){const v=(($('imgDrvClave')||{}).value||"").trim();if(v&&!/^AIza[\w-]{30,}$/.test(v)){msg("La clave de API empieza con «AIza…»");return;}config.driveClave=v;guardarConfig();msg(v?"Clave guardada":"Se usará la clave del proyecto");leerDrive(($('imgDrvUrl')||{}).value);}
   else if(a==="enlRevisar")revisarEnl(($('imgEnlTxt')||{}).value);else if(a==="enlArch")$('imgEnlArch').click();else if(a==="enlOtra"){impEstado="enl";ENL=[];pintarEnl();}else if(a==="enlGuardar")guardarEnl();
   else if(a==="todos"){IMP.forEach(x=>{if(x.f&&x.pac&&!x.ya&&!x.dud)x.si=b.checked;});pintarImp();}});
 $('imgImpModal').addEventListener('change',async e=>{const t=e.target;
@@ -396,6 +460,7 @@ $('imgImpModal').addEventListener('change',async e=>{const t=e.target;
   else if(c==="pac"){x.pac=t.value;x.por=t.value?"mano":"";x.dud=false;x.ya=!!x.pac&&yaEsta(x.pac,x.f.name,x.f.size,x.ruta);x.si=!!x.pac&&!x.ya;}
   pintarImp();});
 document.addEventListener('keydown',e=>{if(e.key==="Escape"&&$('imgImpModal').classList.contains('abierto'))cerrarImp();});
+$('imgImpModal').addEventListener('keydown',e=>{if(e.key==="Enter"&&e.target.id==="imgDrvUrl"){e.preventDefault();leerDrive(e.target.value);}});
 
 /* ======================= EVENTOS ======================= */
 $('imgLista').addEventListener('click',e=>{const b=e.target.closest('[data-pac]');if(!b)return;sel=b.dataset.pac;editar=null;try{localStorage.setItem('pct_img_sel',sel);}catch(x){}render(true);
@@ -412,7 +477,7 @@ $('imgPanel').addEventListener('click',e=>{const a2=e.target.closest('[data-acc2
   const vc=e.target.closest('[data-vcarp]');if(vc){const x=imagenes[vc.dataset.vcarp];if(x)ver(x);return;}
   const ab=e.target.closest('[data-abrir]');if(ab){sel=ab.dataset.abrir;try{localStorage.setItem('pct_img_sel',sel);}catch(x){}render(true);return;}
   const b=e.target.closest('[data-acc]');if(!b)return;const card=b.closest('[data-id]'),x=card&&imagenes[card.dataset.id];if(!x)return;const a=b.dataset.acc;
-  if(a==="ver")ver(x);else if(a==="bajar")bajar(x);else if(a==="borrar")borrar(x);else if(a==="editar"){editar=x.id;render(true);}else if(a==="cancelar"){editar=null;render(true);}
+  if(a==="ver")ver(x);else if(a==="traer")traerEnlace(x);else if(a==="bajar")bajar(x);else if(a==="borrar")borrar(x);else if(a==="editar"){editar=x.id;render(true);}else if(a==="cancelar"){editar=null;render(true);}
   else if(a==="guardar"){const v=k=>card.querySelector(`[data-e="${k}"]`).value,f=v("fecha");if(!fechaIsoValida(f)){msg("Fecha no válida");return;}
     imagenes[x.id]=Object.assign({},x,{tipo:v("tipo"),fecha:deIso(f),nota:v("nota").trim()});editar=null;guardar();render(true);msg("Estudio actualizado");}});
 // arrastrar y soltar
