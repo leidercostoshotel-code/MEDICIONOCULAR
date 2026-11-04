@@ -88,8 +88,10 @@
 /* enlaces de Google Drive (sin copiar el archivo) */
 .img-cabd{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
 .img-bdrive{background:#fff;color:#1a237e;border:0;font-weight:bold;text-decoration:none;white-space:nowrap}.img-bdrive:hover{background:#e8eaf6}
-.img-mini.drive{background:#f1f6ff;text-decoration:none;cursor:pointer}.img-mini.drive svg{width:54px;height:54px}
-.img-card.enlace{border-color:#c5cae9}.img-card.enlace .img-mini{width:88px;height:88px}
+.img-mini.drive{background:#f1f6ff;cursor:zoom-in}.img-mini.drive.pdf{background:#fff5f5}.img-card.carpeta .img-mini.drive svg{width:54px;height:54px}
+.img-mini .img-gd{position:absolute;right:5px;bottom:5px;width:22px;height:22px;display:grid;place-items:center;background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:1}
+.img-mini .img-gd svg{width:15px;height:15px}.img-card.carpeta .img-gd{display:none}
+.img-card.enlace{border-color:#c5cae9}.img-card.carpeta .img-mini{width:88px;height:88px}
 #imgRaiz,.img-acc a.btn{text-decoration:none}#imgRaiz[hidden]{display:none}
 .img-tipo.t-carpeta-de-drive{background:#e8eaf6;color:#283593}
 .img-acc a.btn{text-decoration:none}
@@ -98,5 +100,6 @@
 .img-enltxt{padding:0 18px}.img-enltxt textarea{width:100%;box-sizing:border-box;font:12.5px/1.45 Consolas,monospace;padding:8px 10px;border:1px solid #cfd8dc;border-radius:10px;resize:vertical}
 .img-ipasos code{font-size:11px;background:#f3f6f9;border-radius:4px;padding:1px 4px;word-break:break-all}
 .img-itabla td small a{color:#1565c0}
-@media (max-width:560px){.img-card.enlace{flex-direction:row}.img-card.enlace .img-mini{width:64px;height:64px}.img-card.enlace .img-mini svg{width:40px;height:40px}}
+@media (max-width:560px){.img-card.carpeta{flex-direction:row}.img-card.carpeta .img-mini{width:64px;height:64px}.img-card.carpeta .img-mini svg{width:40px;height:40px}}
+.img-itabla td [data-c="fecha"]{display:block;margin-top:4px}
 @media (max-width:700px){.img-cab{flex-direction:column}.img-cabd{align-items:flex-start;flex-direction:row;flex-wrap:wrap}}
