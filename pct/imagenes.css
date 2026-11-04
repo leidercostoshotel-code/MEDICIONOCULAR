@@ -103,3 +103,10 @@
 @media (max-width:560px){.img-card.carpeta{flex-direction:row}.img-card.carpeta .img-mini{width:64px;height:64px}.img-card.carpeta .img-mini svg{width:40px;height:40px}}
 .img-itabla td [data-c="fecha"]{display:block;margin-top:4px}
 @media (max-width:700px){.img-cab{flex-direction:column}.img-cabd{align-items:flex-start;flex-direction:row;flex-wrap:wrap}}
+/* traer directo de Google Drive */
+.img-idrive{margin:14px 18px 6px;padding:12px 14px;border:1px solid #c5cae9;background:#f5f7ff;border-radius:12px;display:flex;flex-direction:column;gap:8px}
+.img-idrive>b{font-size:14px;color:#1a237e}.img-idrive>small{font-size:12px;color:#546e7a;line-height:1.5}
+.img-idfila{display:flex;flex-wrap:wrap;gap:8px}.img-idfila input{flex:1 1 260px;min-width:0;font:inherit;font-size:13px;padding:7px 9px;border:1px solid #9fa8da;border-radius:8px;background:#fff}
+.img-iaviso{border:1px solid #ffcc80;background:#fff8e1;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#4e342e;display:flex;flex-direction:column;gap:6px;line-height:1.5}
+.img-iaviso ol{margin:0;padding-left:20px}.img-iaviso a{color:#1565c0;font-weight:600}.img-iaviso small{font-size:11.5px}.img-ierrt{color:#8d6e63;word-break:break-word}.img-ierrt:empty{display:none}
+.img-iotro{margin:6px 18px 0;font-size:13px;color:#37474f}.img-iotro summary{cursor:pointer;font-weight:600;color:#546e7a;padding:6px 0}.img-iotro .img-ipasos{margin:6px 0 0}.img-iotro .img-ibtns{padding:10px 0 4px}
