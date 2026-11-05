@@ -316,12 +316,19 @@ async function listarDrive(raiz,avance){const m=await (await api("/"+raiz+"?fiel
 async function bajarDrive(d){d=Object.assign({},d,{id:d.id||d.drive});if(!d.name||!/\.[a-z0-9]{2,4}$/i.test(d.name)||!d.type){const m=await (await api("/"+d.id+"?fields=name,mimeType,size")).json();d=Object.assign({},d,{name:/\.[a-z0-9]{2,4}$/i.test(d.name||"")?d.name:m.name,type:d.type||m.mimeType});}
   const b=await (await api("/"+d.id+"?alt=media")).blob();return new File([b],d.name,{type:d.type||b.type});}
 let drvErr=null,drvUrl=""; // último enlace pegado (se conserva al volver a dibujar)
-function panelDrvErr(){if(!drvErr)return "";const pj=proyecto(),q=pj&&!config.driveClave?"?project="+encodeURIComponent(pj):"";
-  if(drvErr.cod==="api-apagada"||drvErr.cod==="clave")return `<div class="img-iaviso"><b>Falta activar una sola vez la conexión con Google Drive</b>
+function panelDrvErr(){if(!drvErr)return "";const pj=proyecto(),q=pj?"?project="+encodeURIComponent(pj):"";
+  const campo=`<div class="img-idfila"><input type="text" id="imgDrvClave" value="${esc(config.driveClave||"")}" placeholder="Pegue aquí la clave (AIza…)" autocomplete="off"><button type="button" class="btn primary" data-i="drvClave">Guardar clave</button></div>`;
+  const cred=`<a href="https://console.cloud.google.com/apis/credentials${q}" target="_blank" rel="noopener">Credenciales de Google Cloud</a>`;
+  if(drvErr.cod==="clave")return `<div class="img-iaviso"><b>${config.driveClave?"La clave guardada no tiene permiso para usar Google Drive.":"Google Drive API ya está activa, pero la clave de la app no tiene permiso para usarla."}</b>
+    <span>Cree una clave solo para Drive (unos 2 minutos), con la cuenta dueña del proyecto de Firebase:</span>
+    <ol><li>Abra ${cred} y arriba presione <b>+ Crear credenciales → Clave de API</b>.</li>
+      <li>Copie la clave que aparece (empieza con <b>AIza</b>), péguela aquí abajo y presione <b>Guardar clave</b>: la app vuelve a leer la carpeta sola.</li>
+      <li>Recomendado: en esa misma clave, <b>Restricciones de API → Restringir clave → Google Drive API</b>, y en <b>Restricciones de aplicaciones → Sitios web</b> agregue <b>pct-huascar.web.app/*</b> y <b>pct-huascar.firebaseapp.com/*</b>. Guarde (tarda hasta 5 minutos en aplicarse).</li></ol>
+    ${campo}<small>No cambie la clave que ya existe («Browser key (auto created by Firebase)»): la usa el inicio de sesión de la app.</small>
+    <small class="img-ierrt">${esc(drvErr.msg||"")}</small></div>`;
+  if(drvErr.cod==="api-apagada")return `<div class="img-iaviso"><b>Falta activar una sola vez la conexión con Google Drive</b>
     <ol><li>Entre con la cuenta dueña del proyecto de Firebase a <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com${q}" target="_blank" rel="noopener">Google Drive API</a> y presione <b>Habilitar</b>.</li>
       <li>Espere uno o dos minutos y presione otra vez <b>«Leer la carpeta»</b>.</li></ol>
-    <small>${drvErr.cod==="clave"?"<b>La clave de API no puede usar Google Drive.</b> ":""}Si después de habilitarla sigue el aviso: en <a href="https://console.cloud.google.com/apis/credentials${q}" target="_blank" rel="noopener">Credenciales</a> → <b>Crear credenciales → Clave de API</b>; restrínjala a <b>Google Drive API</b> y al sitio <b>pct-huascar.web.app/*</b>, y péguela aquí:</small>
-    <div class="img-idfila"><input type="text" id="imgDrvClave" value="${esc(config.driveClave||"")}" placeholder="Clave de API (AIza…)" autocomplete="off"><button type="button" class="btn" data-i="drvClave">Guardar clave</button></div>
     <small class="img-ierrt">${esc(drvErr.msg||"")}</small></div>`;
   return `<div class="img-iaviso">${drvErr.cod==="url"?"<b>Pegue el enlace de una carpeta o de un archivo de Google Drive.</b>":drvErr.cod==="sin-permiso"?"<b>No se pudo abrir la carpeta.</b> Revise el enlace y que en Drive esté compartida como <b>«Cualquier persona con el enlace»</b> (Compartir → Acceso general).":"<b>No hay conexión con Google Drive.</b> Intente de nuevo."}<small class="img-ierrt">${esc(drvErr.msg||"")}</small></div>`;}
 async function leerDrive(u){u=drvUrl=String(u||"").trim();const id=idDrive(u)||(/^[\w-]{20,}$/.test(u)?u:"");if(!id){drvErr={cod:"url"};impEstado="elegir";pintarImp();return;}
