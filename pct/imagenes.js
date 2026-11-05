@@ -8,6 +8,7 @@
    · Las fotos se achican antes de subir (lado mayor 2200 px, JPG); PDF hasta 15 MB.
    · «Traer de Drive»: con solo el enlace de la carpeta (compartida con «Cualquier persona con el enlace»), la app la lee con la API de
      Drive (solo lectura, con la clave de API del proyecto) y guarda cada PDF o foto como un estudio más: se ve aquí sin entrar a Drive.
+     🔄 Automático: lo NUEVO que se sube a esa carpeta se guarda solo (en los equipos con la app abierta, al abrirla y cada 30 minutos).
      También acepta el ZIP que baja Google Drive (o la carpeta descomprimida, o varios archivos). Reconoce al paciente por
      el nombre de su carpeta o del archivo (o el DNI), la fecha por el nombre del archivo (16-10-26, 24-10-2026, 16 JULIO 2026) y el
      tipo por las palabras del nombre; se revisa en una lista y se sube todo junto. Lo ya importado no se repite.
@@ -128,7 +129,7 @@ async function subirUno(f,pac,meta,avance){
   let blob,thumb=null,mime;
   if(pdf){if(f.size>MAX_PDF)throw new Error(`pesa ${mb(f.size)}; el máximo es 15 MB`);blob=f;mime="application/pdf";}
   else{if(f.size>MAX_FOTO)throw new Error(`pesa ${mb(f.size)}`);const c=await comprimir(f);blob=c.blob;thumb=c.thumb;mime="image/jpeg";}
-  const id=uid(),rec={id,pacId:pac.id,tipo:meta.tipo,fecha:meta.fecha,nota:meta.nota,nombre:f.name.slice(0,120),mime,tam:blob.size,partes:Math.max(1,Math.ceil(blob.size/PARTE)),
+  const id=meta.gid?"d_"+meta.gid:uid(),rec={id,pacId:pac.id,tipo:meta.tipo,fecha:meta.fecha,nota:meta.nota,nombre:f.name.slice(0,120),mime,tam:blob.size,partes:Math.max(1,Math.ceil(blob.size/PARTE)),
     mini:thumb?1:0,creado:new Date().toISOString(),por:(window.Sync&&Sync.usuario&&Sync.usuario())||"",otam:f.size};
   if(meta.origen)rec.origen=meta.origen.slice(0,300); // carpeta de donde se importó
   if(meta.gid)rec.gid=meta.gid; // id del archivo en Google Drive (para no traerlo dos veces)
@@ -229,6 +230,7 @@ async function bajar(x){if(esEnlace(x)){ver(x);return;}try{const b=await archivo
   catch(e){msg(e.message==="incompleto"?"El archivo aún no termina de subir a la nube":"No se pudo descargar (¿sin conexión?)");}}
 async function borrar(x){if(!await confirmar(esEnlace(x)?"Quitar enlace":"Eliminar estudio",esEnlace(x)?`Se quitará el enlace «${x.nombre||x.tipo}» de la app. En Google Drive no se borra nada.`:`Se eliminará «${x.tipo}» del ${x.fecha||"(sin fecha)"} (${x.nombre}) en este equipo y en la nube.`,{ok:esEnlace(x)?"Quitar":"Eliminar",peligro:true}))return;
   delete imagenes[x.id];guardar();IDB.del(x.id);IDB.del(x.id+"_t");
+  if(x.gid&&config.driveAuto){const o=config.driveAuto.omitidos||[];if(!o.includes(x.gid)){config.driveAuto=Object.assign({},config.driveAuto,{omitidos:o.concat(x.gid).slice(-3000)});guardarConfig();}}
   const n=!esEnlace(x)&&nube();if(n){const b=n.db.batch(),col=n.db.collection("pct_archivos");for(let k=0;k<x.partes;k++)b.delete(col.doc(x.id+"_"+k));b.delete(col.doc(x.id+"_t"));b.commit().catch(e=>console.error(e));}
   render(true);msg(esEnlace(x)?"Enlace quitado":"Estudio eliminado");}
 function nuevoEnlace(pac,url,o){url=urlLimpia(url);const id=uid(),carpeta=/\/folders\//.test(url);
@@ -304,14 +306,18 @@ async function api(ruta,intento){const k=claveDrive();if(!k)throw errDrive("clav
   if((r.status===429||/rateLimit/i.test(t))&&(intento||0)<3){await esperar(1500*((intento||0)+1));return api(ruta,(intento||0)+1);}
   throw errDrive(/SERVICE_DISABLED|accessNotConfigured|has not been used/i.test(t)?"api-apagada":/API_KEY|keyInvalid|API key not valid|are blocked/i.test(t)?"clave":r.status===404||r.status===403?"sin-permiso":"red",e.message||("Error "+r.status));}
 const esArch=d=>d.mime==="application/pdf"||/^image\//.test(d.mime||"")||!!EXT_MIME[extDe(d.name)];
-async function listarDrive(raiz,avance){const m=await (await api("/"+raiz+"?fields=id,name,mimeType,size")).json(),limpio=n=>String(n||"").replace(/[\/\\]/g,"-");
-  if(m.mimeType!==CARP_MIME)return [{ruta:limpio(m.name),id:m.id,name:m.name,mime:m.mimeType,size:+m.size||0}];
-  const out=[],pend=[{id:m.id,ruta:limpio(m.name)}];let n=0;
+const limpio=n=>String(n||"").replace(/[\/\\]/g,"-");
+const CAMPOS="files(id,name,mimeType,size,createdTime,parents)";
+const archD=(f,ruta)=>({ruta,id:f.id,name:f.name,mime:f.mimeType,size:+f.size||0,creado:f.createdTime||""});
+// recorre la carpeta y sus subcarpetas; «carpetas» (opcional) se llena con {id: ruta} de cada carpeta
+async function listarDrive(raiz,avance,carpetas,rutaRaiz){const m=await (await api("/"+raiz+"?fields=id,name,mimeType,size,createdTime")).json();
+  if(m.mimeType!==CARP_MIME)return [archD(m,limpio(m.name))];
+  const out=[],pend=[{id:m.id,ruta:rutaRaiz||limpio(m.name)}];let n=0;if(carpetas)carpetas[m.id]=pend[0].ruta;
   while(pend.length&&n<600&&out.length<4000){const c=pend.shift();let tok="";
-    do{const j=await (await api("?q="+encodeURIComponent(`'${c.id}' in parents and trashed=false`)+"&fields=nextPageToken,files(id,name,mimeType,size)&pageSize=1000&includeItemsFromAllDrives=true"+(tok?"&pageToken="+encodeURIComponent(tok):""))).json();
-      for(const f of j.files||[]){const ruta=c.ruta+"/"+limpio(f.name);if(f.mimeType===CARP_MIME)pend.push({id:f.id,ruta});else out.push({ruta,id:f.id,name:f.name,mime:f.mimeType,size:+f.size||0});}
+    do{const j=await (await api("?q="+encodeURIComponent(`'${c.id}' in parents and trashed=false`)+"&fields=nextPageToken,"+CAMPOS+"&pageSize=1000&includeItemsFromAllDrives=true"+(tok?"&pageToken="+encodeURIComponent(tok):""))).json();
+      for(const f of j.files||[]){const ruta=c.ruta+"/"+limpio(f.name);if(f.mimeType===CARP_MIME){pend.push({id:f.id,ruta});if(carpetas)carpetas[f.id]=ruta;}else out.push(archD(f,ruta));}
       tok=j.nextPageToken||"";}while(tok);
-    avance(++n,out.length);}
+    if(avance)avance(++n,out.length);}
   return out;}
 async function bajarDrive(d){d=Object.assign({},d,{id:d.id||d.drive});if(!d.name||!/\.[a-z0-9]{2,4}$/i.test(d.name)||!d.type){const m=await (await api("/"+d.id+"?fields=name,mimeType,size")).json();d=Object.assign({},d,{name:/\.[a-z0-9]{2,4}$/i.test(d.name||"")?d.name:m.name,type:d.type||m.mimeType});}
   const b=await (await api("/"+d.id+"?alt=media")).blob();return new File([b],d.name,{type:d.type||b.type});}
@@ -334,9 +340,65 @@ function panelDrvErr(){if(!drvErr)return "";const pj=proyecto(),q=pj?"?project="
 async function leerDrive(u){u=drvUrl=String(u||"").trim();const id=idDrive(u)||(/^[\w-]{20,}$/.test(u)?u:"");if(!id){drvErr={cod:"url"};impEstado="elegir";pintarImp();return;}
   impEstado="leyendo";pintarImp();const B=$('imgImp');B.querySelector('h3').textContent="Leyendo la carpeta de Google Drive…";
   try{const l=await listarDrive(id,(nc,na)=>{const c=B.querySelector('.img-cargando');if(c)c.textContent=`⏳ ${nc} carpeta${nc===1?"":"s"} · ${na} archivo${na===1?"":"s"}`;});
-    drvErr=null;if(/\/folders\//.test(u)&&!config.driveRaiz){config.driveRaiz=urlLimpia(u);guardarConfig();}
+    drvErr=null;if(/\/folders\//.test(u)&&!config.driveRaiz){config.driveRaiz=urlLimpia(u);guardarConfig();}if(puedeAuto())autoInicial();
     await preparar(l.map(d=>({ruta:d.ruta,f:esArch(d)?{name:d.name,size:d.size,type:EXT_MIME[extDe(d.name)]&&!/^image\/|pdf/.test(d.mime||"")?EXT_MIME[extDe(d.name)]:d.mime,drive:d.id}:null})));}
   catch(e){console.error(e);drvErr={cod:e.cod||"red",msg:e.message};impEstado="elegir";pintarImp();}}
+/* ---- Automático: solo lo NUEVO que se sube a la carpeta. Corre en los equipos con la app abierta (al abrirla y cada 30 minutos):
+   el plan gratuito de Firebase no tiene un servidor que lo haga solo. Nuevo = creado en Drive después de activarlo. Lo que se reconoce
+   con seguridad se guarda solo; lo demás queda «por revisar» (número en el botón «Traer de Drive»). ---- */
+const LS_AUTO="pct_drive_auto",CADA=30*60000;
+let AUTO={},autoCorriendo=false;try{AUTO=JSON.parse(localStorage.getItem(LS_AUTO))||{};}catch(e){}
+const guardarAuto=()=>{try{localStorage.setItem(LS_AUTO,JSON.stringify(AUTO));}catch(e){}};
+const autoCfg=()=>config.driveAuto&&config.driveAuto.on&&idDrive(config.driveAuto.raiz)?config.driveAuto:null;
+function autoInicial(){if(config.driveAuto||!/\/folders\//.test(config.driveRaiz||""))return; // se enciende solo la primera vez (luego se puede apagar)
+  config.driveAuto={on:true,raiz:urlLimpia(config.driveRaiz),desde:new Date().toISOString(),omitidos:[]};AUTO={};guardarAuto();guardarConfig();}
+const yaTraido=d=>!!imagenes["d_"+d.id]||Object.values(imagenes).some(x=>!x.url&&(x.gid===d.id||(d.ruta&&mismaRuta(x.origen,d.ruta)&&(!x.otam||x.otam===d.size))));
+const omitido=id=>((config.driveAuto||{}).omitidos||[]).includes(id);
+const pendientes=()=>(AUTO.pend||[]).filter(d=>!yaTraido(d)&&!omitido(d.id));
+const isoD=ms=>new Date(ms).toISOString().slice(0,19); // formato de las consultas de Drive (UTC)
+async function nuevosDrive(desdeMs){const car=AUTO.carpetas,ids=Object.keys(car),out=[],nuevas=[],desde=isoD(desdeMs);
+  const consultar=async g=>{let tok="",falta=false;const res=[];
+    do{const q=`(${g.map(id=>`'${id}' in parents`).join(" or ")}) and trashed=false and createdTime > '${desde}'`;
+      const j=await (await api("?q="+encodeURIComponent(q)+"&fields=nextPageToken,"+CAMPOS+"&pageSize=1000&includeItemsFromAllDrives=true"+(tok?"&pageToken="+encodeURIComponent(tok):""))).json();
+      for(const f of j.files||[]){const p=g.length===1?g[0]:(f.parents||[]).find(x=>car[x]);if(!p){falta=true;break;}res.push([f,p]);}
+      tok=falta?"":j.nextPageToken||"";}while(tok);
+    if(falta&&g.length>1){for(const id of g)await consultar([id]);return;} // sin «parents» en la respuesta: carpeta por carpeta
+    for(const [f,p] of res){const ruta=car[p]+"/"+limpio(f.name);if(f.mimeType===CARP_MIME){if(!car[f.id]){car[f.id]=ruta;nuevas.push({id:f.id,ruta});}}else out.push(archD(f,ruta));}};
+  for(let i=0;i<ids.length;i+=40)await consultar(ids.slice(i,i+40));
+  for(const c of nuevas)out.push(...await listarDrive(c.id,null,car,c.ruta)); // carpeta nueva (paciente nuevo): todo lo de adentro es nuevo
+  return out;}
+const puedeAuto=()=>!document.body.classList.contains('login-abierto')&&(nube()||!window.firebase); // con nube: solo con sesión iniciada
+async function revisarAuto(forzar){if(puedeAuto())autoInicial();const c=autoCfg();if(!c||autoCorriendo||!claveDrive()||!puedeAuto())return;if(!forzar&&Date.now()-(AUTO.ult||0)<CADA)return;
+  autoCorriendo=true;const ini=Date.now(),raiz=idDrive(c.raiz),desdeAct=Date.parse(c.desde)||ini;let ok=0;pintarBadge();
+  try{let lista;
+    if(AUTO.raiz!==raiz||!AUTO.carpetas||ini-(AUTO.completo||0)>7*864e5){const car={};lista=await listarDrive(raiz,null,car);AUTO.carpetas=car;AUTO.raiz=raiz;AUTO.completo=ini;} // completo: la primera vez y cada semana
+    else lista=await nuevosDrive(Math.max(desdeAct,(AUTO.ult||0)-864e5)); // un día de margen; lo repetido se descarta
+    const nuevos=lista.filter(d=>esArch(d)&&Date.parse(d.creado||0)>desdeAct&&!yaTraido(d)&&!omitido(d.id)&&!(AUTO.pend||[]).some(p=>p.id===d.id)).concat(pendientes());
+    PALP=pacientes.map(r=>({r,w:[...new Set(palabras(r.nom))]})).filter(x=>x.w.length);AUTO.pend=AUTO.pend||[];
+    for(const d of nuevos){const det=detectar(d.ruta),pac=det.r&&!det.dud?det.r:null;
+      if(!pac){if(!AUTO.pend.some(p=>p.id===d.id))AUTO.pend.push(d);continue;}
+      try{const f=await bajarDrive({id:d.id,name:d.name,type:EXT_MIME[extDe(d.name)]&&!/^image\/|pdf/.test(d.mime||"")?EXT_MIME[extDe(d.name)]:d.mime});
+        const fecha=fechaDe(d.name)||fechaDe(d.ruta.split("/").slice(-2,-1)[0]||"")||(d.creado?fmtFecha(new Date(d.creado)):"");
+        await subirUno(f,pac,{tipo:tipoDe(d.ruta),fecha,nota:"",origen:d.ruta,gid:d.id},()=>{});ok++;quitarEnlaces(d.id,pac.id);}
+      catch(e){if(e.cod==="clave"||e.cod==="api-apagada"||e.cod==="red")throw e;console.error(e);if(!AUTO.pend.some(p=>p.id===d.id))AUTO.pend.push(d);}}
+    AUTO.pend=AUTO.pend.filter(d=>!yaTraido(d)&&!omitido(d.id)).slice(-500);AUTO.ult=ini;AUTO.err="";
+    if(ok)msg(`🔄 Drive: ${ok} estudio${ok>1?"s":""} nuevo${ok>1?"s":""} guardado${ok>1?"s":""}`);}
+  catch(e){console.error(e);AUTO.err=e.cod||"red";AUTO.errMsg=String(e.message||e).slice(0,200);AUTO.ultIntento=ini;}
+  finally{AUTO.traidos=(AUTO.traidos||0)+ok;guardarAuto();autoCorriendo=false;pintarBadge();render(true);if(impEstado==="elegir"&&$('imgImpModal').classList.contains('abierto'))pintarImp();}}
+function pintarBadge(){const b=$('imgImportar'),n=pendientes().length,c=autoCfg();
+  b.innerHTML=`📥 Traer de Drive${c?` <span class="img-auto${autoCorriendo?" gira":""}" title="Automático activo">🔄</span>`:""}${n?` <span class="img-badge" title="${n} estudio${n>1?"s":""} nuevo${n>1?"s":""} en Drive por revisar">${n}</span>`:""}`;}
+function activarAuto(on){const prev=config.driveAuto||{};
+  if(on){const u=(($('imgDrvUrl')||{}).value||drvUrl||config.driveRaiz||"").trim();if(!/\/folders\//.test(u)||!idDrive(u)){msg("Pegue primero el enlace de la carpeta de Drive");pintarImp();return;}
+    config.driveAuto={on:true,raiz:urlLimpia(u),desde:new Date().toISOString(),omitidos:prev.omitidos||[]};AUTO={};guardarAuto();}
+  else config.driveAuto=Object.assign({},prev,{on:false});
+  guardarConfig();pintarBadge();pintarImp();if(on){msg("Automático activado: se traerán los estudios nuevos");revisarAuto(true);}}
+const haceTxt=ms=>{const m=Math.round((Date.now()-ms)/60000);return !ms?"todavía no":m<1?"recién":m<60?`hace ${m} min`:m<1440?`hace ${Math.round(m/60)} h`:`hace ${Math.round(m/1440)} d`;};
+function panelAuto(){const c=autoCfg(),n=pendientes().length;
+  return `<div class="img-iauto"><label><input type="checkbox" data-i="autoOn" ${c?"checked":""}> 🔄 <b>Automático:</b> traer solos los estudios <b>nuevos</b> que se suban a esta carpeta</label>
+    <small>${c?`Activo desde el ${esc(fmtFecha(new Date(c.desde)))} · última revisión: ${autoCorriendo?"revisando ahora…":haceTxt(AUTO.ult)}${AUTO.traidos?` · ${AUTO.traidos} traído${AUTO.traidos>1?"s":""} en este equipo`:""}. Se revisa al abrir la app y cada 30 minutos en los equipos con la app abierta; lo que no se reconoce con seguridad queda para revisar.`:"Cuenta como nuevo solo lo que se suba desde que lo active (lo que ya está en Drive se trae con «Leer la carpeta»)."}</small>
+    ${c&&AUTO.err&&!autoCorriendo&&(AUTO.ultIntento||0)>(AUTO.ult||0)?`<small class="img-ierrt">⚠ La última revisión falló: ${esc(AUTO.err==="clave"||AUTO.err==="api-apagada"?"la clave de API no puede usar Google Drive (presione «Leer la carpeta» para ver los pasos)":AUTO.errMsg||"sin conexión")}</small>`:""}
+    <div class="img-ibtns">${c?`<button type="button" class="btn" data-i="autoYa" ${autoCorriendo?"disabled":""}>🔄 Revisar ahora</button>`:""}${n?`<button type="button" class="btn primary" data-i="revPend">🆕 Revisar ${n} nuevo${n>1?"s":""} sin paciente seguro</button>`:""}</div></div>`;}
+let impPend=false; // la revisión es de los nuevos que dejó el automático
 function quitarEnlaces(gid,pacId){let n=0;for(const k in imagenes){const x=imagenes[k];if(x.url&&x.pacId===pacId&&!esCarpeta(x)&&idDrive(x.url)===gid){delete imagenes[k];n++;}}if(n)guardar();} // ya está guardado en la app
 async function traerEnlace(x){const pac=pacientes.find(p=>p.id===x.pacId),id=idDrive(x.url);if(!pac||!id||subiendo)return;
   if(esCarpeta(x)){abrirImp();leerDrive(x.url);return;}
@@ -354,7 +416,7 @@ function pintarImp(){const B=$('imgImp');if(impEstado.startsWith("enl")){pintarE
     <div class="img-idrive"><b>🔗 Directo de Drive, sin descargar nada</b>
       <div class="img-idfila"><input type="url" id="imgDrvUrl" value="${esc(u)}" placeholder="Pegue el enlace de la carpeta (o de un archivo) de Google Drive" autocomplete="off"><button type="button" class="btn primary" data-i="drvLeer">Leer la carpeta</button></div>
       <small>Se leen todas sus subcarpetas. La app reconoce al <b>paciente</b> por el nombre de su carpeta o del archivo (o por el DNI), la <b>fecha</b> por el nombre del archivo (16-10-26, 24-10-2026, 16 JULIO 2026) y el <b>tipo</b> por sus palabras; usted revisa la lista y se guarda todo junto. La carpeta debe estar compartida como «Cualquier persona con el enlace».</small>
-      ${panelDrvErr()}</div>
+      ${panelDrvErr()}${panelAuto()}</div>
     <details class="img-iotro"><summary>O, si ya lo descargó: el ZIP, la carpeta o varios archivos</summary>
       <ol class="img-ipasos"><li>En <b>Google Drive</b>, clic derecho en la carpeta → <b>Descargar</b> (Drive la baja en un <b>.zip</b>).</li><li>Elija aquí ese ZIP (o, si lo descomprimió, la carpeta).</li></ol>
       <div class="img-ibtns"><button type="button" class="btn" data-i="zip">🗜 Elegir el ZIP</button><button type="button" class="btn" data-i="carpeta">📁 Elegir la carpeta</button><button type="button" class="btn" data-i="arch">📄 Elegir varios archivos</button></div></details>
@@ -372,9 +434,9 @@ function pintarImp(){const B=$('imgImp');if(impEstado.startsWith("enl")){pintarE
       <td><input type="date" data-c="fecha" value="${aIso(x.fecha)}">${x.fecha?"":`<small class="img-ipor">sin fecha en el nombre</small>`}</td>
       <td><select data-c="tipo">${TIPOS.map(t=>`<option ${t===x.tipo?"selected":""}>${t}</option>`).join("")}</select></td></tr>`).join("")||`<tr><td colspan="5" class="img-vacio">No se encontraron PDF ni fotos.</td></tr>`}
     </tbody></table></div>
-    <div class="img-ipie"><span>${sel.length} para subir</span><button type="button" class="btn" data-i="otra">↺ Elegir otros</button><button type="button" class="btn primary" data-i="subir" ${sel.length?"":"disabled"}>⬆ Subir ${sel.length} estudio${sel.length===1?"":"s"}</button></div>`;
+    <div class="img-ipie"><span>${sel.length} para subir</span>${impPend?`<button type="button" class="btn" data-i="omitir" title="Los que no marque no volverán a aparecer como nuevos (siguen en Drive)">🙈 No volver a mostrar los no marcados</button>`:""}<button type="button" class="btn" data-i="otra">↺ Elegir otros</button><button type="button" class="btn primary" data-i="subir" ${sel.length?"":"disabled"}>⬆ Subir ${sel.length} estudio${sel.length===1?"":"s"}</button></div>`;
   if($('imgImp').dataset.soloSin==="1"){B.querySelector('[data-i="soloSin"]').checked=true;B.querySelectorAll('tbody tr').forEach(tr=>{if(!tr.classList.contains('falta'))tr.hidden=true;});}}
-function abrirImp(){impEstado="elegir";IMP=[];drvErr=null;$('imgImp').dataset.soloSin="";pintarImp();$('imgImpModal').classList.add('abierto');}
+function abrirImp(){impEstado="elegir";IMP=[];drvErr=null;impPend=false;$('imgImp').dataset.soloSin="";pintarImp();$('imgImpModal').classList.add('abierto');}
 function cerrarImp(){if(impEstado==="subiendo")return;$('imgImpModal').classList.remove('abierto');IMP=[];}
 async function preparar(lista){impEstado="leyendo";pintarImp();
   try{PALP=pacientes.map(r=>({r,w:[...new Set(palabras(r.nom))]})).filter(x=>x.w.length);
@@ -443,13 +505,19 @@ $('imgEnlazar').addEventListener('click',()=>{impEstado="enl";ENL=[];pintarEnl()
 $('imgImportar').addEventListener('click',abrirImp);
 $('imgImpModal').addEventListener('click',e=>{if(e.target===$('imgImpModal')){cerrarImp();return;}const b=e.target.closest('[data-i]');if(!b)return;const a=b.dataset.i;
   if(a==="cerrar"||a==="fin"){impEstado="elegir";cerrarImp();}else if(a==="zip")$('imgImpZip').click();else if(a==="carpeta")$('imgImpCarpeta').click();else if(a==="arch")$('imgImpArch').click();
-  else if(a==="otra"){impEstado="elegir";IMP=[];pintarImp();}else if(a==="subir")subirTodo();
+  else if(a==="otra"){impEstado="elegir";IMP=[];impPend=false;pintarImp();}else if(a==="subir")subirTodo();
   else if(a==="drvLeer")leerDrive(($('imgDrvUrl')||{}).value);
+  else if(a==="autoYa")revisarAuto(true);
+  else if(a==="revPend"){const l=pendientes();impPend=true;preparar(l.map(d=>({ruta:d.ruta,f:{name:d.name,size:d.size,type:d.mime,drive:d.id}})));}
+  else if(a==="omitir"){const ids=IMP.filter(x=>x.f&&x.f.drive&&!x.si&&!x.ya).map(x=>x.f.drive);if(!ids.length){msg("Todos están marcados");return;}
+    const o=(config.driveAuto||{}).omitidos||[];config.driveAuto=Object.assign({},config.driveAuto||{},{omitidos:o.concat(ids.filter(i=>!o.includes(i))).slice(-3000)});guardarConfig();
+    IMP=IMP.filter(x=>!(x.f&&ids.includes(x.f.drive)));pintarBadge();msg(`${ids.length} no se volverán a mostrar como nuevos`);if(!IMP.some(x=>x.f)){impEstado="elegir";impPend=false;}pintarImp();}
   else if(a==="drvClave"){const v=(($('imgDrvClave')||{}).value||"").trim();if(v&&!/^AIza[\w-]{30,}$/.test(v)){msg("La clave de API empieza con «AIza…»");return;}config.driveClave=v;guardarConfig();msg(v?"Clave guardada":"Se usará la clave del proyecto");leerDrive(($('imgDrvUrl')||{}).value);}
   else if(a==="enlRevisar")revisarEnl(($('imgEnlTxt')||{}).value);else if(a==="enlArch")$('imgEnlArch').click();else if(a==="enlOtra"){impEstado="enl";ENL=[];pintarEnl();}else if(a==="enlGuardar")guardarEnl();
   else if(a==="todos"){IMP.forEach(x=>{if(x.f&&x.pac&&!x.ya&&!x.dud)x.si=b.checked;});pintarImp();}});
 $('imgImpModal').addEventListener('change',async e=>{const t=e.target;
   if(t.id==="imgEnlArch"){const f=t.files[0];t.value="";if(f)revisarEnl(await f.text());return;}
+  if(t.dataset.i==="autoOn"){activarAuto(t.checked);return;}
   if(t.dataset.i==="conRaiz"){enlConRaiz=t.checked;pintarEnl();return;}
   if(impEstado==="enl-rev"){const tr=t.closest('tr[data-k]');if(!tr)return;const x=ENL[+tr.dataset.k];if(!x)return;const c=t.dataset.c;
     if(c==="si"){x.si=t.checked;if(t.checked)x.dud=false;}else if(c==="tipo")x.tipo=t.value;
@@ -499,5 +567,9 @@ window.showView=function(v){showBase(v);$('tabImg').classList.toggle('active',v=
 const alCambiarBase=window.alCambiarPacientes;
 window.alCambiarPacientes=function(){if(alCambiarBase)alCambiarBase();render();}; // nombre nuevo o cambiado en DATOS: aparece aquí solo
 const alCfgBase=window.alCambiarConfig;window.alCambiarConfig=function(){if(alCfgBase)alCfgBase();render();}; // carpeta principal de Drive guardada en otro equipo
-window.IMG={render,estudiosDe,_detectar:r=>{PALP=pacientes.map(x=>({r:x,w:[...new Set(palabras(x.nom))]})).filter(x=>x.w.length);return detectar(r);},_fecha:fechaDe};
+pintarBadge();
+setTimeout(()=>revisarAuto(),20000); // después de que la nube trae los estudios y la configuración
+setInterval(()=>{if(!document.hidden)revisarAuto();},5*60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>revisarAuto(),3000);});
+window.IMG={render,_auto:f=>revisarAuto(f),estudiosDe,_detectar:r=>{PALP=pacientes.map(x=>({r:x,w:[...new Set(palabras(x.nom))]})).filter(x=>x.w.length);return detectar(r);},_fecha:fechaDe};
 })();
