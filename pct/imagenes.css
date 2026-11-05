@@ -110,3 +110,10 @@
 .img-iaviso{border:1px solid #ffcc80;background:#fff8e1;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#4e342e;display:flex;flex-direction:column;gap:6px;line-height:1.5}
 .img-iaviso ol{margin:0;padding-left:20px}.img-iaviso a{color:#1565c0;font-weight:600}.img-iaviso small{font-size:11.5px}.img-ierrt{color:#8d6e63;word-break:break-word}.img-ierrt:empty{display:none}
 .img-iotro{margin:6px 18px 0;font-size:13px;color:#37474f}.img-iotro summary{cursor:pointer;font-weight:600;color:#546e7a;padding:6px 0}.img-iotro .img-ipasos{margin:6px 0 0}.img-iotro .img-ibtns{padding:10px 0 4px}
+/* automático: solo lo nuevo de la carpeta de Drive */
+.img-iauto{border-top:1px dashed #c5cae9;padding-top:8px;display:flex;flex-direction:column;gap:4px;font-size:13px;color:#283593}
+.img-iauto label{display:flex;align-items:center;gap:6px;cursor:pointer}.img-iauto small{font-size:11.5px;color:#607d8b;line-height:1.5}.img-iauto .img-ibtns{padding:4px 0 0}
+.img-badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;margin-left:4px;border-radius:999px;background:#ffb300;color:#3e2723;font-size:11px;font-weight:800;line-height:1}
+.img-auto{display:inline-block;margin-left:2px;font-size:12px}.img-auto.gira{animation:img-gira 1.2s linear infinite}
+@keyframes img-gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.img-auto.gira{animation:none}}
