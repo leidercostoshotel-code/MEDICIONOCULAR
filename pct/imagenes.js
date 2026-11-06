@@ -5,7 +5,7 @@
    · pct_imagenes: datos de cada estudio (paciente, tipo, fecha, nota, archivo); se sincroniza por cambios, como los pacientes.
    · pct_archivos: el archivo en partes de 900 KB ({id}_0, {id}_1…) y su miniatura ({id}_t). Se bajan solo al abrir el paciente
      o el archivo y quedan guardados en el equipo (IndexedDB): la segunda vez no se vuelven a leer de la nube.
-   · Las fotos se achican antes de subir (lado mayor 2200 px, JPG); PDF hasta 15 MB.
+   · Las fotos se achican antes de subir (lado mayor 2200 px, JPG); PDF hasta 30 MB.
    · «Traer de Drive»: con solo el enlace de la carpeta (compartida con «Cualquier persona con el enlace»), la app la lee con la API de
      Drive (solo lectura, con la clave de API del proyecto) y guarda cada PDF o foto como un estudio más: se ve aquí sin entrar a Drive.
      🔄 Automático: lo NUEVO que se sube a esa carpeta se guarda solo (en los equipos con la app abierta, al abrirla y cada 30 minutos).
@@ -18,7 +18,7 @@
 (function(){
 "use strict";
 const $=id=>document.getElementById(id);
-const LS="pct_imagenes",PARTE=900000,MAX_PDF=15*1024*1024,MAX_FOTO=40*1024*1024;
+const LS="pct_imagenes",PARTE=900000,MAX_PDF=30*1024*1024,MAX_FOTO=40*1024*1024;
 const TIPOS=["Radiografía de tórax","Tomografía de tórax","Ecografía","Informe de imagen","Otro"],CARPETA="Carpeta de Drive",TIPOS_ENL=[CARPETA].concat(TIPOS);
 const HUERFANOS="__sin_paciente";
 let imagenes={};try{const x=JSON.parse(localStorage.getItem(LS));if(x&&typeof x==="object")imagenes=x;}catch(e){}
@@ -127,7 +127,7 @@ async function subirUno(f,pac,meta,avance){
   const pdf=f.type==="application/pdf"||/\.pdf$/i.test(f.name),img=/^image\//.test(f.type)||/\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(f.name);
   if(!pdf&&!img)throw new Error("solo se aceptan PDF o fotos");
   let blob,thumb=null,mime;
-  if(pdf){if(f.size>MAX_PDF)throw new Error(`pesa ${mb(f.size)}; el máximo es 15 MB`);blob=f;mime="application/pdf";}
+  if(pdf){if(f.size>MAX_PDF)throw new Error(`pesa ${mb(f.size)}; el máximo es 30 MB`);blob=f;mime="application/pdf";}
   else{if(f.size>MAX_FOTO)throw new Error(`pesa ${mb(f.size)}`);const c=await comprimir(f);blob=c.blob;thumb=c.thumb;mime="image/jpeg";}
   const id=meta.gid?"d_"+meta.gid:uid(),rec={id,pacId:pac.id,tipo:meta.tipo,fecha:meta.fecha,nota:meta.nota,nombre:f.name.slice(0,120),mime,tam:blob.size,partes:Math.max(1,Math.ceil(blob.size/PARTE)),
     mini:thumb?1:0,creado:new Date().toISOString(),por:(window.Sync&&Sync.usuario&&Sync.usuario())||"",otam:f.size};
@@ -201,7 +201,7 @@ function pintarPanel(){urls.forEach(u=>URL.revokeObjectURL(u));urls=[];const r=p
         <div class="img-zona" id="imgZona">
           <div class="img-zona-ico">⬆</div><b>Arrastre aquí el PDF o las fotos</b>
           <div class="img-zona-btns"><label class="btn primary">📎 Elegir PDF o fotos<input type="file" id="imgArch" accept="application/pdf,image/*" multiple hidden></label><label class="btn img-cam">📷 Tomar foto<input type="file" id="imgCam" accept="image/*" capture="environment" hidden></label></div>
-          <small>PDF hasta 15 MB · las fotos se achican solas para ocupar poco espacio</small>
+          <small>PDF hasta 30 MB · las fotos se achican solas para ocupar poco espacio</small>
         </div>
         <div class="img-enl"><span>🔗 o, sin subir nada, pegue el enlace de Google Drive del estudio (o de su carpeta): se verá aquí mismo.</span><input type="url" id="imgNUrl" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off"><button type="button" class="btn" data-acc2="url">Guardar enlace</button></div>
         <div class="img-prog" id="imgProg" hidden><div class="img-pbar"><i></i></div><span></span></div>
@@ -298,12 +298,16 @@ const DUD="⚠ Parecido, no seguro: confirme que es este paciente (márquelo) o 
 const GAPI="https://www.googleapis.com/drive/v3/files",CARP_MIME="application/vnd.google-apps.folder";
 const proyecto=()=>(window.FIREBASE_CONFIG&&FIREBASE_CONFIG.projectId)||"";
 const claveDrive=()=>config.driveClave||(window.FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey)||"";
-const esperar=ms=>new Promise(ok=>setTimeout(ok,ms));
+const esperar=ms=>new Promise(ok=>setTimeout(ok,ms*(window.__imgRapido?.01:1))); // (__imgRapido: solo para las pruebas)
 function errDrive(cod,m){const e=new Error(m||cod);e.cod=cod;return e;}
 async function api(ruta,intento){const k=claveDrive();if(!k)throw errDrive("clave","Falta la clave de API");let r;
-  try{r=await fetch(GAPI+ruta+(ruta.includes("?")?"&":"?")+"supportsAllDrives=true&key="+encodeURIComponent(k));}catch(e){throw errDrive("red","Sin conexión con Google Drive");}
+  const n=intento||0,otra=async ms=>{await esperar(ms);return api(ruta,n+1);};
+  try{r=await fetch(GAPI+ruta+(ruta.includes("?")?"&":"?")+"supportsAllDrives=true&key="+encodeURIComponent(k));}
+  catch(e){if(n<2)return otra([3000,8000][n]); // Google corta cuando se piden muchas descargas seguidas (o se cayó internet un momento)
+    throw errDrive("red","Google Drive no respondió (muchas descargas seguidas o se cortó internet)");}
   if(r.ok)return r;let j=null;try{j=await r.json();}catch(e){}const e=(j&&j.error)||{},t=(e.message||"")+" "+JSON.stringify(e.errors||"")+JSON.stringify(e.details||"");
-  if((r.status===429||/rateLimit/i.test(t))&&(intento||0)<3){await esperar(1500*((intento||0)+1));return api(ruta,(intento||0)+1);}
+  if((r.status===429||r.status>=500||/rateLimit/i.test(t))&&n<3)return otra([3000,8000,20000][n]);
+  if(/downloadQuotaExceeded/i.test(t))throw errDrive("cuota","Google limitó por hoy las descargas de este archivo; se puede reintentar mañana");
   throw errDrive(/SERVICE_DISABLED|accessNotConfigured|has not been used/i.test(t)?"api-apagada":/API_KEY|keyInvalid|API key not valid|are blocked/i.test(t)?"clave":r.status===404||r.status===403?"sin-permiso":"red",e.message||("Error "+r.status));}
 const esArch=d=>d.mime==="application/pdf"||/^image\//.test(d.mime||"")||!!EXT_MIME[extDe(d.name)];
 const limpio=n=>String(n||"").replace(/[\/\\]/g,"-");
@@ -377,7 +381,7 @@ async function revisarAuto(forzar){if(puedeAuto())autoInicial();const c=autoCfg(
     PALP=pacientes.map(r=>({r,w:[...new Set(palabras(r.nom))]})).filter(x=>x.w.length);AUTO.pend=AUTO.pend||[];
     for(const d of nuevos){const det=detectar(d.ruta),pac=det.r&&!det.dud?det.r:null;
       if(!pac){if(!AUTO.pend.some(p=>p.id===d.id))AUTO.pend.push(d);continue;}
-      try{const f=await bajarDrive({id:d.id,name:d.name,type:EXT_MIME[extDe(d.name)]&&!/^image\/|pdf/.test(d.mime||"")?EXT_MIME[extDe(d.name)]:d.mime});
+      try{await esperar(600);const f=await bajarDrive({id:d.id,name:d.name,type:EXT_MIME[extDe(d.name)]&&!/^image\/|pdf/.test(d.mime||"")?EXT_MIME[extDe(d.name)]:d.mime});
         const fecha=fechaDe(d.name)||fechaDe(d.ruta.split("/").slice(-2,-1)[0]||"")||(d.creado?fmtFecha(new Date(d.creado)):"");
         await subirUno(f,pac,{tipo:tipoDe(d.ruta),fecha,nota:"",origen:d.ruta,gid:d.id},()=>{});ok++;quitarEnlaces(d.id,pac.id);}
       catch(e){if(e.cod==="clave"||e.cod==="api-apagada"||e.cod==="red")throw e;console.error(e);if(!AUTO.pend.some(p=>p.id===d.id))AUTO.pend.push(d);}}
@@ -449,19 +453,27 @@ async function preparar(lista){impEstado="leyendo";pintarImp();
     impEstado="revisar";}
   catch(e){console.error(e);impEstado="elegir";pintarImp();avisar("No se pudo leer",String(e&&e.message||e),"peligro");return;}
   pintarImp();}
-async function subirTodo(){const l=IMP.filter(x=>x.f&&x.si&&x.pac);if(!l.length)return;impEstado="subiendo";const B=$('imgImp');let ok=0,cola=0,local=0;const err=[];
+async function subirTodo(){const l=IMP.filter(x=>x.f&&x.si&&x.pac&&!x.hecho);if(!l.length)return;impEstado="subiendo";const B=$('imgImp');let ok=0,cola=0,local=0,cortes=0;const err=[];
   B.innerHTML=`<div class="img-icab"><div><h3>Guardando estudios en la app…</h3><p>No cierre la app hasta que termine.</p></div></div><div class="img-prog grande"><div class="img-pbar"><i></i></div><span></span></div>`;
-  const pr=(t,f)=>{B.querySelector('.img-prog span').textContent=t;B.querySelector('.img-pbar i').style.width=Math.round(f*100)+"%";};
-  for(let i=0;i<l.length;i++){const x=l[i],pac=pacientes.find(r=>r.id===x.pac);pr(`${i+1} de ${l.length}: ${x.f.name}`,i/l.length);
+  const pr=(t,f)=>{B.querySelector('.img-prog span').textContent=t;if(f!=null)B.querySelector('.img-pbar i').style.width=Math.round(f*100)+"%";};
+  const pausa=async seg=>{for(let k=seg;k>0;k--){pr(`Google Drive pidió una pausa: se reanuda solo en ${k} s…`,null);await esperar(1000);}};
+  let parar=false;
+  for(let i=0;i<l.length&&!parar;i++){const x=l[i],pac=pacientes.find(r=>r.id===x.pac);pr(`${i+1} de ${l.length}: ${x.f.name}`,i/l.length);
     if(!pac){err.push(x.f.name+": paciente no encontrado");continue;}
-    try{let f=x.f;if(f.drive){pr(`${i+1} de ${l.length}: trayendo de Drive ${f.name}`,i/l.length);f=await bajarDrive(f);}
-      const r=await subirUno(f,pac,{tipo:x.tipo,fecha:x.fecha,nota:"",origen:x.ruta,gid:x.f.drive},p=>pr(`${i+1} de ${l.length}: ${x.f.name}`,(i+p)/l.length));ok++;if(r==="cola")cola++;if(r==="local")local++;
-      if(x.f.drive)quitarEnlaces(x.f.drive,pac.id);}
-    catch(e){console.error(e);err.push(x.f.name+": "+(e&&e.message||e));}}
+    for(let intento=0;;intento++){
+      try{let f=x.f;if(f.drive){pr(`${i+1} de ${l.length}: trayendo de Drive ${f.name}`,i/l.length);if(i)await esperar(600);f=await bajarDrive(f);} // sin apuro: Google corta si se piden muchas seguidas
+        const r=await subirUno(f,pac,{tipo:x.tipo,fecha:x.fecha,nota:"",origen:x.ruta,gid:x.f.drive},p=>pr(`${i+1} de ${l.length}: ${x.f.name}`,(i+p)/l.length));ok++;if(r==="cola")cola++;if(r==="local")local++;
+        x.hecho=true;cortes=0;if(x.f.drive)quitarEnlaces(x.f.drive,pac.id);break;}
+      catch(e){console.error(e);
+        if(e.cod==="red"&&intento<2){await pausa(intento?90:45);continue;} // se espera y se intenta otra vez el mismo
+        if(e.cod==="red"&&++cortes>=2)parar=true; // Google sigue sin responder: se deja el resto para «Reintentar»
+        err.push(x.f.name+": "+(e&&e.message||e));break;}}}
+  const faltan=IMP.filter(x=>x.f&&x.si&&x.pac&&!x.hecho).length;
   impEstado="listo";pr("Listo",1);
-  B.innerHTML=`<div class="img-icab"><div><h3>✔ ${ok} estudio${ok===1?"":"s"} importado${ok===1?"":"s"}</h3><p>${local?"Guardados en este equipo (sin nube).":cola?"Se terminan de subir a la nube al reconectar.":"Guardados y sincronizados con los demás equipos."}</p></div></div>
+  B.innerHTML=`<div class="img-icab"><div><h3>✔ ${ok} estudio${ok===1?"":"s"} importado${ok===1?"":"s"}</h3><p>${local?"Guardados en este equipo (sin nube).":cola?"Se terminan de subir a la nube al reconectar.":"Guardados y sincronizados con los demás equipos."}${faltan?` · <b class="a">Faltan ${faltan}</b>`:""}</p></div></div>
+    ${parar?`<div class="img-ierr"><b>Google Drive dejó de responder y se detuvo para no insistir.</b> Espere unos minutos y presione «Reintentar»: solo se traen los que faltan.</div>`:""}
     ${err.length?`<div class="img-ierr"><b>No se pudieron subir ${err.length}:</b><ul>${err.map(e=>`<li>${esc(e)}</li>`).join("")}</ul></div>`:""}
-    <div class="img-ipie"><span></span><button type="button" class="btn primary" data-i="fin">Listo</button></div>`;
+    <div class="img-ipie"><span></span>${faltan?`<button type="button" class="btn" data-i="reintentar">↻ Reintentar los ${faltan} que faltan</button>`:""}<button type="button" class="btn primary" data-i="fin">Listo</button></div>`;
   render(true);}
 /* ======================= ENLAZAR CON DRIVE (sin descargar ni copiar nada) ======================= */
 // Lista de enlaces, una línea por paciente: «GRUPO / APELLIDOS NOMBRES   https://drive.google.com/drive/folders/…» (o el enlace primero).
@@ -505,7 +517,7 @@ $('imgEnlazar').addEventListener('click',()=>{impEstado="enl";ENL=[];pintarEnl()
 $('imgImportar').addEventListener('click',abrirImp);
 $('imgImpModal').addEventListener('click',e=>{if(e.target===$('imgImpModal')){cerrarImp();return;}const b=e.target.closest('[data-i]');if(!b)return;const a=b.dataset.i;
   if(a==="cerrar"||a==="fin"){impEstado="elegir";cerrarImp();}else if(a==="zip")$('imgImpZip').click();else if(a==="carpeta")$('imgImpCarpeta').click();else if(a==="arch")$('imgImpArch').click();
-  else if(a==="otra"){impEstado="elegir";IMP=[];impPend=false;pintarImp();}else if(a==="subir")subirTodo();
+  else if(a==="otra"){impEstado="elegir";IMP=[];impPend=false;pintarImp();}else if(a==="subir"||a==="reintentar")subirTodo();
   else if(a==="drvLeer")leerDrive(($('imgDrvUrl')||{}).value);
   else if(a==="autoYa")revisarAuto(true);
   else if(a==="revPend"){const l=pendientes();impPend=true;preparar(l.map(d=>({ruta:d.ruta,f:{name:d.name,size:d.size,type:d.mime,drive:d.id}})));}
