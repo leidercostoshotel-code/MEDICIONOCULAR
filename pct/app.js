@@ -1,6 +1,5 @@
 /* PCT · Lógica de la aplicación: padrón, atenciones HIS, registro mensual, importar/exportar y guardado local. */
 /* ======================= DATOS INICIALES ======================= */
-const DATA_INICIAL = [];
 const COLS = ["n","nom","hc","dni","fn","edad","sexo","dx","peso","talla","tto"];
 const HEADERS = ["N° Reg","N° CASO","APELLIDOS Y NOMBRES","HISTORIA CLINICA","DNI","FECHA DE NACIMIENTO","EDAD","SEXO","DIAGNOSTICO","PESO","TALLA","TRATAMIENTO","DIRECCION"]; // COLS = orden del Excel original (archivos sin encabezados)
 const OPC_SEXO = ["M","F","RM"];
@@ -43,7 +42,7 @@ function normalizar(r){const o=nuevoRegistro();for(const k in o){if(r[k]!=null)o
 /* ======================= PERSISTENCIA ======================= */
 function cargar(){
   let guardado=false;try{const p=JSON.parse(localStorage.getItem(LS_PAC));if(Array.isArray(p)){pacientes=p.map(normalizar);guardado=true;}}catch(e){}
-  if(!guardado){pacientes=DATA_INICIAL.map(normalizar);try{localStorage.setItem(LS_PAC,JSON.stringify(pacientes));}catch(e){}} // primera vez: el Excel original (se guarda para que cada paciente conserve su id) · un padrón vaciado a propósito queda vacío
+  if(!guardado)pacientes=[]; // equipo nuevo: el padrón llega de la nube al iniciar sesión (los datos de pacientes nunca van en el código)
   try{atenciones=JSON.parse(localStorage.getItem(LS_AT))||{};}catch(e){atenciones={};}
   Object.values(atenciones).forEach(a=>{if(a&&!a.creado)a.creado=a.guardado||"";}); // registros antiguos: orden de llegada = último guardado
   try{config=Object.assign(config,JSON.parse(localStorage.getItem(LS_CFG))||{});}catch(e){}
