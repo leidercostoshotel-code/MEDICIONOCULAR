@@ -1,6 +1,5 @@
 /* Lógica de la aplicación: padrón, importar/exportar, hoja de evaluación y guardado local. */
 /* ======================= DATOS INICIALES ======================= */
-const DATA_INICIAL = [];
 const ANT_OFT = ["AMETROPÍA","BLEFARITIS","CATARATA","CONJUNTIVITIS","ESTRABISMO","GLAUCOMA","RETINOPATÍA","TRAUMATISMOS"];
 const ANT_GEN = ["ALERGIAS","CARDIOPATÍAS","COLAGENOPATÍAS","CONVULSIONES","DIABETES","ENDOCRINOPATÍAS","HIPERTENSIÓN","MIGRAÑA","NEUROPATÍAS","OPERACIONES","PSIQUIÁTRICOS","TEC / TRAUMA","TOXICOLOGÍA","TUBERCULOSIS","TUMORES"];
 const COLS = ["n","hc","dni","ap","am","nom","sexo","fn","t","fr","fc","pa","sat","peso","talla","imc","edad","nombre","od","oi","resultado","ao","ao_od","ao_oi","ag","ag_p","ag_f","obs"];
@@ -44,7 +43,6 @@ function normPA(v){return String(v).replace(/\s*[ .,\-*]\s*/g,"/").replace(/\/+/
 /* ======================= PERSISTENCIA ======================= */
 function cargar(){
   try{const p=JSON.parse(localStorage.getItem(LS_PAC));if(Array.isArray(p)&&p.length)pacientes=p.map(normalizar);}catch(e){}
-  if(!pacientes.length)pacientes=DATA_INICIAL.map(normalizar);
   try{evaluaciones=JSON.parse(localStorage.getItem(LS_EVAL))||{};}catch(e){evaluaciones={};}
   if(migrarCodigos(evaluaciones))try{localStorage.setItem(LS_EVAL,JSON.stringify(evaluaciones));}catch(e){}
 }
