@@ -95,7 +95,7 @@ function plan(r){
     if(m===0&&T.filas.esp)notas.push("Evaluación por especialidad: luego, según indicación médica.");
     const base=m===0?new Date(ini):masMeses(ini,m),aj=habil(base),st=est["m"+m]||{};
     const rep=parseFecha(st.f);const fecha=rep||aj.f;const hechos=items.filter(k=>st.ok&&st.ok[k]);
-    controles.push({m,cid:"m"+m,nombre:m===0?"Estudio basal":`Control del mes ${m}`,fecha,base,movido:rep?"reprogramada":aj.motivo,hist:Array.isArray(st.hist)?st.hist:[],items,hechos,notas,
+    controles.push({m,cid:"m"+m,nombre:m===0?"Estudio basal":`Control del mes ${m}`,fecha,base,movido:rep?"":aj.motivo,rep:!!rep,hist:[],items,hechos,notas,
       completo:items.length>0&&hechos.length===items.length});
   }
   return {r,id,E,T,meses,ini,controles,fin:masMeses(ini,meses)};
@@ -120,8 +120,8 @@ function planTPT(r){
     if(m<dur)items.push("ch_tpt");else if(!resultado){items.push("tp_fin");resultado=true;} // en la TPT: cómo va · al terminarla: su resultado
     const por=ind==="ds"?(m===2?"al cambio de fase del tratamiento del caso índice":"al término del tratamiento del caso índice"):`cada 3 meses (contacto de TB ${ind==="hr"?"Hr":"RR/MDR"})`;
     const hechos=items.filter(k=>st.ok&&st.ok[k]);
-    controles.push({m,cid,nombre:`Chequeo ${i+1} del contacto · ${m} meses de iniciada la TPT`,corto:`Chequeo ${i+1}`,fecha:rep||aj.f,base,orig:aj.f,movido:rep?"reprogramada":aj.motivo,
-      hist:Array.isArray(st.hist)?st.hist:[],items,hechos,notas:[`Control del contacto ${por} (NTS pág. 24).`],completo:hechos.length===items.length});});
+    controles.push({m,cid,nombre:`Chequeo ${i+1} del contacto · ${m} meses de iniciada la TPT`,corto:`Chequeo ${i+1}`,fecha:rep||aj.f,base,orig:aj.f,movido:rep?"":aj.motivo,rep:!!rep,
+      hist:[],items,hechos,notas:[`Control del contacto ${por} (NTS pág. 24).`],completo:hechos.length===items.length});});
   const notas=["Control de contactos (pág. 24): incluye un examen integral. Contactos de TB-DS, como mínimo al inicio, al cambio de fase y al término del tratamiento del caso índice; de TB-DR, al inicio y cada 3 meses hasta el término. El control del inicio es el de la indicación de la TPT; los chequeos se cuentan desde el inicio de la TPT."+(ind==="mdr"?" Para TB-RR/MDR se programan 3, 6 y 9 meses (esquema BLC); si el caso índice sigue en tratamiento, continúe cada 3 meses.":""),
     "Las tomas de la TPT no van en este calendario: se registran en la tarjeta de control de TPT (Anexo N° 6).",
     "Con 2 o más signos o síntomas de TB (tos, fiebre, baja de peso, sudoración nocturna) el contacto es caso presuntivo de TB: pedir la prueba bacteriológica (pág. 27)."];
@@ -161,8 +161,7 @@ function filtrar(r){const f=$('monFiltro').value,q=normTxt($('monBuscar').value)
   if(f==="ds")return m==="sens";if(f==="dr")return m==="otro";if(f==="tpt")return m==="tpt";return true;}
 function eventos(){ // {clave: [{tipo:'c', p, c} | {tipo:'h', h}]}
   const ev={},add=(d,o)=>{(ev[clave(d)]=ev[clave(d)]||[]).push(o);};
-  const addPlan=p=>p.controles.forEach(c=>{add(c.fecha,{tipo:"c",p,c});
-      const vistos=new Set([clave(c.fecha)]);c.hist.forEach(x=>{const d=parseFecha(x.de);if(d&&!vistos.has(clave(d))){vistos.add(clave(d));add(d,{tipo:"m",p,c,x});}});}); // «m» = cita que se reprogramó a otro día
+  const addPlan=p=>p.controles.forEach(c=>add(c.fecha,{tipo:"c",p,c})); // una cita reprogramada solo aparece en su nueva fecha
   pacientes.filter(filtrar).forEach(r=>{planes(r).forEach(addPlan);hitos(r).forEach(h=>{if(h.f)add(h.f,{tipo:"h",h});});});
   return ev;}
 
@@ -204,7 +203,7 @@ function pintarCal(ev){
     const venc=cs.some(e=>estado(e.c)[0]==="vencido");
     html+=`<div class="mon-d${+f===+h?' hoy':''}${+f===+diaSel?' sel':''}${f.getDay()===0?' dom':''}${fer?' fer':''}${venc?' venc':''}" data-dia="${k}" title="${fer?esc(fer):""}">
       <div class="mon-dnum"><span class="mon-n">${d}</span>${cs.length?`<span class="mon-cnt" title="${cs.length} paciente(s) citado(s)">${cs.length}</span>`:""}${fer?`<span class="mon-fer">${esc(fer)}</span>`:""}</div>
-      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}${tipoCls(e.p)}">${e.c.movido==="reprogramada"?"↪ ":""}${ico(e.p)}N° ${esc(e.p.r.n)} · ${corto(e.c)}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
+      ${cs.slice(0,3).map(e=>`<div class="mon-ev st-${estado(e.c)[0]}${tipoCls(e.p)}">${ico(e.p)}N° ${esc(e.p.r.n)} · ${corto(e.c)}${e.c.completo?" ✔":e.c.hechos.length?` ${e.c.hechos.length}/${e.c.items.length}`:""}</div>`).join("")}
       ${cs.length>3?`<div class="mon-mas">+${cs.length-3} más</div>`:""}
       ${ms.slice(0,2).map(e=>`<div class="mon-ev movida" title="Cita reprogramada al ${fmtFecha(e.c.fecha)}">N° ${esc(e.p.r.n)} ↪ ${p2(e.c.fecha.getDate())}/${p2(e.c.fecha.getMonth()+1)}</div>`).join("")}${ms.length>2?`<div class="mon-mas">+${ms.length-2} reprogramadas</div>`:""}
       ${hs.slice(0,2).map(e=>`<div class="mon-hito">◆ ${esc(e.h.txt)} · N° ${esc(e.h.r.n)}</div>`).join("")}${hs.length>2?`<div class="mon-mas">+${hs.length-2} fechas clave</div>`:""}
@@ -235,7 +234,7 @@ function pintarDia(ev){const k=clave(diaSel),l=ev[k]||[],cs=l.filter(e=>e.tipo==
     (cs.length?cs.map(e=>tarjeta(e.p,e.c)).join(""):`<div class="mon-vacio">No hay controles programados este día.<br><small>Haga clic en un día del calendario para ver sus citas.</small></div>`);}
 function pintarResumen(D){ // indicadores = leyenda de colores; cada uno abre su lista detallada
   const b=(k,cls,txt,dot)=>`<button type="button" class="mr ${cls}${lista===k?' activo':''}" data-lista="${k}" title="Ver la lista detallada">${dot?`<i class="st-${dot}"></i>`:""}${txt}: <b>${D[k].length}</b></button>`;
-  $('monResumen').innerHTML=b("hoy","hoy","Hoy","hoy")+b("prox","prox","Próximos 7 días","prox")+b("venc","venc","Vencidos","vencido")+b("prog","prog","Programados","prog")+b("ok","ok","Realizados","ok")+(D.repro.length||lista==="repro"?b("repro","repro","Reprogramadas"):"")+b("pac","pac","Pacientes con plan")+
+  $('monResumen').innerHTML=b("hoy","hoy","Hoy","hoy")+b("prox","prox","Próximos 7 días","prox")+b("venc","venc","Vencidos","vencido")+b("prog","prog","Programados","prog")+b("ok","ok","Realizados","ok")+b("pac","pac","Pacientes con plan")+
     (D.noconf.length||lista==="noconf"?b("noconf","falta","Inicio sin conformidad"):"")+(D.sin.length||lista==="sin"?b("sin","falta","Sin fecha de inicio"):"")+
     `<span class="mr-ayuda no-print">👆 Haga clic en un indicador para ver la lista detallada</span>`;}
 
@@ -248,19 +247,17 @@ const LISTAS={
   ok:{t:"Controles realizados",ico:"✅",d:"Controles con todos sus exámenes y evaluaciones marcados como realizados.",vacio:"Todavía no hay controles completos.<br><small>Marque los exámenes en el calendario, la agenda o el plan del paciente.</small>"},
   pac:{t:"Pacientes con plan de monitoreo",ico:"👥",d:"Avance de cada paciente y de cada contacto con TPT: controles realizados, vencidos y su próxima cita.",vacio:"Ningún paciente tiene plan: ponga la fecha de inicio en la pestaña TPT."},
   noconf:{t:"Inicio sin conformidad",ico:"☑️",d:"La fecha de inicio ya pasó y falta marcar la conformidad del médico.",vacio:"Todos los inicios tienen conformidad. ✔"},
-  repro:{t:"Citas reprogramadas",ico:"↪️",d:"Controles pendientes que se pasaron a otro día: fecha anterior, nueva fecha y motivo.",vacio:"No hay citas reprogramadas pendientes."},
   sin:{t:"Sin fecha de inicio",ico:"✏️",d:"Pacientes en tratamiento y contactos con TPT sin fecha de inicio: escríbala aquí y el plan de monitoreo se arma solo.",vacio:"Todos los pacientes en tratamiento tienen fecha de inicio. ✔"}};
-const LISTAS_CTRL=["hoy","prox","venc","prog","ok","repro"];
+const LISTAS_CTRL=["hoy","prox","venc","prog","ok"];
 let lista=null;
 function datosListas(todos){const h=hoy0(),sem=new Date(h);sem.setDate(h.getDate()+7);const D={};Object.keys(LISTAS).forEach(k=>{D[k]=[];});
   pacientes.filter(todos?()=>true:filtrar).forEach(r=>{const m=TPT.modoDe(r),p=principal(r);
     if(p)D.pac.push({r,p});
     planes(r).forEach(pl=>pl.controles.forEach(c=>{const e={p:pl,c},s=estado(c)[0];
-      if(c.movido==="reprogramada"&&!c.completo)D.repro.push(e);
       if(s==="ok")D.ok.push(e);else if(s==="vencido")D.venc.push(e);else{if(s==="hoy")D.hoy.push(e);if(c.fecha<=sem)D.prox.push(e);else D.prog.push(e);}}));
     if(m==="sens"||m==="otro"||(m==="tpt"&&(r.tpt_ind||"ds")!=="xdr")){const ini=parseFecha(r.f_ini);if(!ini)D.sin.push({r,p});else if(!r.f_ini_ok&&ini<=h)D.noconf.push({r,p});}});
   const porN=(a,b)=>(+a.n||0)-(+b.n||0),porF=(a,b)=>a.c.fecha-b.c.fecha||porN(a.p.r,b.p.r);
-  ["hoy","prox","venc","prog","repro"].forEach(k=>D[k].sort(porF));D.ok.sort((a,b)=>porF(b,a)); // realizados: lo más reciente primero
+  ["hoy","prox","venc","prog"].forEach(k=>D[k].sort(porF));D.ok.sort((a,b)=>porF(b,a)); // realizados: lo más reciente primero
   ["pac","noconf","sin"].forEach(k=>D[k].sort((a,b)=>porN(a.r,b.r)));
   return D;}
 const dias=d=>Math.round((d-hoy0())/864e5);
@@ -369,12 +366,13 @@ $('monModal').addEventListener('mousedown',e=>{if(e.target===$('monModal'))cerra
 document.addEventListener('keydown',e=>{if(e.key!=="Escape")return;if($('monRepModal').classList.contains('abierto'))cerrarRepro();else if($('monModal').classList.contains('abierto'))cerrarPlan();});
 
 /* ======================= REPROGRAMAR CITAS (una o todas las pendientes del día) ======================= */
-// st.f = fecha nueva · st.hist = [{de, a, mot, obs, reg}] (cada cambio queda registrado; los exámenes ya hechos se conservan)
-const MOTIVOS=["Falta de tiempo en la atención","Paciente no acudió","Paciente pidió otra fecha","Falta de insumos o de resultados de laboratorio","Personal no disponible","Otro"];
-function movTxt(c){const u=c.hist[c.hist.length-1];return c.movido==="reprogramada"?`↪ reprogramada${u?` (antes ${esc(u.de)}${u.mot?" · "+esc(u.mot):""})`:""}`:"pasó del "+esc(c.movido);}
-function obsFecha(c){const u=c.hist[c.hist.length-1];if(c.movido==="reprogramada"&&u)return `Reprogramada del ${u.de} al ${u.a}${u.mot?" · "+u.mot:""}${u.obs?" ("+u.obs+")":""}`;return c.movido?(c.movido==="reprogramada"?"Reprogramada":"Pasó del "+c.movido):"";}
-function histHtml(c){return `<ul class="mon-hist">${c.hist.slice().reverse().map(x=>`<li><b>${esc(x.de)} → ${esc(x.a)}</b>${x.mot?" · "+esc(x.mot):""}${x.obs?` · <i>${esc(x.obs)}</i>`:""}<small>Registrado el ${esc(x.reg||"")}</small></li>`).join("")}</ul>`;}
+// st.f = fecha nueva. La cita reprogramada queda como una cita normal en su nueva fecha: sin marca, sin motivo y sin historial
+// (los exámenes ya hechos se conservan). «↺ Volver a la fecha de la norma» la devuelve a la fecha que le toca.
+function movTxt(c){return "pasó del "+esc(c.movido);} // domingo o feriado: pasa sola al siguiente día hábil
+function obsFecha(c){return c.movido?"Pasó del "+c.movido:"";}
 let repSel=[];
+(function limpiarHist(){let n=0;pacientes.forEach(r=>{const m=r&&r.mon;if(!m||typeof m!=="object")return;let cambio=false;
+  for(const k in m){if(m[k]&&typeof m[k]==="object"&&"hist" in m[k]){delete m[k].hist;cambio=true;}}if(cambio)n++;});if(n)guardarPacientes();})(); // reprogramaciones antiguas: sin registro
 function objetivos(){return repSel.map(o=>{const r=pacientes.find(x=>x.id===o.id);if(!r)return null;const p=planDeCid(r,o.cid),c=p&&p.controles.find(x=>x.cid===o.cid);return c?{r,p,c}:null;}).filter(Boolean);}
 const sigHabil=(d,n)=>habil(new Date(d.getFullYear(),d.getMonth(),d.getDate()+n)).f;
 function abrirRepro(lst){repSel=lst;const T=objetivos();if(!T.length)return;pintarRepro(T);$('monRepModal').classList.add('abierto');
@@ -386,9 +384,7 @@ function pintarRepro(T){const h=hoy0(),uno=T.length===1,c0=T[0].c,dia1=sigHabil(
     <div class="mon-rep-pacs">${T.map(({r,c})=>`<div class="mon-rep-pac"><b>${nom(r)}</b><small>DNI ${esc(r.dni||"—")} · ${esc(c.nombre)} · cita del ${DIAS[c.fecha.getDay()]} ${fmtFecha(c.fecha)} · ${c.items.length-c.hechos.length} de ${c.items.length} por realizar</small></div>`).join("")}</div>
     <div class="mon-rep-sec"><label>Nueva fecha</label><div class="mon-raps">${rap.map(([t,d])=>`<button type="button" class="mon-rap" data-f="${iso(d)}"><b>${t}</b><span>${DIAS[d.getDay()]} ${fmtFecha(d)}</span></button>`).join("")}</div>
       <div class="mon-rep-otra"><span>u otra fecha:</span><input type="date" id="repFecha" value="${iso(dia1)}" min="${iso(h)}"></div><div id="repAviso" class="mon-rep-aviso"></div></div>
-    <div class="mon-rep-sec"><label for="repMot">Motivo</label><select id="repMot">${MOTIVOS.map(m=>`<option>${m}</option>`).join("")}</select><input type="text" id="repObs" placeholder="Observación (opcional)" maxlength="120" autocomplete="off"></div>
-    ${uno&&c0.hist.length?`<div class="mon-rep-sec"><label>Historial de esta cita</label>${histHtml(c0)}</div>`:""}
-    <div class="mon-rep-pie">${uno&&c0.movido==="reprogramada"?`<button type="button" class="btn" data-r="original" title="Quita la reprogramación">↺ Volver a la fecha de la norma (${fmtFecha(fechaNorma(c0))})</button>`:""}<span class="sep"></span><button type="button" class="btn" data-r="cerrar">Cancelar</button><button type="button" class="btn primary" data-r="ok" id="repOk">✔ Reprogramar</button></div>`;
+    <div class="mon-rep-pie">${uno&&c0.rep?`<button type="button" class="btn" data-r="original" title="Vuelve a la fecha que le toca según la norma">↺ Volver a la fecha de la norma (${fmtFecha(fechaNorma(c0))})</button>`:""}<span class="sep"></span><button type="button" class="btn" data-r="cerrar">Cancelar</button><button type="button" class="btn primary" data-r="ok" id="repOk">✔ Reprogramar</button></div>`;
   validarRepro();}
 function validarRepro(){const v=$('repFecha').value,d=v?parseFecha(deIso(v)):null,T=objetivos(),h=hoy0();let av="",ok=!!d,bien=false;
   $('monRep').querySelectorAll('.mon-rap').forEach(b=>b.classList.toggle('sel',b.dataset.f===v));
@@ -399,14 +395,13 @@ function validarRepro(){const v=$('repFecha').value,d=v?parseFecha(deIso(v)):nul
     if(d.getDay()===0||fer){const s=habil(d).f;av=`⚠ El ${DIAS[d.getDay()]} ${fmtFecha(d)} no es día hábil${fer?" ("+esc(fer)+")":""}. <button type="button" class="mon-link" data-f="${iso(s)}">Usar el ${DIAS[s.getDay()]} ${fmtFecha(s)}</button>`;}
     else{bien=true;av=`✔ ${largo(d)} · ${n?n+" paciente"+(n>1?"s":"")+" ya citado"+(n>1?"s":"")+" ese día":"sin otras citas ese día"}`;}}
   $('repAviso').innerHTML=av;$('repAviso').className="mon-rep-aviso"+(bien?" ok":"");$('repOk').disabled=!ok;}
-function guardarRepro(original){const T=objetivos();if(!T.length)return;const ahora=new Date(),reg=fmtFecha(ahora)+" "+p2(ahora.getHours())+":"+p2(ahora.getMinutes());
-  const mot=original?"Vuelve a la fecha de la norma":$('repMot').value,obs=$('repObs').value.trim();let nueva="";
+function guardarRepro(original){const T=objetivos();if(!T.length)return;let nueva="";
   if(!original){nueva=deIso($('repFecha').value);if(!nueva)return;}
   T.forEach(({r,c})=>{const a=original?fmtFecha(fechaNorma(c)):nueva;if(a===fmtFecha(c.fecha))return;
     r.mon=(r.mon&&typeof r.mon==="object")?r.mon:{};const st=r.mon[c.cid]=r.mon[c.cid]||{};
-    st.hist=(Array.isArray(st.hist)?st.hist:[]).concat([{de:fmtFecha(c.fecha),a,mot,obs,reg}]);if(original)delete st.f;else st.f=a;r.mon=ordenar(r.mon);});
+    delete st.hist;if(original||a===fmtFecha(fechaNorma(c)))delete st.f;else st.f=a;r.mon=ordenar(r.mon);}); // sin registro de la reprogramación
   cerrarRepro();guardarPacientes();render();if(window.TPT)TPT.render();
-  msg(T.length===1?`N° ${T[0].r.n}: cita ${original?"devuelta al "+fmtFecha(fechaNorma(T[0].c)):"reprogramada al "+DIAS[parseFecha(nueva).getDay()]+" "+nueva}`:`${T.length} citas reprogramadas al ${DIAS[parseFecha(nueva).getDay()]} ${nueva}`);}
+  msg(T.length===1?`N° ${T[0].r.n}: cita ${original?"devuelta al "+fmtFecha(fechaNorma(T[0].c)):"pasada al "+DIAS[parseFecha(nueva).getDay()]+" "+nueva}`:`${T.length} citas pasadas al ${DIAS[parseFecha(nueva).getDay()]} ${nueva}`);}
 $('monRep').addEventListener('click',e=>{const b=e.target.closest('[data-r],[data-f]');if(!b)return;
   if(b.dataset.f){$('repFecha').value=b.dataset.f;validarRepro();return;}
   if(b.dataset.r==="cerrar")cerrarRepro();else if(b.dataset.r==="ok"&&!$('repOk').disabled)guardarRepro(false);else if(b.dataset.r==="original")guardarRepro(true);});

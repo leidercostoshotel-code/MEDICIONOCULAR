@@ -42,7 +42,7 @@ function plan(r){const a=r.ane||{},ini=parseFecha(a.f_ini);if(!ini)return null;c
     const base=MON.masMeses(ini,m),aj=MON.habil(base),st=est["a"+m]||{},rep=parseFecha(st.f),fecha=rep||aj.f,hechos=items.filter(k=>st.ok&&st.ok[k]);
     const notas=[];if(m===1)notas.push("Al mes la hemoglobina debe subir ≥ 1 g/dL; si no, revisar la toma diaria y los efectos adversos, y descartar otra causa.");
     if(m===6)notas.push("Fin del tratamiento: con hemoglobina normal pasa a la suplementación preventiva según la norma; si sigue con anemia, evaluar y referir.");
-    controles.push({m,cid:"a"+m,nombre:`Mes ${m} · anemia`,fecha,base,movido:rep?"reprogramada":aj.motivo,hist:Array.isArray(st.hist)?st.hist:[],items,hechos,notas,completo:hechos.length===items.length});}
+    controles.push({m,cid:"a"+m,nombre:`Mes ${m} · anemia`,fecha,base,movido:rep?"":aj.motivo,rep:!!rep,hist:[],items,hechos,notas,completo:hechos.length===items.length});}
   return {r,tipo:"ane",E:{txt:"🩸 Anemia · "+(d.mg?d.mg+" mg de hierro al día":"hierro")},T:{nombre:"NTS N° 213-MINSA/DGIESP-2024 (anemia)",pag:"",notas:[]},meses:6,ini,fin:MON.masMeses(ini,6),controles};}
 function situacion(r){const a=r.ane||{},hb=num(a.hb0);
   if(hb==null)return {k:"sin",txt:"Sin dosaje de Hb"};const cl=clasif(r,hb);if(!cl)return {k:"nd",txt:"Falta la edad (o el sexo)"};
