@@ -227,6 +227,7 @@ function pintarConfig(){for(const [id,k] of [['cfgEstab','estab'],['cfgUps','ups
 document.querySelectorAll('#registro .cfg').forEach(el=>el.addEventListener('input',()=>{const k={cfgEstab:'estab',cfgUps:'ups',cfgResp:'resp',cfgDigit:'digit',cfgLote:'lote'}[el.id];config[k]=el.value;guardarConfig();clearTimeout(pintarConfig._t);pintarConfig._t=setTimeout(()=>{HOJA.querySelectorAll('.hdatos tr:nth-child(2) td:nth-child(3)').forEach(t=>t.textContent=config.estab||"");HOJA.querySelectorAll('.hdatos tr:nth-child(2) td:nth-child(4)').forEach(t=>t.textContent=config.ups||"");HOJA.querySelectorAll('.hdatos tr:nth-child(2) td:nth-child(5)').forEach(t=>t.textContent=config.resp||"");HOJA.querySelectorAll('.cab-lote').forEach(t=>t.textContent=config.lote||"");HOJA.querySelectorAll('.cab-digit').forEach(t=>t.textContent=config.digit||"");},300);}));
 function periodo(){return {a:+$('regAnio').value,m:+$('regMes').value,d:$('regDia').value};}
 function llenarDias(){const {a,m}=periodo(),sel=$('regDia'),act=sel.value;const dias=new Set(Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m).map(x=>x.dia));
+  const h=new Date();if(h.getFullYear()===a&&h.getMonth()+1===m)dias.add(h.getDate()); // hoy siempre (la hoja de hoy aunque aún no tenga atenciones)
   sel.innerHTML=`<option value="">Todos los días</option>`+[...dias].sort((x,y)=>x-y).map(d=>`<option value="${d}">${p2(d)}</option>`).join("");if([...dias].includes(+act))sel.value=act;}
 function turnoSel(){return $('regTurno').value||"M";}
 // Cada turno es una hoja aparte: se muestran solo las atenciones del turno seleccionado (las demás quedan guardadas)
@@ -385,7 +386,7 @@ function guardarTodo(){const el=document.activeElement;if(el&&el.classList&&el.c
   const n=atencionesPeriodo().length;msg(n?`Guardado: ${n} atención(es) de este periodo`:"No hay atenciones que guardar: escriba el N° del paciente en una sección");}
 function exportRegistroXLSX(){if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel.");return;}
   const lista=atencionesPeriodo();if(!lista.length){msg("No hay atenciones en el periodo");return;}
-  const {a,m}=periodo();const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`OCULAR_HIS_${a}_${p2(m)}_${turnoSel()}.xlsx`);}
+  const {a,m,d}=periodo(),dd=d?p2(+d):"";const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+(dd?dd+" ":"")+MESES[m-1]+" "+a);XLSX.writeFile(wb,`OCULAR_HIS_${a}_${p2(m)}${dd?"_"+dd:""}_${turnoSel()}.xlsx`);} // lo que se ve: el día (o el mes) y el turno
 $('regAgregar').addEventListener('click',agregarSeccion);$('regGuardar').addEventListener('click',guardarTodo);$('regExcel').addEventListener('click',exportRegistroXLSX);
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key.toLowerCase()==='s'&&$('registro').classList.contains('active')){e.preventDefault();guardarTodo();}});
 
@@ -395,18 +396,25 @@ document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.key.toLowerCase()==='s'&
 const activa=()=>$('registro').classList.contains('active');
 // M = 7:00 a 13:30 · T = 13:35 a 20:00 · fuera de ese horario = N
 function turnoActual(d){const min=d.getHours()*60+d.getMinutes();if(min>=7*60&&min<=13*60+34)return "M";if(min>=13*60+35&&min<=20*60)return "T";return "N";}
-let turnoManual=false;$('regTurno').addEventListener('change',()=>{turnoManual=true;if(activa())renderRegistro();});
+let turnoManual=false,hoyHoja="";$('regTurno').addEventListener('change',()=>{turnoManual=true;if(activa())renderRegistro();});
+['regAnio','regMes','regDia'].forEach(id=>$(id).addEventListener('change',()=>{turnoManual=true;})); // eligió otra hoja para revisar: se respeta
+// Hoja HIS de ahora: al entrar a la pestaña, la hoja es la de hoy (día seleccionado: «FECHA PROCES.» con la fecha de hoy) y la del turno de la hora;
+// cada atención nueva lleva esa fecha y ese turno. Si se elige otro día, mes o turno, se respeta hasta salir de la pestaña.
+function irAHoy(){const h=new Date();$('regAnio').value=h.getFullYear();$('regMes').value=h.getMonth()+1;llenarDias();$('regDia').value=String(h.getDate());
+  $('regTurno').value=turnoActual(h);turnoManual=false;hoyHoja=h.toDateString();}
 function tickReloj(){const d=new Date();
   $('relojHora').textContent=`${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
   const ds=DIAS_SEM[d.getDay()];$('relojFecha').textContent=`${ds.charAt(0).toUpperCase()+ds.slice(1)} ${d.getDate()} de ${MESES_LARGO[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
   const t=turnoActual(d);const rt=$('relojTurno');rt.textContent=NOMBRE_TURNO[t];rt.dataset.t=t;
-  const sel=$('regTurno');if(!turnoManual&&sel.value!==t){sel.value=t;if(activa()){renderRegistro();msg("Empieza el "+NOMBRE_TURNO[t].toLowerCase()+": hoja nueva (las atenciones del turno anterior quedan guardadas)");}}}
+  const sel=$('regTurno'),dia=d.toDateString()!==hoyHoja;
+  if(!turnoManual&&(sel.value!==t||dia)){if(dia)irAHoy();else sel.value=t;
+    if(activa()){renderRegistro();msg((dia?"Nuevo día":"Empieza el "+NOMBRE_TURNO[t].toLowerCase())+": hoja nueva (las atenciones anteriores quedan guardadas)");}}}
 tickReloj();setInterval(tickReloj,1000);
 (function(){const tb=document.querySelector('.topbar');const fija=()=>document.documentElement.style.setProperty('--tb',tb.offsetHeight+'px');fija();window.addEventListener('resize',fija);})();
 
 /* ======================= PESTAÑA ======================= */
 const showViewBase=window.showView;
-window.showView=function(v){showViewBase(v);$('tabRegistro').classList.toggle('active',v==='registro');document.body.classList.toggle('ver-his',v==='registro');if(v==='registro'){llenarDias();renderRegistro();}};
+window.showView=function(v){showViewBase(v);$('tabRegistro').classList.toggle('active',v==='registro');document.body.classList.toggle('ver-his',v==='registro');if(v==='registro'){irAHoy();llenarDias();renderRegistro();}};
 
 /* ======================= ENLACE CON LA SINCRONIZACIÓN (firebase-sync.js) ======================= */
 window.HIS={
