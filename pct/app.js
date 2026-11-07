@@ -331,7 +331,7 @@ function ncrDe(a,p){return a[p+"_n"]==="X"?"N":a[p+"_c"]==="X"?"C":a[p+"_r"]==="
 function filaAt(a){if(esCont(a)){const pr=principalDe(a);a=Object.assign({},a,{n:"",nombre:pr?`(continuación de N° ${pr.n} · ${pr.nombre})`:"(continuación)",dni:"",hc:"",edad:"",sexo:""});}const lab=n=>[a[`dx${n}_l1`],a[`dx${n}_l2`],a[`dx${n}_l3`]].filter(Boolean).join(" ");
   return [a.fecha,a.turno,a.n,a.nombre,a.dni,a.hc,a.edad,a.sexo,a.financia,a.distrito,a.etnia,a.cpoblado,a.gestante,a.pc,a.pab,a.peso,a.talla,a.hb,a.fechaHb,a.fechaRegla,ncrDe(a,'est'),ncrDe(a,'ser'),a.dx1_txt,tipoDe(a,1),lab(1),a.dx1_cie,a.dx2_txt,tipoDe(a,2),lab(2),a.dx2_cie,a.dx3_txt,tipoDe(a,3),lab(3),a.dx3_cie].map(v=>v==null?"":v);}
 function irAtencion(id){const r=pacPorId(id);const ats=Object.values(atenciones).filter(a=>a.pacId===id).sort((x,y)=>String(x.guardado).localeCompare(String(y.guardado)));
-  if(ats.length){const u=ats[ats.length-1];document.getElementById('regAnio').value=u.anio;document.getElementById('regMes').value=u.mes;llenarDias();document.getElementById('regDia').value="";}
+  if(ats.length){const u=ats[ats.length-1];document.getElementById('regAnio').value=u.anio;document.getElementById('regMes').value=u.mes;llenarDias();document.getElementById('regDia').value="";document.getElementById('regTurno').value=u.turno||"M";turnoManual=true;irAtencionPend=true;}
   showView('registro');if(r)msg(`${ats.length} atención(es) de N° ${r.n}`);}
 function pintarConfig(){for(const [id,k] of [['cfgEstab','estab'],['cfgUps','ups'],['cfgResp','resp'],['cfgDigit','digit'],['cfgLote','lote']]){const el=document.getElementById(id);if(document.activeElement!==el)el.value=config[k]||"";}}
 document.querySelectorAll('.cfg').forEach(el=>el.addEventListener('input',()=>{const k={cfgEstab:'estab',cfgUps:'ups',cfgResp:'resp',cfgDigit:'digit',cfgLote:'lote'}[el.id];config[k]=el.value;guardarConfig();clearTimeout(pintarConfig._t);pintarConfig._t=setTimeout(()=>{const h=document.getElementById('hoja');h.querySelectorAll('.hdatos td:nth-child(3)').forEach(t=>t.textContent=config.estab||"");h.querySelectorAll('.hdatos td:nth-child(4)').forEach(t=>t.textContent=config.ups||"");h.querySelectorAll('.hdatos td:nth-child(5)').forEach(t=>t.textContent=config.resp||"");h.querySelectorAll('.cab-lote').forEach(t=>t.textContent=config.lote||"");h.querySelectorAll('.cab-digit').forEach(t=>t.textContent=config.digit||"");},300);}));
@@ -339,6 +339,7 @@ document.querySelectorAll('.cfg').forEach(el=>el.addEventListener('input',()=>{c
   ['regAnio','regMes','regDia'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{if(id!=='regDia')llenarDias();renderRegistro();}));llenarDias();})();
 function periodo(){return {a:+document.getElementById('regAnio').value,m:+document.getElementById('regMes').value,d:document.getElementById('regDia').value};}
 function llenarDias(){const {a,m}=periodo(),sel=document.getElementById('regDia'),act=sel.value;const dias=new Set(Object.values(atenciones).filter(x=>x.anio===a&&x.mes===m).map(x=>x.dia));
+  const h=new Date();if(h.getFullYear()===a&&h.getMonth()+1===m)dias.add(h.getDate());
   sel.innerHTML=`<option value="">Todos los días</option>`+[...dias].sort((x,y)=>x-y).map(d=>`<option value="${d}">${String(d).padStart(2,"0")}</option>`).join("");if([...dias].includes(+act))sel.value=act;}
 function turnoSel(){return document.getElementById('regTurno').value||"M";}
 // Cada turno es una hoja aparte: se muestran solo las atenciones del turno seleccionado (las demás quedan guardadas)
@@ -486,18 +487,27 @@ window.alCambiarAtenciones=()=>{if(document.getElementById('registro').classList
 window.alCambiarConfig=()=>{pintarConfig();pintarCodigos();if(document.getElementById('registro').classList.contains('active'))renderRegistro();};
 function exportRegistroXLSX(){if(typeof XLSX==="undefined"){avisar("Sin conexión","No se pudo cargar la librería de Excel.");return;}
   const lista=atencionesPeriodo();if(!lista.length){msg("No hay atenciones en el periodo");return;}
-  const {a,m}=periodo();const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}_${turnoSel()}.xlsx`);}
+  const {a,m,d}=periodo(),dd=d?String(d).padStart(2,"0"):"";const ws=XLSX.utils.aoa_to_sheet([CAB_AT].concat(lista.map(filaAt)));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"HIS "+(dd?dd+" ":"")+MESES[m-1]+" "+a);XLSX.writeFile(wb,`PCT_HIS_${a}_${String(m).padStart(2,"0")}${dd?"_"+dd:""}_${turnoSel()}.xlsx`);} // lo que se ve: el día (o el mes, con «Todos los días») y el turno
 
+/* ======================= HOJA HIS DE AHORA ======================= */
+// Al entrar a REGISTRO HIS la hoja es la de hoy y la del turno de ahora: «FECHA PROCES.» sale con la fecha de hoy y cada atención nueva
+// lleva la fecha y el turno del momento. Si se elige otro día, mes o turno (para revisar), se respeta hasta salir de la pestaña.
+let hoyHoja="";
+function irAHoy(){const h=new Date();document.getElementById('regAnio').value=h.getFullYear();document.getElementById('regMes').value=h.getMonth()+1;
+  llenarDias();document.getElementById('regDia').value=String(h.getDate());document.getElementById('regTurno').value=turnoActual(h);turnoManual=false;hoyHoja=h.toDateString();}
 /* ======================= RELOJ Y TURNO AUTOMÁTICO ======================= */
 // Turno según la hora: M = 7:00 a 13:30 · T = 13:35 a 20:00 · fuera de ese horario = N
 function turnoActual(d){const min=d.getHours()*60+d.getMinutes();if(min>=7*60&&min<=13*60+34)return "M";if(min>=13*60+35&&min<=20*60)return "T";return "N";}
-let turnoManual=false;document.getElementById('regTurno').addEventListener('change',()=>{turnoManual=true;if(document.getElementById('registro').classList.contains('active'))renderRegistro();});
+let turnoManual=false,irAtencionPend=false;document.getElementById('regTurno').addEventListener('change',()=>{turnoManual=true;if(document.getElementById('registro').classList.contains('active'))renderRegistro();});
+['regAnio','regMes','regDia'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{turnoManual=true;})); // eligió otra hoja: se respeta
 const DIAS_SEM=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 function tickReloj(){const d=new Date();const p2=n=>String(n).padStart(2,"0");
   document.getElementById('relojHora').textContent=`${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
   const ds=DIAS_SEM[d.getDay()];document.getElementById('relojFecha').textContent=`${ds.charAt(0).toUpperCase()+ds.slice(1)} ${d.getDate()} de ${MESES_LARGO[d.getMonth()].toLowerCase()} de ${d.getFullYear()}`;
   const t=turnoActual(d);const rt=document.getElementById('relojTurno');rt.textContent=NOMBRE_TURNO[t];rt.dataset.t=t;
-  const sel=document.getElementById('regTurno');if(!turnoManual&&sel.value!==t){sel.value=t;if(document.getElementById('registro').classList.contains('active')){renderRegistro();msg("Empieza el "+NOMBRE_TURNO[t].toLowerCase()+": hoja nueva (las atenciones del turno anterior quedan guardadas)");}}}
+  const sel=document.getElementById('regTurno'),dia=d.toDateString()!==hoyHoja;
+  if(!turnoManual&&(sel.value!==t||dia)){const enHis=document.getElementById('registro').classList.contains('active');if(dia)irAHoy();else sel.value=t;
+    if(enHis){renderRegistro();msg((dia?"Nuevo día":"Empieza el "+NOMBRE_TURNO[t].toLowerCase())+": hoja nueva (las atenciones anteriores quedan guardadas)");}}}
 tickReloj();setInterval(tickReloj,1000);
 
 /* ======================= INICIO ======================= */
@@ -505,7 +515,7 @@ function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id===v));
   document.getElementById('tabDatos').classList.toggle('active',v==='datos');
   document.getElementById('tabRegistro').classList.toggle('active',v==='registro');
-  if(v==='registro'){llenarDias();renderRegistro();}
+  if(v==='registro'){if(irAtencionPend)irAtencionPend=false;else irAHoy();llenarDias();renderRegistro();}
 }
 (function(){const tb=document.querySelector('.topbar');const fija=()=>document.documentElement.style.setProperty('--tb',tb.offsetHeight+'px');fija();window.addEventListener('resize',fija);})();
 cargar();renderDatos();pintarConfig();pintarCodigos();
